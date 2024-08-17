@@ -49,7 +49,7 @@ func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader,error) {
 		log.Errorf("Width times height too large: %d %d", sh.width, sh.height)
 		return nil, fmt.Errorf("Width times height too large: %d %d", sh.width, sh.height)
 	}
-	
+
 	return sh,nil
 }
 

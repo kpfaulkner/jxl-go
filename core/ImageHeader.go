@@ -4,15 +4,28 @@ import (
 	"errors"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
 )
 
 const (
-	CODESTREAM_HEADER int32 = 0x0AFF
+	CODESTREAM_HEADER uint32 = 0x0AFF
 )
 
 type ImageHeader struct {
-	level int32
-	size  *SizeHeader
+	level           int32
+	size            *SizeHeader
+	orientation     uint32
+	intrinsicSize   *SizeHeader
+	previewHeader   *PreviewHeader
+	animationHeader *AnimationHeader
+	bitDepth        *BitDepthHeader
+
+	orientedWidth       uint32
+	orientedHeight      uint32
+	modular16BitBuffers bool
+
+	extraChannelInfo []ExtraChannelInfo
+	xybEncoded       bool
 }
 
 func NewImageHeader() *ImageHeader {
@@ -32,7 +45,54 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		return nil, err
 	}
 
-	header.size = NewSizeHeader(reader, level)
+	header.size, err = NewSizeHeader(reader, level)
+	if err != nil {
+		return nil, err
+	}
+
+	allDefault := reader.MustReadBool()
+	extraFields := util.IfThenElse(allDefault, false, reader.MustReadBool())
+
+	if extraFields {
+		header.orientation = 1 + reader.MustReadBits(3)
+		if reader.MustReadBool() {
+			header.intrinsicSize, err = NewSizeHeader(reader, level)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if reader.MustReadBool() {
+			header.previewHeader, err = NewPreviewHeader(reader)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if reader.MustReadBool() {
+			header.animationHeader, err = NewAnimationHeader(reader)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		header.orientation = 1
+	}
+
+	if header.orientation > 4 {
+		header.orientedWidth = header.size.height
+		header.orientedHeight = header.size.width
+	} else {
+		header.orientedWidth = header.size.width
+		header.orientedHeight = header.size.height
+	}
+
+	if allDefault {
+		header.bitDepth = NewBitDepthHeader()
+		header.modular16BitBuffers = true
+		header.extraChannelInfo = []ExtraChannelInfo{}
+		header.xybEncoded = true
+		header.colorEncoding = NewColorEncodingBundle()
+	}
+
 	return header, nil
 }
 
