@@ -34,7 +34,6 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	ceb := &ColorEncodingBundle{}
 	allDefault := reader.MustReadBool()
 
-	var err error
 	if !allDefault {
 		ceb.useIccProfile = reader.MustReadBool()
 	}

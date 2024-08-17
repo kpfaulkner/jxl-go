@@ -17,10 +17,10 @@ const (
 	CE_XYB     int32 = 2
 	CE_UNKNOWN int32 = 3
 
-	RI_PERCEPTUAL uint32 = 0
-	RI_RELATIVE   uint32 = 1
-	RI_SATURATION uint32 = 2
-	RI_ABSOLUTE   uint32 = 3
+	RI_PERCEPTUAL int32 = 0
+	RI_RELATIVE   int32 = 1
+	RI_SATURATION int32 = 2
+	RI_ABSOLUTE   int32 = 3
 
 	TF_BT709   int32 = 1 + (1 << 24)
 	TF_UNKNOWN int32 = 2 + (1 << 24)
