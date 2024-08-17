@@ -22,13 +22,13 @@ const (
 	RI_SATURATION uint32 = 2
 	RI_ABSOLUTE   uint32 = 3
 
-	TF_BT709   uint32 = 1 + (1 << 24)
-	TF_UNKNOWN uint32 = 2 + (1 << 24)
-	TF_LINEAR  uint32 = 8 + (1 << 24)
-	TF_SRGB    uint32 = 13 + (1 << 24)
-	TF_PQ      uint32 = 16 + (1 << 24)
-	TF_DCI     uint32 = 17 + (1 << 24)
-	TF_HLG     uint32 = 18 + (1 << 24)
+	TF_BT709   int32 = 1 + (1 << 24)
+	TF_UNKNOWN int32 = 2 + (1 << 24)
+	TF_LINEAR  int32 = 8 + (1 << 24)
+	TF_SRGB    int32 = 13 + (1 << 24)
+	TF_PQ      int32 = 16 + (1 << 24)
+	TF_DCI     int32 = 17 + (1 << 24)
+	TF_HLG     int32 = 18 + (1 << 24)
 )
 
 func ValidateColorEncoding(colorEncoding int32) bool {
@@ -37,4 +37,55 @@ func ValidateColorEncoding(colorEncoding int32) bool {
 
 func ValidateWhitePoint(whitePoint int32) bool {
 	return whitePoint == WP_D65 || whitePoint == WP_CUSTOM || whitePoint == WP_E || whitePoint == WP_DCI
+}
+
+func ValidatePrimaries(primaries int32) bool {
+	return primaries == PRI_SRGB || primaries == PRI_CUSTOM || primaries == PRI_BT2100 || primaries == PRI_P3
+}
+
+func ValidateRenderingIntent(renderingIntent int32) bool {
+	return renderingIntent >= 0 && renderingIntent <= 3
+}
+
+func ValidateTransfer(transfer int32) bool {
+
+	if transfer < 0 {
+		return false
+	} else if transfer <= 10_000_000 {
+		return true
+	} else if transfer < (1 << 24) {
+		return false
+	} else {
+		return transfer == TF_BT709 ||
+			transfer == TF_UNKNOWN ||
+			transfer == TF_LINEAR ||
+			transfer == TF_SRGB ||
+			transfer == TF_PQ ||
+			transfer == TF_DCI ||
+			transfer == TF_HLG
+	}
+
+}
+
+func GetPrimaries(primaries int32) *CIEPrimaries {
+	switch primaries {
+	case PRI_SRGB:
+		return NewCIEPrimaries(
+			NewCIEXY(0.639998686, 0.330010138),
+			NewCIEXY(0.300003784, 0.600003357),
+			NewCIEXY(0.150002046, 0.059997204))
+	case PRI_BT2100:
+		return NewCIEPrimaries(
+			NewCIEXY(0.708, 0.292),
+			NewCIEXY(0.170, 0.797),
+			NewCIEXY(0.131, 0.046))
+	case PRI_P3:
+		return NewCIEPrimaries(
+			NewCIEXY(0.680, 0.320),
+			NewCIEXY(0.265, 0.690),
+			NewCIEXY(0.150, 0.060))
+
+	}
+
+	return nil
 }

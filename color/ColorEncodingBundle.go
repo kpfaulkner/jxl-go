@@ -13,8 +13,8 @@ type ColorEncodingBundle struct {
 	white           *CIEXY
 	primaries       int32
 	prim            *CIEPrimaries
-	tf              uint32
-	renderingIntent uint32
+	tf              int32
+	renderingIntent int32
 }
 
 func NewColorEncodingBundle() (*ColorEncodingBundle, error) {
@@ -75,11 +75,48 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		ceb.primaries = PRI_SRGB
 	}
 
+	if !ValidatePrimaries(ceb.primaries) {
+		return nil, errors.New("Invalid Primaries enum")
+	}
+
+	if ceb.primaries == PRI_CUSTOM {
+		pRed, err := NewCustomXY(reader)
+		if err != nil {
+			return nil, err
+		}
+		pGreen, err := NewCustomXY(reader)
+		if err != nil {
+			return nil, err
+		}
+		pBlue, err := NewCustomXY(reader)
+		if err != nil {
+			return nil, err
+		}
+		ceb.prim = NewCIEPrimaries(&pRed.CIEXY, &pGreen.CIEXY, &pBlue.CIEXY)
+	} else {
+		ceb.prim = GetPrimaries(ceb.primaries)
+	}
+
+	if !allDefault && !ceb.useIccProfile {
+		useGamma := reader.MustReadBool()
+		if useGamma {
+			ceb.tf = int32(reader.MustReadBits(24))
+		} else {
+			ceb.tf = (1 << 24) + reader.MustReadEnum()
+		}
+		if ValidateTransfer(ceb.tf) {
+			return nil, errors.New("Illegal transfer function")
+		}
+		ceb.renderingIntent = reader.MustReadEnum()
+		if ValidateRenderingIntent(ceb.renderingIntent) {
+			return nil, errors.New("Invalid RenderingIntent enum")
+		}
+	} else {
+		ceb.tf = TF_SRGB
+		ceb.renderingIntent = RI_RELATIVE
+	}
+
 	return ceb, nil
-}
-
-func getPrimaries(primaries uint32) *CIEPrimaries {
-
 }
 
 func getWhitePoint(point int32) *CIEXY {
