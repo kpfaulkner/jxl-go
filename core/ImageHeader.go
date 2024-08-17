@@ -3,6 +3,8 @@ package core
 import (
 	"errors"
 
+	"github.com/kpfaulkner/jxl-go/bundle"
+	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
@@ -25,6 +27,11 @@ type ImageHeader struct {
 
 	extraChannelInfo []ExtraChannelInfo
 	xybEncoded       bool
+	colorEncoding    *color.ColorEncodingBundle
+	alphaIndices     []int32
+
+	toneMapping *color.ToneMapping
+	extensions  *bundle.Extensions
 }
 
 func NewImageHeader() *ImageHeader {
@@ -92,9 +99,57 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		header.modular16BitBuffers = true
 		header.extraChannelInfo = []ExtraChannelInfo{}
 		header.xybEncoded = true
-		header.colorEncoding = NewColorEncodingBundle()
+		header.colorEncoding, err = color.NewColorEncodingBundle()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		header.bitDepth = NewBitDepthHeaderWithReader(reader)
+		header.modular16BitBuffers = reader.MustReadBool()
+		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
+		header.extraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
+		alphaIndicies := make([]int32, extraChannelCount)
+		numAlphaChannels := 0
+
+		for i := 0; i < int(extraChannelCount); i++ {
+			eci, err := NewExtraChannelInfoWithReader(reader)
+			if err != nil {
+				return nil, err
+			}
+			header.extraChannelInfo[i] = *eci
+
+			if header.extraChannelInfo[i].ecType == bundle.ALPHA {
+				alphaIndicies[numAlphaChannels] = int32(i)
+				numAlphaChannels++
+			}
+		}
+		header.alphaIndices = make([]int32, numAlphaChannels)
+		copy(header.alphaIndices, alphaIndicies[:numAlphaChannels])
+		header.xybEncoded = reader.MustReadBool()
+		header.colorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	if extraFields {
+		header.toneMapping, err = color.NewToneMappingWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		header.toneMapping = color.NewToneMapping()
+	}
+
+	if allDefault {
+		header.extensions = bundle.NewExtensions()
+	} else {
+		header.extensions, err = bundle.NewExtensionsWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
 	return header, nil
 }
 
