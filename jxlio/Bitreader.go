@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/bits"
 )
 
 type Bitreader struct {
@@ -183,7 +184,15 @@ func (br *Bitreader) MustReadBool() bool {
 	return b
 }
 
-func (br *Bitreader) ReadEnum() (int, error) {
+func (br *Bitreader) MustReadEnum() int32 {
+	v, err := br.ReadEnum()
+	if err != nil {
+		panic("MustReadEnum panic")
+	}
+	return v
+}
+
+func (br *Bitreader) ReadEnum() (int32, error) {
 	constant, err := br.ReadU32(0, 0, 1, 0, 2, 4, 18, 6)
 	if err != nil {
 		return 0, err
@@ -191,7 +200,7 @@ func (br *Bitreader) ReadEnum() (int, error) {
 	if constant > 63 {
 		return 0, errors.New("enum constant > 63")
 	}
-	return int(constant), nil
+	return int32(constant), nil
 }
 
 func (br *Bitreader) ReadF16() (float32, error) {
@@ -417,4 +426,23 @@ func (br *Bitreader) ZeroPadToByte() error {
 		}
 	}
 	return nil
+}
+
+func UnpackSigned(value int32) int32 {
+	if value&1 == 0 {
+		return int32(uint32(value) >> 1)
+	}
+
+	return int32(bits.Reverse32(uint32(value)) | 0x80_00_00_00)
+}
+
+func UnpackSignedU32(x uint32) int32 {
+
+	panic("boom")
+	base := int32(x >> 1)
+	if x&1 == 0 {
+		return base
+	} else {
+		return -base - 1
+	}
 }

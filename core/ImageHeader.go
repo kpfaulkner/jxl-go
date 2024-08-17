@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
-	"github.com/kpfaulkner/jxl-go/util"
 )
 
 const (
@@ -51,7 +50,10 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	allDefault := reader.MustReadBool()
-	extraFields := util.IfThenElse(allDefault, false, reader.MustReadBool())
+	extraFields := false
+	if !allDefault {
+		extraFields = reader.MustReadBool()
+	}
 
 	if extraFields {
 		header.orientation = 1 + reader.MustReadBits(3)
