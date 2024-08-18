@@ -22,6 +22,10 @@ type EntropyStream struct {
 	numDecoded77    int
 }
 
+func NewEntropyStreamWithReaderAndNumDists(reader *jxlio.Bitreader, numDists int) (*EntropyStream, error) {
+	return NewEntropyStreamWithReader(reader, numDists, false)
+}
+
 func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
 
 	var err error
@@ -238,16 +242,16 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, conte
 
 func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *HybridIntegerConfig, token int32) (int32, error) {
 	split := 1 << config.SplitExponent
-	if token < split {
+	if token < int32(split) {
 		return token, nil
 	}
-	n := config.SplitExponent - config.LsbInToken - config.MsbInToken + int(uint32(token-split)>>(config.MsbInToken+config.LsbInToken))
+	n := config.SplitExponent - config.LsbInToken - config.MsbInToken + int(uint32(token-int32(split))>>(config.MsbInToken+config.LsbInToken))
 	if n > 32 {
 		return 0, errors.New("n is too large")
 	}
 	low := token & (1<<config.LsbInToken - 1)
-	token = uint32(token) >> config.LsbInToken
+	token = int32(uint32(token) >> config.LsbInToken)
 	token &= 1<<config.MsbInToken - 1
 	token |= 1 << config.MsbInToken
-	return int32(int32(token<<n) | reader.MustReadBits(n)<<int32(config.MsbInToken) | int32(low)), nil
+	return int32(int32(token<<n) | int32(reader.MustReadBits(n))<<int32(config.MsbInToken) | int32(low)), nil
 }

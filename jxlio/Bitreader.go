@@ -345,9 +345,9 @@ func (br *Bitreader) MustShowBits(bits int) int {
 
 func (br *Bitreader) ShowBits(bits int) (int, error) {
 	n := int32(0)
-	var err error
 	for bits > 0 {
-		n, err = br.ReadBits(bits)
+		nn, err := br.ReadBits(bits)
+		n = int32(nn)
 		if err == nil {
 			break
 		}

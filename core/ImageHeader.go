@@ -6,6 +6,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
@@ -270,8 +271,22 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			return nil, errors.New("Invalid encoded size")
 		}
 		header.encodedICC = make([]byte, encodedSize)
-		iccDistribution := NewEntropyStreamWithReader(reader, 41)
+		iccDistribution, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 41)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < int(encodedSize); i++ {
+			cc, err := iccDistribution.ReadSymbol(reader, GetICCContext(header.encodedICC, i))
+			if err != nil {
+				return nil, err
+			}
+			header.encodedICC[i] = byte(cc)
+		}
+		if !iccDistribution.ValidateFinalState() {
+			return nil, errors.New("ICC Stream")
+		}
 	}
+	reader.ZeroPadToByte()
 
 	return header, nil
 }
@@ -282,4 +297,41 @@ func (h *ImageHeader) setLevel(level int32) error {
 	}
 	h.level = level
 	return nil
+}
+
+func GetICCContext(buffer []byte, index int) int {
+	if index <= 128 {
+		return 0
+	}
+	b1 := int(buffer[index-1]) & 0xFF
+	b2 := int(buffer[index-2]) & 0xFF
+	var p1 int
+	var p2 int
+	if b1 >= 'a' && b1 <= 'z' || b1 >= 'A' && b1 <= 'Z' {
+		p1 = 0
+	} else if b1 >= '0' && b1 <= '9' || b1 == '.' || b1 == ',' {
+		p1 = 1
+	} else if b1 <= 1 {
+		p1 = 2 + b1
+	} else if b1 > 1 && b1 < 16 {
+		p1 = 4
+	} else if b1 > 240 && b1 < 255 {
+		p1 = 5
+	} else if b1 == 255 {
+		p1 = 6
+	} else {
+		p1 = 7
+	}
+	if b2 >= 'a' && b2 <= 'z' || b2 >= 'A' && b2 <= 'Z' {
+		p2 = 0
+	} else if b2 >= '0' && b2 <= '9' || b2 == '.' || b2 == ',' {
+		p2 = 1
+	} else if b2 < 16 {
+		p2 = 2
+	} else if b2 > 240 {
+		p2 = 3
+	} else {
+		p2 = 4
+	}
+	return 1 + p1 + 8*p2
 }

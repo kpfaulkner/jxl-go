@@ -15,11 +15,10 @@ type JXLCodestreamDecoder struct {
 	bitReader *jxlio.Bitreader
 }
 
-
 func NewJXLCodestreamDecoder(in io.ReadSeeker) *JXLCodestreamDecoder {
 	jxl := &JXLCodestreamDecoder{}
 	jxl.in = in
-	jxl.bitReader = jxlio.NewBitreader(jxl.in))
+	jxl.bitReader = jxlio.NewBitreader(jxl.in)
 	return jxl
 }
 
@@ -30,7 +29,7 @@ func (jxl *JXLCodestreamDecoder) atEnd() bool {
 	return false
 }
 
-func (jxl*JXLCodestreamDecoder) decode() error {
+func (jxl *JXLCodestreamDecoder) decode() error {
 
 	if jxl.atEnd() {
 		return nil
@@ -39,8 +38,5 @@ func (jxl*JXLCodestreamDecoder) decode() error {
 	bits := jxl.bitReader.MustShowBits(16)
 	log.Debugf("Initial bits %016b\n", bits)
 
-
-
 	return nil
 }
-

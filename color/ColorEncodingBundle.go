@@ -24,7 +24,7 @@ func NewColorEncodingBundle() (*ColorEncodingBundle, error) {
 	ceb.WhitePoint = WP_D65
 	ceb.White = getWhitePoint(ceb.WhitePoint)
 	ceb.Primaries = PRI_SRGB
-	ceb.Prim = getPrimaries(ceb.Primaries)
+	ceb.Prim = GetPrimaries(ceb.Primaries)
 	ceb.Tf = TF_SRGB
 	ceb.RenderingIntent = RI_RELATIVE
 	return ceb, nil
@@ -118,6 +118,16 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	return ceb, nil
 }
 
-func getWhitePoint(point int32) *CIEXY {
-
+func getWhitePoint(whitePoint int32) *CIEXY {
+	switch whitePoint {
+	case WP_D65:
+		return NewCIEXY(0.3127, 0.3290)
+	case WP_E:
+		return NewCIEXY(1/3, 1/3)
+	case WP_DCI:
+		return NewCIEXY(0.314, 0.351)
+	case WP_D50:
+		return NewCIEXY(0.34567, 0.34567)
+	}
+	return nil
 }

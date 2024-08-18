@@ -13,7 +13,7 @@ type SizeHeader struct {
 	width  uint32
 }
 
-func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader,error) {
+func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader, error) {
 	sh := &SizeHeader{}
 	var err error
 
@@ -21,11 +21,11 @@ func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader,error) {
 	if div8 {
 		sh.height = 1 + reader.MustReadBits(5)<<3
 	} else {
-		sh.height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30))
+		sh.height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 	}
 	ratio := reader.MustReadBits(3)
 	if ratio != 0 {
-		sh.width,err = getWidthFromRatio(ratio, sh.height)
+		sh.width, err = getWidthFromRatio(ratio, sh.height)
 		if err != nil {
 
 			log.Errorf("Error getting width from ratio: %v\n", err)
@@ -35,22 +35,22 @@ func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader,error) {
 		if div8 {
 			sh.width = 1 + reader.MustReadBits(5)<<3
 		} else {
-			sh.width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30))
+			sh.width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 		}
 	}
 
-	maxDim := util.IfThenElse[uint64](level <= 5, 1 << 18, 1 << 28)
-	maxTimes := util.IfThenElse[uint64](level <= 5, 1 << 30, 1 << 40)
+	maxDim := util.IfThenElse[uint64](level <= 5, 1<<18, 1<<28)
+	maxTimes := util.IfThenElse[uint64](level <= 5, 1<<30, 1<<40)
 	if sh.width > uint32(maxDim) || sh.height > uint32(maxDim) {
 		log.Errorf("Invalid size header: %d x %d", sh.width, sh.height)
 		return nil, fmt.Errorf("Invalid size header: %d x %d", sh.width, sh.height)
 	}
-	if uint64(sh.width * sh.height) > maxTimes {
+	if uint64(sh.width*sh.height) > maxTimes {
 		log.Errorf("Width times height too large: %d %d", sh.width, sh.height)
 		return nil, fmt.Errorf("Width times height too large: %d %d", sh.width, sh.height)
 	}
 
-	return sh,nil
+	return sh, nil
 }
 
 func getWidthFromRatio(ratio uint32, height uint32) (uint32, error) {
