@@ -7,26 +7,26 @@ import (
 )
 
 type ColorEncodingBundle struct {
-	useIccProfile   bool
-	colorEncoding   int32
-	whitePoint      int32
-	white           *CIEXY
-	primaries       int32
-	prim            *CIEPrimaries
-	tf              int32
-	renderingIntent int32
+	UseIccProfile   bool
+	ColorEncoding   int32
+	WhitePoint      int32
+	White           *CIEXY
+	Primaries       int32
+	Prim            *CIEPrimaries
+	Tf              int32
+	RenderingIntent int32
 }
 
 func NewColorEncodingBundle() (*ColorEncodingBundle, error) {
 	ceb := &ColorEncodingBundle{}
-	ceb.useIccProfile = false
-	ceb.colorEncoding = CE_RGB
-	ceb.whitePoint = WP_D65
-	ceb.white = getWhitePoint(ceb.whitePoint)
-	ceb.primaries = PRI_SRGB
-	ceb.prim = getPrimaries(ceb.primaries)
-	ceb.tf = TF_SRGB
-	ceb.renderingIntent = RI_RELATIVE
+	ceb.UseIccProfile = false
+	ceb.ColorEncoding = CE_RGB
+	ceb.WhitePoint = WP_D65
+	ceb.White = getWhitePoint(ceb.WhitePoint)
+	ceb.Primaries = PRI_SRGB
+	ceb.Prim = getPrimaries(ceb.Primaries)
+	ceb.Tf = TF_SRGB
+	ceb.RenderingIntent = RI_RELATIVE
 	return ceb, nil
 }
 
@@ -35,50 +35,50 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	allDefault := reader.MustReadBool()
 
 	if !allDefault {
-		ceb.useIccProfile = reader.MustReadBool()
+		ceb.UseIccProfile = reader.MustReadBool()
 	}
 
 	if !allDefault {
-		ceb.colorEncoding = reader.MustReadEnum()
+		ceb.ColorEncoding = reader.MustReadEnum()
 	} else {
-		ceb.colorEncoding = CE_RGB
+		ceb.ColorEncoding = CE_RGB
 	}
 
-	if ValidateColorEncoding(ceb.colorEncoding) {
+	if ValidateColorEncoding(ceb.ColorEncoding) {
 		return nil, errors.New("Invalid ColorSpace enum")
 	}
 
-	if !allDefault && !ceb.useIccProfile && ceb.colorEncoding != CE_XYB {
-		ceb.whitePoint = reader.MustReadEnum()
+	if !allDefault && !ceb.UseIccProfile && ceb.ColorEncoding != CE_XYB {
+		ceb.WhitePoint = reader.MustReadEnum()
 	} else {
-		ceb.whitePoint = WP_D65
+		ceb.WhitePoint = WP_D65
 	}
 
-	if ValidateWhitePoint(ceb.whitePoint) {
+	if ValidateWhitePoint(ceb.WhitePoint) {
 		return nil, errors.New("Invalid WhitePoint enum")
 	}
 
-	if ceb.whitePoint == WP_CUSTOM {
+	if ceb.WhitePoint == WP_CUSTOM {
 		white, err := NewCustomXY(reader)
 		if err != nil {
 			return nil, err
 		}
-		ceb.white = &white.CIEXY
+		ceb.White = &white.CIEXY
 	} else {
-		ceb.white = getWhitePoint(ceb.whitePoint)
+		ceb.White = getWhitePoint(ceb.WhitePoint)
 	}
 
-	if !allDefault && !ceb.useIccProfile && ceb.colorEncoding != CE_XYB && ceb.colorEncoding != CE_GRAY {
-		ceb.primaries = reader.MustReadEnum()
+	if !allDefault && !ceb.UseIccProfile && ceb.ColorEncoding != CE_XYB && ceb.ColorEncoding != CE_GRAY {
+		ceb.Primaries = reader.MustReadEnum()
 	} else {
-		ceb.primaries = PRI_SRGB
+		ceb.Primaries = PRI_SRGB
 	}
 
-	if !ValidatePrimaries(ceb.primaries) {
+	if !ValidatePrimaries(ceb.Primaries) {
 		return nil, errors.New("Invalid Primaries enum")
 	}
 
-	if ceb.primaries == PRI_CUSTOM {
+	if ceb.Primaries == PRI_CUSTOM {
 		pRed, err := NewCustomXY(reader)
 		if err != nil {
 			return nil, err
@@ -91,28 +91,28 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		if err != nil {
 			return nil, err
 		}
-		ceb.prim = NewCIEPrimaries(&pRed.CIEXY, &pGreen.CIEXY, &pBlue.CIEXY)
+		ceb.Prim = NewCIEPrimaries(&pRed.CIEXY, &pGreen.CIEXY, &pBlue.CIEXY)
 	} else {
-		ceb.prim = GetPrimaries(ceb.primaries)
+		ceb.Prim = GetPrimaries(ceb.Primaries)
 	}
 
-	if !allDefault && !ceb.useIccProfile {
+	if !allDefault && !ceb.UseIccProfile {
 		useGamma := reader.MustReadBool()
 		if useGamma {
-			ceb.tf = int32(reader.MustReadBits(24))
+			ceb.Tf = int32(reader.MustReadBits(24))
 		} else {
-			ceb.tf = (1 << 24) + reader.MustReadEnum()
+			ceb.Tf = (1 << 24) + reader.MustReadEnum()
 		}
-		if ValidateTransfer(ceb.tf) {
+		if ValidateTransfer(ceb.Tf) {
 			return nil, errors.New("Illegal transfer function")
 		}
-		ceb.renderingIntent = reader.MustReadEnum()
-		if ValidateRenderingIntent(ceb.renderingIntent) {
+		ceb.RenderingIntent = reader.MustReadEnum()
+		if ValidateRenderingIntent(ceb.RenderingIntent) {
 			return nil, errors.New("Invalid RenderingIntent enum")
 		}
 	} else {
-		ceb.tf = TF_SRGB
-		ceb.renderingIntent = RI_RELATIVE
+		ceb.Tf = TF_SRGB
+		ceb.RenderingIntent = RI_RELATIVE
 	}
 
 	return ceb, nil
