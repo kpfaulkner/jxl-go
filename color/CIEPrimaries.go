@@ -13,3 +13,11 @@ func NewCIEPrimaries(red *CIEXY, green *CIEXY, blue *CIEXY) *CIEPrimaries {
 	cp.blue = blue
 	return cp
 }
+
+func (cp *CIEPrimaries) Matches(b *CIEPrimaries) bool {
+
+	if b == nil {
+		return false
+	}
+	return cp.red.Matches(b.red) && cp.green.Matches(b.green) && cp.blue.Matches(b.blue)
+}

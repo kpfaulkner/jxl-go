@@ -86,3 +86,16 @@ func (oim *OpsinInverseMatrix) bakeCbrtBias() {
 		oim.cbrtOpsinBias[c] = util.SignedPow(oim.opsinBias[c], 1.0/3.0)
 	}
 }
+
+func (oim *OpsinInverseMatrix) getMatrix(prim *CIEPrimaries, white *CIEXY) (*OpsinInverseMatrix, error) {
+	conversion, err := GetConversionMatrix(*prim, *white, oim.primaries, oim.whitePoint)
+	if err != nil {
+		return nil, err
+	}
+	matrix, err := util.MatrixMultiply(conversion, oim.matrix)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.opsinBias, oim.quantBias, oim.quantBiasNumerator), nil
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	log "github.com/sirupsen/logrus"
 )
@@ -120,6 +121,16 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			previewOptions.parseOnly = true
 			frame := NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
 			frame.readFrameHeader()
+			panic("not implemented previewheader yet")
+		}
+
+		frameCount := 0
+		reference := make([][][][]float32, 4)
+		header := FrameHeader{}
+		var matrix *color.OpsinInverseMatrix
+		if imageHeader.xybEncoded {
+			bundle := imageHeader.colorEncoding
+			matrix = imageHeader.opsinInverseMatrix.getMatrix(bundle.Prim, bundle.White)
 		}
 
 	}
