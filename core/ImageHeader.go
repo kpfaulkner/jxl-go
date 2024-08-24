@@ -115,7 +115,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	header := NewImageHeader()
 
 	if reader.MustReadBits(16) != CODESTREAM_HEADER {
-		return nil, errors.New("Not a JXL codestream: 0xFF0A majoc mismatch")
+		return nil, errors.New("Not a JXL codestream: 0xFF0A magic mismatch")
 	}
 
 	err := header.setLevel(level)

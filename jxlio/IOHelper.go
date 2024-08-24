@@ -1,25 +1,37 @@
 package jxlio
 
-import "io"
+import (
+	"errors"
+	"io"
+)
 
 const (
 	tempBufSize = 10000
 )
 
-type IOHelper struct {
-}
+//func NewIOHelper() (rcvr *IOHelper) {
+//	rcvr = &IOHelper{}
+//	return
+//}
 
-func NewIOHelper() (rcvr *IOHelper) {
-	rcvr = &IOHelper{}
-	return
-}
-
-func ReadFully(in io.ReadSeeker, buffer []byte, offset int, len int) (int, error) {
+// returns number of bytes NOT read (remaining) and error.
+func ReadFullyWithOffset(in io.ReadSeeker, buffer []byte, offset int, len int) (int, error) {
 	remaining := len
 
-	// randomly selected tempBuf
-	tempBuf := make([]byte, tempBufSize)
+	_, err := in.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return 0, err
+	}
+
+	// potentially stupidly large buffer... but will leave for now. TODO(kpfaulkner) revisit
+	if len > 2*1024*1024*1024 {
+		return 0, errors.New("length of read too large")
+	}
+
+	tempBuf := make([]byte, len)
+	var tempBuffer []byte
 	for remaining > 0 {
+
 		//count := in.Read(buffer, offset+len-remaining, remaining)
 		count, err := in.Read(tempBuf)
 		if err != nil {
@@ -31,14 +43,15 @@ func ReadFully(in io.ReadSeeker, buffer []byte, offset int, len int) (int, error
 		}
 
 		// copy tempBuf to buffer.
-		buffer = append(buffer, tempBuf[:count]...)
+		tempBuffer = append(tempBuffer, tempBuf[:count]...)
 		remaining -= count
 	}
+	copy(buffer, tempBuffer[:len])
 	return remaining, nil
 }
 
-func ReadFully2(in io.ReadSeeker, buffer []byte) (int, error) {
-	return ReadFully(in, buffer, 0, len(buffer))
+func ReadFully(in io.ReadSeeker, buffer []byte) (int, error) {
+	return ReadFullyWithOffset(in, buffer, 0, len(buffer))
 }
 
 // FIXME(kpfaulkner) really unsure what this is supposed to do. Skip some content... then read more?
@@ -68,7 +81,7 @@ func SkipFully(in io.ReadSeeker, n int64) (int, error) {
 	}
 	buffer := make([]byte, 4096)
 	for remaining > int64(len(buffer)) {
-		k, err := ReadFully2(in, buffer)
+		k, err := ReadFully(in, buffer)
 		if err != nil {
 			return 0, err
 		}
@@ -77,5 +90,5 @@ func SkipFully(in io.ReadSeeker, n int64) (int, error) {
 			return int(remaining), nil
 		}
 	}
-	return ReadFully(in, buffer, 0, int(remaining))
+	return ReadFullyWithOffset(in, buffer, 0, int(remaining))
 }

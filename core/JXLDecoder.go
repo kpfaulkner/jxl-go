@@ -49,7 +49,7 @@ func NewJXLDecoder(opts ...JXLDecoderOption) *JXLDecoder {
 	return jxl
 }
 
-func (jxl *JXLDecoder) decode() error {
+func (jxl *JXLDecoder) Decode() error {
 
 	return jxl.decoder.decode()
 }
