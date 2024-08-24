@@ -114,7 +114,8 @@ func NewImageHeader() *ImageHeader {
 func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error) {
 	header := NewImageHeader()
 
-	if reader.MustReadBits(16) != CODESTREAM_HEADER {
+	headerBits := reader.MustReadBits(16)
+	if headerBits != CODESTREAM_HEADER {
 		return nil, errors.New("Not a JXL codestream: 0xFF0A magic mismatch")
 	}
 
@@ -290,6 +291,13 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 
 	return header, nil
 }
+func (h *ImageHeader) getColourChannelCount() int {
+	if h.colorEncoding.ColorEncoding == color.CE_GRAY {
+		return 1
+	}
+
+	return 3
+}
 
 func (h *ImageHeader) setLevel(level int32) error {
 	if level != 5 && level != 10 {
@@ -297,6 +305,10 @@ func (h *ImageHeader) setLevel(level int32) error {
 	}
 	h.level = level
 	return nil
+}
+
+func (h *ImageHeader) hasAlpha() bool {
+	return len(h.alphaIndices) > 0
 }
 
 func GetICCContext(buffer []byte, index int) int {

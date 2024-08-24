@@ -44,7 +44,7 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		ceb.ColorEncoding = CE_RGB
 	}
 
-	if ValidateColorEncoding(ceb.ColorEncoding) {
+	if !ValidateColorEncoding(ceb.ColorEncoding) {
 		return nil, errors.New("Invalid ColorSpace enum")
 	}
 
@@ -54,7 +54,7 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		ceb.WhitePoint = WP_D65
 	}
 
-	if ValidateWhitePoint(ceb.WhitePoint) {
+	if !ValidateWhitePoint(ceb.WhitePoint) {
 		return nil, errors.New("Invalid WhitePoint enum")
 	}
 
@@ -103,11 +103,11 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		} else {
 			ceb.Tf = (1 << 24) + reader.MustReadEnum()
 		}
-		if ValidateTransfer(ceb.Tf) {
+		if !ValidateTransfer(ceb.Tf) {
 			return nil, errors.New("Illegal transfer function")
 		}
 		ceb.RenderingIntent = reader.MustReadEnum()
-		if ValidateRenderingIntent(ceb.RenderingIntent) {
+		if !ValidateRenderingIntent(ceb.RenderingIntent) {
 			return nil, errors.New("Invalid RenderingIntent enum")
 		}
 	} else {

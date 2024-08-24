@@ -14,6 +14,21 @@ var (
 	CONTAINER_SIGNATURE = []byte{0x00, 0x00, 0x00, 0x0C, 'J', 'X', 'L', ' ', 0x0D, 0x0A, 0x87, 0x0A}
 )
 
+type JXLOptions struct {
+	debug     bool
+	parseOnly bool
+}
+
+func NewJXLOptions(options *JXLOptions) *JXLOptions {
+
+	opt := &JXLOptions{}
+	if options != nil {
+		opt.debug = options.debug
+		opt.parseOnly = options.parseOnly
+	}
+	return opt
+}
+
 // Box information (not sure what this is yet)
 type BoxInfo struct {
 	boxSize   uint32
@@ -31,13 +46,19 @@ type JXLCodestreamDecoder struct {
 	foundSignature bool
 	boxHeaders     []ContainerBoxHeader
 	level          int
+	imageHeader    *ImageHeader
+	options        JXLOptions
 }
 
-func NewJXLCodestreamDecoder(in io.ReadSeeker) *JXLCodestreamDecoder {
+func NewJXLCodestreamDecoder(in io.ReadSeeker, options *JXLOptions) *JXLCodestreamDecoder {
 	jxl := &JXLCodestreamDecoder{}
 	jxl.in = in
 	jxl.bitReader = jxlio.NewBitreader(jxl.in)
 	jxl.foundSignature = false
+
+	if options != nil {
+		jxl.options = *options
+	}
 	return jxl
 }
 
@@ -84,7 +105,22 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			return err
 		}
 
+		jxl.imageHeader = imageHeader
 		fmt.Printf("imageheader %+v\n", *imageHeader)
+		//gray := imageHeader.getColourChannelCount() < 3
+		//alpha := imageHeader.hasAlpha()
+		//ce := imageHeader.colorEncoding
+
+		if imageHeader.animationHeader != nil {
+			panic("dont care about animation for now")
+		}
+
+		if imageHeader.previewHeader != nil {
+			previewOptions := NewJXLOptions(&jxl.options)
+			previewOptions.parseOnly = true
+			frame := NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
+			frame.readFrameHeader()
+		}
 
 	}
 

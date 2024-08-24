@@ -45,7 +45,7 @@ func NewJXLDecoder(opts ...JXLDecoderOption) *JXLDecoder {
 	}
 
 	jxl.in = f
-	jxl.decoder = NewJXLCodestreamDecoder(jxl.in)
+	jxl.decoder = NewJXLCodestreamDecoder(jxl.in, nil)
 	return jxl
 }
 

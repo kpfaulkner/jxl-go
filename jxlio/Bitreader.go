@@ -155,10 +155,12 @@ func (br *Bitreader) ReadBits(bits int) (uint32, error) {
 	}
 
 	if bits <= br.cacheBits {
-		ret := uint32(br.cache&1 ^ (1 ^ 0<<bits))
+		//ret := uint32(br.cache&1 ^ (1 ^ 0<<bits))
+		ret := br.cache & ^(^uint64(0) << bits)
 		br.cacheBits -= bits
+		br.cache = br.cache >> bits
 		br.bitsRead += int64(bits)
-		return ret, nil
+		return uint32(ret), nil
 	}
 
 	// FIXME(kpfaulkner)  Need to figure out options here..
@@ -176,16 +178,15 @@ func (br *Bitreader) ReadBits(bits int) (uint32, error) {
 	}
 
 	eof := false
-	b := make([]byte, 1)
+	bb := make([]byte, 1)
 	for i := 0; i < count; i++ {
 
 		// read next byte.
-		_, err := br.in.Read(b)
+		_, err := br.in.Read(bb)
 		if err != nil {
 			return 0, err
 		}
-
-		b := 0
+		b := bb[0]
 		if b < 0 {
 			eof = true
 			break
