@@ -24,28 +24,34 @@ const (
 )
 
 type FrameHeader struct {
-	frameType      uint32
-	width          uint32
-	height         uint32
-	upsampling     uint32
-	lfLevel        uint32
-	groupDim       uint32
-	passes         *PassesInfo
-	encoding       uint32
-	flags          uint64
-	doYCbCr        bool
-	jpegUpsampling []util.IntPoint
-	ecUpsampling   []uint32
-	groupSizeShift uint32
-	lfGroupDim     uint32
-	logGroupDim    uint32
-	logLFGroupDIM  uint32
-	xqmScale       uint32
-	bqmScale       uint32
-	haveCrop       bool
-	origin         util.IntPoint
-	ecBlendingInfo []BlendingInfo
-	blendingInfo   *BlendingInfo
+	frameType       uint32
+	width           uint32
+	height          uint32
+	upsampling      uint32
+	lfLevel         uint32
+	groupDim        uint32
+	passes          *PassesInfo
+	encoding        uint32
+	flags           uint64
+	doYCbCr         bool
+	jpegUpsampling  []util.IntPoint
+	ecUpsampling    []uint32
+	groupSizeShift  uint32
+	lfGroupDim      uint32
+	logGroupDim     uint32
+	logLFGroupDIM   uint32
+	xqmScale        uint32
+	bqmScale        uint32
+	haveCrop        bool
+	origin          util.IntPoint
+	ecBlendingInfo  []BlendingInfo
+	blendingInfo    *BlendingInfo
+	isLast          bool
+	duration        uint32
+	timecode        uint32
+	saveAsReference uint32
+	saveBeforeCT    bool
+	name            string
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*FrameHeader, error) {
@@ -166,7 +172,60 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 		}
 	}
 
+	if normalFrame && parent.animationHeader != nil {
+		// dont care about animation
+		panic("animation")
+	} else {
+		fh.duration = 0
+	}
+	if normalFrame && parent.animationHeader != nil && parent.animationHeader.haveTimeCodes {
+		// dont care about animation
+		panic("animation")
+	} else {
+		fh.timecode = 0
+	}
+
+	if normalFrame {
+		fh.isLast = reader.MustReadBool()
+	} else {
+		fh.isLast = fh.frameType == REGULAR_FRAME
+	}
+
+	if !allDefault && fh.frameType != LF_FRAME && !fh.isLast {
+		fh.saveAsReference = reader.MustReadBits(2)
+	} else {
+		fh.saveAsReference = 0
+	}
+
+	if !allDefault && (fh.frameType == REFERENCE_ONLY || fullFrame &&
+		(fh.frameType == REGULAR_FRAME || fh.frameType == SKIP_PROGRESSIVE) &&
+		(fh.duration == 0 || fh.saveAsReference != 0) &&
+		!fh.isLast && fh.blendingInfo.mode == BLEND_REPLACE) {
+		fh.saveBeforeCT = reader.MustReadBool()
+	} else {
+		fh.saveBeforeCT = false
+	}
+
+	if allDefault {
+		fh.name = ""
+	} else {
+		nameLen := reader.MustReadU32(0, 0, 0, 4, 16, 5, 48, 10)
+		buffer := make([]byte, nameLen)
+		for i := 0; i < int(nameLen); i++ {
+			buffer[i], err = reader.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			fh.name = string(buffer)
+		}
+	}
+	if allDefault {
+		fh.restorationFilter = NewRestorationFilter()
+	} else {
+		fh.restorationFilter, err = NewRestorationFilterWithReader(reader, fh.encoding)
+	}
+
 	// TODO(kpfaulkner) to continue......
 
-	return fh
+	return fh, nil
 }

@@ -5,6 +5,7 @@ import (
 )
 
 type AnimationHeader struct {
+	haveTimeCodes bool
 }
 
 func NewAnimationHeader(reader *jxlio.Bitreader) (*AnimationHeader, error) {
