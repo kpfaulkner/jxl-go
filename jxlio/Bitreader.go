@@ -484,12 +484,30 @@ func (br *Bitreader) ZeroPadToByte() error {
 	return nil
 }
 
-func UnpackSigned(value int32) int32 {
+func UnpackSignedOrig(value int32) int32 {
 	if value&1 == 0 {
 		return int32(uint32(value) >> 1)
 	}
 
 	return int32(bits.Reverse32(uint32(value)) | 0x80_00_00_00)
+}
+
+// JPEGXL spec states unpackedsigned is
+// equivalent to u / 2 if u is even, and -(u + 1) / 2 if u is odd
+func UnpackSigned(value uint32) int32 {
+	if value&1 == 0 {
+		return int32(value >> 1)
+	}
+
+	return -(int32(value) + 1) >> 1
+}
+
+func UnpackSigned64(value uint64) int64 {
+	if value&1 == 0 {
+		return int64(value >> 1)
+	}
+
+	return -(int64(value) + 1) >> 1
 }
 
 func UnpackSignedU32(x uint32) int32 {

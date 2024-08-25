@@ -7,15 +7,16 @@ var (
 	ZERO = IntPoint{0, 0}
 )
 
+// TODO(kpfaulkner) confirm if X/Y should be signed or unsigned.
 type IntPoint struct {
-	x uint32
-	y uint32
+	X uint32
+	Y uint32
 }
 
 func coordinates(index uint32, rowStride uint32) IntPoint {
 	return IntPoint{
-		x: index % rowStride,
-		y: index / rowStride,
+		X: index % rowStride,
+		Y: index / rowStride,
 	}
 }
 
@@ -28,33 +29,33 @@ func NewIntPointWithXY(x uint32, y uint32) IntPoint {
 }
 
 func (ip IntPoint) times(factor uint32) IntPoint {
-	return IntPoint{ip.x * factor, ip.y * factor}
+	return IntPoint{ip.X * factor, ip.Y * factor}
 }
 
 func (ip IntPoint) timesWithIntPoint(p IntPoint) IntPoint {
-	return IntPoint{ip.x * p.x, ip.y * p.y}
+	return IntPoint{ip.X * p.X, ip.Y * p.Y}
 }
 
 func (ip IntPoint) ceilDiv(factor uint32) IntPoint {
-	return IntPoint{CeilDiv(ip.x, factor), CeilDiv(ip.y, factor)}
+	return IntPoint{CeilDiv(ip.X, factor), CeilDiv(ip.Y, factor)}
 }
 
 func (ip IntPoint) ceilDivWithIntPoint(p IntPoint) IntPoint {
-	return IntPoint{CeilDiv(ip.x, p.x), CeilDiv(ip.y, p.y)}
+	return IntPoint{CeilDiv(ip.X, p.X), CeilDiv(ip.Y, p.Y)}
 }
 
 func (ip IntPoint) transpose() IntPoint {
-	return IntPoint{x: ip.y, y: ip.x}
+	return IntPoint{X: ip.Y, Y: ip.X}
 }
 
 func (ip IntPoint) unwrapCoord(rowStride uint32) uint32 {
-	return ip.y*rowStride + ip.x
+	return ip.Y*rowStride + ip.X
 }
 
 func (ip IntPoint) shiftRight(hShift int, vShift int) IntPoint {
-	x := ip.x >> uint32(hShift)
-	y := ip.y >> uint32(vShift)
-	return IntPoint{x: x, y: y}
+	x := ip.X >> uint32(hShift)
+	y := ip.Y >> uint32(vShift)
+	return IntPoint{X: x, Y: y}
 }
 
 func (ip IntPoint) shiftRightWithShift(shift int) IntPoint {
@@ -62,7 +63,7 @@ func (ip IntPoint) shiftRightWithShift(shift int) IntPoint {
 }
 
 func (ip IntPoint) shiftRightWithIntPoint(p IntPoint) IntPoint {
-	return ip.shiftRight(int(p.x), int(p.y))
+	return ip.shiftRight(int(p.X), int(p.Y))
 }
 
 func (ip IntPoint) shiftLeftWithShift(shift int) IntPoint {
@@ -70,19 +71,19 @@ func (ip IntPoint) shiftLeftWithShift(shift int) IntPoint {
 }
 
 func (ip IntPoint) shiftLeftWithIntPoint(shift IntPoint) IntPoint {
-	return ip.shiftLeft(int(shift.x), int(shift.y))
+	return ip.shiftLeft(int(shift.X), int(shift.Y))
 }
 
 func (ip IntPoint) shiftLeft(hShift int, vShift int) IntPoint {
-	x := ip.x << uint32(hShift)
-	y := ip.y << uint32(vShift)
-	return IntPoint{x: x, y: y}
+	x := ip.X << uint32(hShift)
+	y := ip.Y << uint32(vShift)
+	return IntPoint{X: x, Y: y}
 }
 
 func (ip IntPoint) minus(p IntPoint) IntPoint {
-	return IntPoint{x: ip.x - p.x, y: ip.y - p.y}
+	return IntPoint{X: ip.X - p.X, Y: ip.Y - p.Y}
 }
 
 func (ip IntPoint) min(p IntPoint) IntPoint {
-	return IntPoint{x: uint32(math.Min(float64(ip.x), float64(p.x))), y: uint32(math.Min(float64(ip.y), float64(p.y)))}
+	return IntPoint{X: uint32(math.Min(float64(ip.X), float64(p.X))), Y: uint32(math.Min(float64(ip.Y), float64(p.Y)))}
 }

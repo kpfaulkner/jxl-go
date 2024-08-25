@@ -6,14 +6,21 @@ import (
 )
 
 const (
-	REGULAR_FRAME  = 0
-	LF_FRAME       = 1
-	REFERENCE_ONLY = 2
+	REGULAR_FRAME    = 0
+	LF_FRAME         = 1
+	REFERENCE_ONLY   = 2
+	SKIP_PROGRESSIVE = 3
 
 	VARDCT  = 0
 	MODULAR = 1
 
 	USE_LF_FRAME = 32
+
+	BLEND_REPLACE = 0
+	BLEND_ADD     = 1
+	BLEND_BLEND   = 2
+	BLEND_MULADD  = 3
+	BLEND_MULT    = 4
 )
 
 type FrameHeader struct {
@@ -36,6 +43,9 @@ type FrameHeader struct {
 	xqmScale       uint32
 	bqmScale       uint32
 	haveCrop       bool
+	origin         util.IntPoint
+	ecBlendingInfo []BlendingInfo
+	blendingInfo   *BlendingInfo
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*FrameHeader, error) {
@@ -114,6 +124,46 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 		fh.haveCrop = reader.MustReadBool()
 	} else {
 		fh.haveCrop = false
+	}
+
+	if fh.haveCrop && fh.frameType != REFERENCE_ONLY {
+		x0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		y0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		x0Signed := jxlio.UnpackSigned(x0)
+		y0Signed := jxlio.UnpackSigned(y0)
+		fh.origin = util.NewIntPointWithXY(uint32(x0Signed), uint32(y0Signed))
+
+	}
+
+	if fh.haveCrop {
+		fh.width = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		fh.height = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+	} else {
+		fh.width = parent.size.width
+		fh.height = parent.size.height
+	}
+
+	normalFrame := !allDefault && (fh.frameType == REGULAR_FRAME || fh.frameType == SKIP_PROGRESSIVE)
+	fullFrame := fh.origin.X <= 0 && fh.origin.Y <= 0 && (fh.width+fh.origin.X) >= parent.size.width && (fh.height+fh.origin.Y) >= parent.size.height
+	fh.ecBlendingInfo = make([]BlendingInfo, len(parent.extraChannelInfo))
+	if normalFrame {
+		fh.blendingInfo, err = NewBlendingInfoWithReader(reader, len(fh.ecBlendingInfo) > 0, fullFrame)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < len(fh.ecBlendingInfo); i++ {
+			bi, err := NewBlendingInfoWithReader(reader, true, fullFrame)
+			if err != nil {
+				return nil, err
+			}
+			// store value not pointer. TODO(kpfaulkner) check this is fine.
+			fh.ecBlendingInfo[i] = *bi
+		}
+	} else {
+		fh.blendingInfo = NewBlendingInfo()
+		for i := 0; i < len(fh.ecBlendingInfo); i++ {
+			fh.ecBlendingInfo[i] = *fh.blendingInfo
+		}
 	}
 
 	// TODO(kpfaulkner) to continue......
