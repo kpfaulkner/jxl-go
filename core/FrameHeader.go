@@ -6,7 +6,9 @@ import (
 )
 
 const (
-	REGULAR_FRAME = 0
+	REGULAR_FRAME  = 0
+	LF_FRAME       = 1
+	REFERENCE_ONLY = 2
 
 	VARDCT  = 0
 	MODULAR = 1
@@ -21,15 +23,22 @@ type FrameHeader struct {
 	upsampling     uint32
 	lfLevel        uint32
 	groupDim       uint32
-	passes         PassesInfo
+	passes         *PassesInfo
 	encoding       uint32
 	flags          uint64
 	doYCbCr        bool
 	jpegUpsampling []util.IntPoint
 	ecUpsampling   []uint32
+	groupSizeShift uint32
+	lfGroupDim     uint32
+	logGroupDim    uint32
+	logLFGroupDIM  uint32
+	xqmScale       uint32
+	bqmScale       uint32
+	haveCrop       bool
 }
 
-func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) *FrameHeader {
+func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*FrameHeader, error) {
 	fh := &FrameHeader{}
 
 	allDefault := reader.MustReadBool()
@@ -68,6 +77,43 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) *Fra
 	} else {
 		fh.upsampling = 1
 		fh.ecUpsampling = []uint32{1}
+	}
+
+	if fh.encoding == MODULAR {
+		fh.groupSizeShift = reader.MustReadBits(2)
+	} else {
+		fh.groupSizeShift = 1
+	}
+	fh.groupDim = 128 << fh.groupSizeShift
+	fh.lfGroupDim = fh.groupDim << 3
+	fh.logGroupDim = uint32(util.CeilLog2(int64(fh.groupDim)))
+	fh.logLFGroupDIM = uint32(util.CeilLog2(int64(fh.lfGroupDim)))
+	if parent.xybEncoded && fh.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	} else {
+		fh.xqmScale = 2
+		fh.bqmScale = 2
+	}
+
+	var err error
+	if !allDefault && fh.frameType != REFERENCE_ONLY {
+		fh.passes, err = NewPassesInfoWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		fh.passes = NewPassesInfo()
+	}
+
+	if fh.frameType == LF_FRAME {
+		fh.lfLevel = reader.MustReadBits(2)
+	} else {
+		fh.lfLevel = 0
+	}
+	if !allDefault && fh.frameType != LF_FRAME {
+		fh.haveCrop = reader.MustReadBool()
+	} else {
+		fh.haveCrop = false
 	}
 
 	// TODO(kpfaulkner) to continue......

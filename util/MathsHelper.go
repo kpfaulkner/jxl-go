@@ -19,6 +19,10 @@ func CeilLog1p(x int64) int {
 	return 64 - xx
 }
 
+func CeilLog2(x int64) int {
+	return CeilLog1p(x - 1)
+}
+
 func Max[T cmp.Ordered](args ...T) T {
 	if len(args) == 0 {
 		return *new(T)
