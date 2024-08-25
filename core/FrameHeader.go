@@ -26,6 +26,7 @@ type FrameHeader struct {
 	flags          uint64
 	doYCbCr        bool
 	jpegUpsampling []util.IntPoint
+	ecUpsampling   []uint32
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) *FrameHeader {
@@ -54,7 +55,22 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) *Fra
 			x := reader.MustReadBits(1)
 			fh.jpegUpsampling[i] = util.NewIntPointWithXY(x^y, y)
 		}
+	} else {
+		fh.jpegUpsampling = []util.IntPoint{util.ZERO, util.ZERO, util.ZERO}
 	}
+
+	fh.ecUpsampling = make([]uint32, len(parent.extraChannelInfo))
+	if !allDefault && (fh.flags&USE_LF_FRAME) == 0 {
+		fh.upsampling = 1 << reader.MustReadBits(2)
+		for i := 0; i < len(fh.ecUpsampling); i++ {
+			fh.ecUpsampling[i] = 1 << reader.MustReadBits(2)
+		}
+	} else {
+		fh.upsampling = 1
+		fh.ecUpsampling = []uint32{1}
+	}
+
+	// TODO(kpfaulkner) to continue......
 
 	return fh
 }
