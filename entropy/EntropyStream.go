@@ -101,19 +101,6 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	return es, nil
 
 }
-func (es *EntropyStream) ValidateFinalState() bool {
-
-	panic("not implemented")
-	//if !es.state.HasState() {
-	//	return true
-	//}
-	//
-	//state, err := es.state.GetState()
-	//if err != nil {
-	//	return false
-	//}
-	//return state == 0x130000
-}
 
 func ReadClusterMap(reader *jxlio.Bitreader, clusterMap []int, maxClusters int) (int, error) {
 	numDists := len(clusterMap)
@@ -254,4 +241,16 @@ func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *Hybr
 	token &= 1<<config.MsbInToken - 1
 	token |= 1 << config.MsbInToken
 	return int32(int32(token<<n) | int32(reader.MustReadBits(n))<<int32(config.MsbInToken) | int32(low)), nil
+}
+
+func (es *EntropyStream) ValidateFinalState() bool {
+	if !es.state.HasState() {
+		return true
+	}
+	s, err := es.state.GetState()
+	if err != nil || s != 0x13000 {
+		return false
+	}
+
+	return true
 }

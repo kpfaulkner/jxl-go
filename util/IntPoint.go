@@ -23,6 +23,10 @@ func NewIntPoint(dim int) IntPoint {
 	return IntPoint{uint32(dim), uint32(dim)}
 }
 
+func NewIntPointWithXY(x uint32, y uint32) IntPoint {
+	return IntPoint{x, y}
+}
+
 func (ip IntPoint) times(factor uint32) IntPoint {
 	return IntPoint{ip.x * factor, ip.y * factor}
 }

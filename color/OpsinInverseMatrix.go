@@ -87,7 +87,7 @@ func (oim *OpsinInverseMatrix) bakeCbrtBias() {
 	}
 }
 
-func (oim *OpsinInverseMatrix) getMatrix(prim *CIEPrimaries, white *CIEXY) (*OpsinInverseMatrix, error) {
+func (oim *OpsinInverseMatrix) GetMatrix(prim *CIEPrimaries, white *CIEXY) (*OpsinInverseMatrix, error) {
 	conversion, err := GetConversionMatrix(*prim, *white, oim.primaries, oim.whitePoint)
 	if err != nil {
 		return nil, err

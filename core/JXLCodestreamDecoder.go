@@ -6,6 +6,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -127,11 +128,35 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 		frameCount := 0
 		reference := make([][][][]float32, 4)
 		header := FrameHeader{}
+		lfBuffer := make([][][][]float32, 4)
+
 		var matrix *color.OpsinInverseMatrix
 		if imageHeader.xybEncoded {
 			bundle := imageHeader.colorEncoding
-			matrix = imageHeader.opsinInverseMatrix.getMatrix(bundle.Prim, bundle.White)
+			matrix, err = imageHeader.opsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
+			if err != nil {
+				return err
+			}
 		}
+
+		var canvas [][][]float32
+		if !jxl.options.parseOnly {
+			canvas = util.MakeMatrix3D[float32](imageHeader.getColourChannelCount()+len(imageHeader.extraChannelInfo), int(imageHeader.size.height), int(imageHeader.size.width))
+		}
+		invisibleFrames := 0
+		visibleFrames := 0
+
+		// XXXXXXXXXXX JXLCodestreamDecoder line 337
+		for {
+			frame := NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
+			header = frame.readFrameHeader()
+			frameCount++
+
+			// XXXXXXXXXXXXXX continue
+
+		}
+
+		fmt.Printf("XXXX %v %v %v %v %v %v\n", reference, header, lfBuffer, matrix, canvas, invisibleFrames, visibleFrames)
 
 	}
 
