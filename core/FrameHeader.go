@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -24,34 +25,36 @@ const (
 )
 
 type FrameHeader struct {
-	frameType       uint32
-	width           uint32
-	height          uint32
-	upsampling      uint32
-	lfLevel         uint32
-	groupDim        uint32
-	passes          *PassesInfo
-	encoding        uint32
-	flags           uint64
-	doYCbCr         bool
-	jpegUpsampling  []util.IntPoint
-	ecUpsampling    []uint32
-	groupSizeShift  uint32
-	lfGroupDim      uint32
-	logGroupDim     uint32
-	logLFGroupDIM   uint32
-	xqmScale        uint32
-	bqmScale        uint32
-	haveCrop        bool
-	origin          util.IntPoint
-	ecBlendingInfo  []BlendingInfo
-	blendingInfo    *BlendingInfo
-	isLast          bool
-	duration        uint32
-	timecode        uint32
-	saveAsReference uint32
-	saveBeforeCT    bool
-	name            string
+	frameType         uint32
+	width             uint32
+	height            uint32
+	upsampling        uint32
+	lfLevel           uint32
+	groupDim          uint32
+	passes            *PassesInfo
+	encoding          uint32
+	flags             uint64
+	doYCbCr           bool
+	jpegUpsampling    []util.IntPoint
+	ecUpsampling      []uint32
+	groupSizeShift    uint32
+	lfGroupDim        uint32
+	logGroupDim       uint32
+	logLFGroupDIM     uint32
+	xqmScale          uint32
+	bqmScale          uint32
+	haveCrop          bool
+	origin            util.IntPoint
+	ecBlendingInfo    []BlendingInfo
+	blendingInfo      *BlendingInfo
+	isLast            bool
+	duration          uint32
+	timecode          uint32
+	saveAsReference   uint32
+	saveBeforeCT      bool
+	name              string
+	restorationFilter *RestorationFilter
+	extensions        *bundle.Extensions
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*FrameHeader, error) {
@@ -223,9 +226,38 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 		fh.restorationFilter = NewRestorationFilter()
 	} else {
 		fh.restorationFilter, err = NewRestorationFilterWithReader(reader, fh.encoding)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// TODO(kpfaulkner) to continue......
+	if allDefault {
+		fh.extensions = bundle.NewExtensions()
+	} else {
+		fh.extensions, err = bundle.NewExtensionsWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// jxlatte has int maxJPX = Stream.of(jpegUpsampling).mapToInt(p -> p.x).reduce(Math::max).getAsInt();
+	// which I take it means get the maximum X value from jpegUpsampling. Ditto for Y value.
+	maxJPX := 0
+	maxJPY := 0
+	for _, j := range fh.jpegUpsampling {
+		if int(j.X) > maxJPX {
+			maxJPX = int(j.X)
+		}
+		if int(j.Y) > maxJPY {
+			maxJPY = int(j.Y)
+		}
+	}
+	fh.width = util.CeilDiv(fh.width, 1<<maxJPX) << maxJPX
+	fh.height = util.CeilDiv(fh.height, 1<<maxJPY) << maxJPY
+
+	for i := 0; i < 3; i++ {
+		fh.jpegUpsampling[i] = util.NewIntPointWithXY(uint32(maxJPX), uint32(maxJPY)).Minus(fh.jpegUpsampling[i])
+	}
 
 	return fh, nil
 }

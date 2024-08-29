@@ -80,7 +80,7 @@ func (ip IntPoint) shiftLeft(hShift int, vShift int) IntPoint {
 	return IntPoint{X: x, Y: y}
 }
 
-func (ip IntPoint) minus(p IntPoint) IntPoint {
+func (ip IntPoint) Minus(p IntPoint) IntPoint {
 	return IntPoint{X: ip.X - p.X, Y: ip.Y - p.Y}
 }
 
