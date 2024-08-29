@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -149,10 +150,22 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 		// XXXXXXXXXXX JXLCodestreamDecoder line 337
 		for {
 			frame := NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
-			header = frame.readFrameHeader()
+			header, err = frame.readFrameHeader()
+			if err != nil {
+				return err
+			}
 			frameCount++
 
-			// XXXXXXXXXXXXXX continue
+			if lfBuffer[header.lfLevel] == nil && header.flags&USE_LF_FRAME != 0 {
+				return errors.New("LF level too large")
+			}
+			if jxl.options.parseOnly {
+				frame.skipFrameData()
+				continue
+			}
+			err := frame.decodeFrame(lfBuffer[header.lfLevel])
+
+			// TODO(kpfaulkner)
 
 		}
 

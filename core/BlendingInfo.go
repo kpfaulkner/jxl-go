@@ -21,12 +21,11 @@ func NewBlendingInfo() *BlendingInfo {
 func NewBlendingInfoWithReader(reader *jxlio.Bitreader, extra bool, fullFrame bool) (*BlendingInfo, error) {
 
 	bi := &BlendingInfo{}
-	bi.mode = reader.MustReadU32()
+	bi.mode = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 2)
 	if bi.mode == 0 {
 		return bi, nil
 	}
 
-	bi.alphaChannel = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 2)
 	if extra && (bi.mode == BLEND_BLEND || bi.mode == BLEND_MULADD) {
 		bi.alphaChannel = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 3)
 	} else {

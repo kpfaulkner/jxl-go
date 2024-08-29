@@ -27,9 +27,13 @@ type Frame struct {
 	buffers [][]uint8
 }
 
-func (f *Frame) readFrameHeader() FrameHeader {
+func (f *Frame) readFrameHeader() (FrameHeader, error) {
 	f.reader.ZeroPadToByte()
-	f.header = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
+	var err error
+	f.header, err = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
+	if err != nil {
+		return FrameHeader{}, err
+	}
 	f.width = f.header.width
 	f.height = f.header.height
 	f.width = util.CeilDiv(f.width, f.header.upsampling)
@@ -41,7 +45,7 @@ func (f *Frame) readFrameHeader() FrameHeader {
 	f.numGroups = f.groupRowStride * util.CeilDiv(f.height, f.header.groupDim)
 	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.height, f.header.groupDim<<3)
 	f.readTOC()
-	return *f.header
+	return *f.header, nil
 }
 
 func (f *Frame) readTOC() error {
@@ -157,4 +161,20 @@ func NewFrameWithReader(reader *jxlio.Bitreader, imageHeader *ImageHeader, optio
 	}
 
 	return frame
+}
+
+func (f *Frame) skipFrameData() error {
+	for i := 0; i < len(f.tocLengths); i++ {
+		_, err := f.reader.ReadByteArray(int(f.tocLengths[i]))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
+
+	// TODO(kpfaulkner)
+	return nil
 }

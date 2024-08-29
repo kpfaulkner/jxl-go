@@ -161,7 +161,7 @@ func CeilDiv(numerator uint32, denominator uint32) uint32 {
 }
 
 func TransposeMatrix(matrix [][]float32, inSize IntPoint) [][]float32 {
-	if inSize.X == 0 || inSize.y == 0 {
+	if inSize.X == 0 || inSize.Y == 0 {
 		return nil
 	}
 	dest := make([][]float32, inSize.X)
@@ -170,10 +170,10 @@ func TransposeMatrix(matrix [][]float32, inSize IntPoint) [][]float32 {
 }
 
 func transposeMatrixInto(src [][]float32, dest [][]float32, srcStart IntPoint, destStart IntPoint, srcSize IntPoint) {
-	for y := uint32(0); y < srcSize.y; y++ {
-		srcY := src[y+srcStart.y]
+	for y := uint32(0); y < srcSize.Y; y++ {
+		srcY := src[y+srcStart.Y]
 		for x := uint32(0); x < srcSize.X; x++ {
-			dest[destStart.y+x][destStart.X+y] = srcY[srcStart.X+x]
+			dest[destStart.Y+x][destStart.X+y] = srcY[srcStart.X+x]
 		}
 	}
 }
