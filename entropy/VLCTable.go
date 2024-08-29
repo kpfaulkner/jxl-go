@@ -79,10 +79,13 @@ func NewVLCTableWithSymbols(bits int, lengths []int, symbols []int) (*VLCTable, 
 	rcvr.table = table
 	return rcvr, nil
 }
-func (rcvr *VLCTable) GetVLC(reader *jxlio.Bitreader) int {
+func (rcvr *VLCTable) GetVLC(reader *jxlio.Bitreader) (int, error) {
 	index := reader.MustShowBits(rcvr.bits)
 	symbol := rcvr.table[index][0]
 	length := rcvr.table[index][1]
-	reader.MustSkipBits(int64(length))
-	return symbol
+	err := reader.SkipBits(uint64(length))
+	if err != nil {
+		return 0, err
+	}
+	return symbol, nil
 }

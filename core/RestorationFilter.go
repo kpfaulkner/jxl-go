@@ -53,15 +53,15 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	rf := &RestorationFilter{}
 	rf.epfSharpLut = []float32{0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7, 1}
 	rf.epfChannelScale = []float32{40.0, 5.0, 3.5}
-	allDefault := reader.MustReadBool()
+	allDefault := reader.TryReadBool()
 	if allDefault {
 		rf.gab = true
 	} else {
-		rf.gab = reader.MustReadBool()
+		rf.gab = reader.TryReadBool()
 	}
 
 	if !allDefault && rf.gab {
-		rf.customGab = reader.MustReadBool()
+		rf.customGab = reader.TryReadBool()
 	} else {
 		rf.customGab = false
 	}
@@ -76,11 +76,11 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	if allDefault {
 		rf.epfIterations = 2
 	} else {
-		rf.epfIterations = reader.MustReadBits(2)
+		rf.epfIterations = uint32(reader.TryReadBits(2))
 	}
 
 	if !allDefault && rf.epfIterations > 0 && encoding == VARDCT {
-		rf.epfSharpCustom = reader.MustReadBool()
+		rf.epfSharpCustom = reader.TryReadBool()
 	} else {
 		rf.epfSharpCustom = false
 	}
@@ -92,7 +92,7 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	}
 
 	if !allDefault && rf.epfIterations > 9 {
-		rf.epfWeightCustom = reader.MustReadBool()
+		rf.epfWeightCustom = reader.TryReadBool()
 	} else {
 		rf.epfWeightCustom = false
 	}
@@ -100,11 +100,11 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 		for i := 0; i < len(rf.epfChannelScale); i++ {
 			rf.epfChannelScale[i] = reader.MustReadF16()
 		}
-		reader.MustReadBits(32) // ??? what do we do with this data?
+		reader.TryReadBits(32) // ??? what do we do with this data?
 	}
 
 	if !allDefault && rf.epfIterations > 0 {
-		rf.epfSigmaCustom = reader.MustReadBool()
+		rf.epfSigmaCustom = reader.TryReadBool()
 	} else {
 		rf.epfSigmaCustom = false
 	}

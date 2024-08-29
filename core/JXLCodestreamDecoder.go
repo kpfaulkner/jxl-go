@@ -56,7 +56,7 @@ type JXLCodestreamDecoder struct {
 func NewJXLCodestreamDecoder(in io.ReadSeeker, options *JXLOptions) *JXLCodestreamDecoder {
 	jxl := &JXLCodestreamDecoder{}
 	jxl.in = in
-	jxl.bitReader = jxlio.NewBitreader(jxl.in)
+	jxl.bitReader = jxlio.NewBitreader(jxl.in, true)
 	jxl.foundSignature = false
 
 	if options != nil {

@@ -32,10 +32,10 @@ func NewColorEncodingBundle() (*ColorEncodingBundle, error) {
 
 func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBundle, error) {
 	ceb := &ColorEncodingBundle{}
-	allDefault := reader.MustReadBool()
+	allDefault := reader.TryReadBool()
 
 	if !allDefault {
-		ceb.UseIccProfile = reader.MustReadBool()
+		ceb.UseIccProfile = reader.TryReadBool()
 	}
 
 	if !allDefault {
@@ -97,9 +97,9 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	}
 
 	if !allDefault && !ceb.UseIccProfile {
-		useGamma := reader.MustReadBool()
+		useGamma := reader.TryReadBool()
 		if useGamma {
-			ceb.Tf = int32(reader.MustReadBits(24))
+			ceb.Tf = int32(reader.TryReadBits(24))
 		} else {
 			ceb.Tf = (1 << 24) + reader.MustReadEnum()
 		}

@@ -56,7 +56,7 @@ func (f *Frame) readTOC() error {
 		tocEntries = 1 + f.numLFGroups + 1 + f.numGroups*f.header.passes.numPasses
 	}
 
-	f.permutatedTOC = f.reader.MustReadBool()
+	f.permutatedTOC = f.reader.TryReadBool()
 	if f.permutatedTOC {
 		tocStream, err := entropy.NewEntropyStreamWithReaderAndNumDists(f.reader, 8)
 		if err != nil {
@@ -102,7 +102,7 @@ func (f *Frame) readTOC() error {
 // TODO(kpfaulkner) really need to check this.
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
 	length := f.tocLengths[index]
-	buffer, err := f.reader.ReadByteArray(int(length) + 4)
+	buffer, err := f.reader.ReadBytesToSlice(uint64(length) + 4)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func NewFrameWithReader(reader *jxlio.Bitreader, imageHeader *ImageHeader, optio
 
 func (f *Frame) skipFrameData() error {
 	for i := 0; i < len(f.tocLengths); i++ {
-		_, err := f.reader.ReadByteArray(int(f.tocLengths[i]))
+		_, err := f.reader.ReadBytesToSlice(uint64(f.tocLengths[i]))
 		if err != nil {
 			return err
 		}

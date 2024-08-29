@@ -33,7 +33,7 @@ func NewExtensionsWithReader(reader *jxlio.Bitreader) (*Extensions, error) {
 	for i := 0; i < 64; i++ {
 		if len(ex.Payloads[i]) > 0 {
 			for j := 0; j < len(ex.Payloads[i]); j++ {
-				ex.Payloads[i][j] = byte(reader.MustReadBits(8))
+				ex.Payloads[i][j] = byte(reader.TryReadBits(8))
 			}
 		}
 	}

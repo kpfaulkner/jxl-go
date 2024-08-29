@@ -22,10 +22,10 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
 	uniqPos := -1
-	if reader.MustReadBool() {
+	if reader.TryReadBool() {
 		//asd.asd = 1 << logAlphabetSize
 		//asd.frequencies = make([]int, alphabetSize)
-		if reader.MustReadBool() {
+		if reader.TryReadBool() {
 			v1 := reader.ReadU8()
 			v2 := reader.ReadU8()
 			if v1 == v2 {
@@ -36,7 +36,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 			}
 			asd.frequencies = make([]int, asd.alphabetSize)
-			asd.frequencies[v1] = int(reader.MustReadBits(12))
+			asd.frequencies[v1] = int(reader.TryReadBits(12))
 			asd.frequencies[v2] = 1<<12 - asd.frequencies[v1]
 			if asd.frequencies[v1] == 0 {
 				uniqPos = v2
@@ -49,7 +49,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 			asd.frequencies[x] = 1 << 12
 			uniqPos = x
 		}
-	} else if reader.MustReadBool() {
+	} else if reader.TryReadBool() {
 		asd.alphabetSize = 1 + reader.ReadU8()
 		if asd.alphabetSize == 1 {
 			uniqPos = 0
@@ -64,11 +64,11 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 	} else {
 		var l int
 		for l = 0; l < 3; l++ {
-			if !reader.MustReadBool() {
+			if !reader.TryReadBool() {
 				break
 			}
 		}
-		shift := reader.MustReadBits(l) | 1<<l - 1
+		shift := reader.TryReadBits(uint64(l)) | 1<<l - 1
 		if shift > 13 {
 			return nil, errors.New("Shift > 13")
 		}
@@ -82,8 +82,12 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		same := make([]int, asd.alphabetSize)
 		omitLog := -1
 		omitPos := -1
+		var err error
 		for i := 0; i < asd.alphabetSize; i++ {
-			logCounts[i] = distPrefixTable.GetVLC(reader)
+			logCounts[i], err = distPrefixTable.GetVLC(reader)
+			if err != nil {
+				return nil, err
+			}
 			if logCounts[i] == 13 {
 				rle := reader.ReadU8()
 				same[i] = rle + 5
@@ -127,7 +131,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 					if bitcount > uint32(logCounts[i])-1 {
 						bitcount = uint32(logCounts[i])
 					}
-					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(int(bitcount))<<(logCounts[i]-1-int(bitcount)))
+					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.TryReadBits(uint64(bitcount))<<(logCounts[i]-1-int(bitcount)))
 				}
 			}
 			totalCount += asd.frequencies[i]
@@ -201,7 +205,7 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 			return 0, err
 		}
 	} else {
-		state = int(reader.MustReadBits(32))
+		state = int(reader.TryReadBits(32))
 	}
 
 	index := state & 0xFFF
@@ -220,7 +224,7 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 
 	state = asd.frequencies[symbol]*int(uint32(state)>>12) + offset
 	if state&0xFFFF0000 == 0 {
-		state = state<<16 | int(reader.MustReadBits(16))
+		state = state<<16 | int(reader.TryReadBits(16))
 	}
 	stateObj.SetState(state)
 	return symbol, nil
