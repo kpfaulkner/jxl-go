@@ -26,8 +26,11 @@ type Frame struct {
 	tocLengths       []uint32
 
 	// unsure about this
-	buffers [][]uint8
-	decoded bool
+	buffers    [][]uint8
+	decoded    bool
+	lfGlobal   *LFGlobal
+	buffer     [][][]float32
+	globalTree *MATree
 }
 
 func (f *Frame) readFrameHeader() (FrameHeader, error) {
@@ -211,8 +214,54 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 	if err != nil {
 		return err
 	}
-	lfGlobal, err := NewLFGlobalWithReader(lfGlobalBitReader, f)
-	fmt.Printf("%v\n", lfGlobal)
+	f.lfGlobal, err = NewLFGlobalWithReader(lfGlobalBitReader, f)
+	if err != nil {
+		return err
+	}
+
+	paddedSize, err := f.getPaddedFrameSize()
+	if err != nil {
+		return err
+	}
+
+	f.buffer = make([][][]float32, f.getColorChannelCount()+len(f.globalMetadata.extraChannelInfo))
+	for c := 0; c < len(f.buffer); c++ {
+		if c < 3 && c < f.getColorChannelCount() {
+			shiftedSize := paddedSize.ShiftRightWithIntPoint(f.header.jpegUpsampling[c])
+			f.buffer[c] = util.MakeMatrix2D[float32](int(shiftedSize.Y), int(shiftedSize.X))
+		} else {
+			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.Y), int(paddedSize.X))
+		}
+	}
+
+	err = f.decodeLFGroups(lfBuffer)
+	if err != nil {
+		return err
+	}
 	// TODO(kpfaulkner)
+	return nil
+}
+func (f *Frame) getColorChannelCount() int {
+	if f.globalMetadata.xybEncoded || f.header.encoding == VARDCT {
+		return 3
+	}
+	return f.globalMetadata.getColourChannelCount()
+}
+
+func (f *Frame) getPaddedFrameSize() (util.IntPoint, error) {
+
+	if f.header.encoding == VARDCT {
+		return util.NewIntPointWithXY(f.width, f.height).CeilDiv(8).Times(8), nil
+	} else {
+		return util.NewIntPointWithXY(f.width, f.height), nil
+	}
+}
+
+func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
+
+	//lfReplacementChannels := []ModularChannelInfo{}
+	//lfReplacementCHannelIndicies := []int{}
+
+	//for i:=0;i<f.lfGlobal.gModular.
 	return nil
 }

@@ -26,6 +26,21 @@ func NewEntropyStreamWithReaderAndNumDists(reader *jxlio.Bitreader, numDists int
 	return NewEntropyStreamWithReader(reader, numDists, false)
 }
 
+func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
+	es := &EntropyStream{}
+	es.usesLZ77 = stream.usesLZ77
+	es.lz77MinLength = stream.lz77MinLength
+	es.lz77MinSymbol = stream.lz77MinSymbol
+	es.lzLengthConfig = stream.lzLengthConfig
+	es.clusterMap = stream.clusterMap
+	es.dists = stream.dists
+	es.logAlphabetSize = stream.logAlphabetSize
+	if es.usesLZ77 {
+		es.window = make([]int32, 1<<20)
+	}
+	return es
+}
+
 func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
 
 	var err error

@@ -28,7 +28,7 @@ func NewIntPointWithXY(x uint32, y uint32) IntPoint {
 	return IntPoint{x, y}
 }
 
-func (ip IntPoint) times(factor uint32) IntPoint {
+func (ip IntPoint) Times(factor uint32) IntPoint {
 	return IntPoint{ip.X * factor, ip.Y * factor}
 }
 
@@ -36,7 +36,7 @@ func (ip IntPoint) timesWithIntPoint(p IntPoint) IntPoint {
 	return IntPoint{ip.X * p.X, ip.Y * p.Y}
 }
 
-func (ip IntPoint) ceilDiv(factor uint32) IntPoint {
+func (ip IntPoint) CeilDiv(factor uint32) IntPoint {
 	return IntPoint{CeilDiv(ip.X, factor), CeilDiv(ip.Y, factor)}
 }
 
@@ -52,18 +52,18 @@ func (ip IntPoint) unwrapCoord(rowStride uint32) uint32 {
 	return ip.Y*rowStride + ip.X
 }
 
-func (ip IntPoint) shiftRight(hShift int, vShift int) IntPoint {
+func (ip IntPoint) ShiftRight(hShift int, vShift int) IntPoint {
 	x := ip.X >> uint32(hShift)
 	y := ip.Y >> uint32(vShift)
 	return IntPoint{X: x, Y: y}
 }
 
-func (ip IntPoint) shiftRightWithShift(shift int) IntPoint {
-	return ip.shiftRight(shift, shift)
+func (ip IntPoint) ShiftRightWithShift(shift int) IntPoint {
+	return ip.ShiftRight(shift, shift)
 }
 
-func (ip IntPoint) shiftRightWithIntPoint(p IntPoint) IntPoint {
-	return ip.shiftRight(int(p.X), int(p.Y))
+func (ip IntPoint) ShiftRightWithIntPoint(p IntPoint) IntPoint {
+	return ip.ShiftRight(int(p.X), int(p.Y))
 }
 
 func (ip IntPoint) shiftLeftWithShift(shift int) IntPoint {
