@@ -97,7 +97,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 		//b, _ := jxl.bitReader.ReadByteArray(10)
 		//fmt.Printf("b is %x\n", b)
 
-		sb, err := jxl.bitReader.ShowBits(32)
+		sb, err := jxl.bitReader.ShowBits(16)
 		if err != nil {
 			return err
 		}

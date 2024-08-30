@@ -9,7 +9,7 @@ import (
 
 func SignedPow(base float32, exponent float32) float32 {
 	if base < 0 {
-		return float32(math.Pow(float64(-base), float64(exponent)))
+		return -float32(math.Pow(float64(-base), float64(exponent)))
 	}
 	return float32(math.Pow(float64(base), float64(exponent)))
 }

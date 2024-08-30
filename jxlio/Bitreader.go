@@ -98,6 +98,11 @@ func (br *Bitreader) readBit() (uint8, error) {
 }
 
 func (br *Bitreader) ReadBits(bits uint32) (uint64, error) {
+
+	if bits == 0 {
+		return 0, nil
+	}
+
 	if bits < 1 || bits > 64 {
 
 		return 0, errors.New("num bits must be between 1 and 64")
@@ -335,6 +340,8 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	oldCur := br.currentByte
+	oldIndex := br.index
 
 	b, err := br.ReadBits(uint32(bits))
 	if err != nil {
@@ -345,6 +352,8 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	br.currentByte = oldCur
+	br.index = oldIndex
 
 	fmt.Printf("B is %0b\n", b)
 	return int(b), nil
@@ -403,17 +412,14 @@ func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
 }
 
 func (br *Bitreader) ZeroPadToByte() error {
-	panic("ZeroPadToByte not implemented... need to investigate")
-	//remaining := br.cacheBits % 8
-	//if remaining > 0 {
-	//	padding, err := br.ReadBits(remaining)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if padding != 0 {
-	//		return errors.New("nonzero zero-padding-to-byte")
-	//	}
-	//}
+
+	remaining := 8 - br.index
+	if remaining > 0 {
+		_, err := br.ReadBits(uint32(remaining))
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

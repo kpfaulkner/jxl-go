@@ -261,7 +261,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			header.up8Weights[i] = reader.MustReadF16()
 		}
 	} else {
-		header.up4Weights = DEFAULT_UP8
+		header.up8Weights = DEFAULT_UP8
 	}
 
 	if header.colorEncoding.UseIccProfile {
