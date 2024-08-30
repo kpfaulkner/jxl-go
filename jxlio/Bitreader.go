@@ -56,7 +56,7 @@ func (br *Bitreader) Close() {
 	panic("Bitreader.Close() not implemented")
 }
 
-// loop one byte at a time and read.... not efficient rework later FIXME(kpfaulkner)
+// loop one byte at a time and read.... not efficient but will rework later FIXME(kpfaulkner)
 // Most of the time we probably just want to fill the buffer... but have seen that in some cases
 // we might just want to partially populate the buffer. Hence the numBytes parameter.
 func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
@@ -413,7 +413,8 @@ func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
 
 func (br *Bitreader) ZeroPadToByte() error {
 
-	remaining := 8 - br.index
+	//remaining := 7 - br.index
+	remaining := br.index % 8
 	if remaining > 0 {
 		_, err := br.ReadBits(uint32(remaining))
 		if err != nil {

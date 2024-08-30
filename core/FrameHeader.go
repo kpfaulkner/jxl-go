@@ -141,7 +141,8 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 		x0Signed := jxlio.UnpackSigned(x0)
 		y0Signed := jxlio.UnpackSigned(y0)
 		fh.origin = util.NewIntPointWithXY(uint32(x0Signed), uint32(y0Signed))
-
+	} else {
+		fh.origin = util.ZERO
 	}
 
 	if fh.haveCrop {
@@ -219,8 +220,8 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 			if err != nil {
 				return nil, err
 			}
-			fh.name = string(buffer)
 		}
+		fh.name = string(buffer)
 	}
 	if allDefault {
 		fh.restorationFilter = NewRestorationFilter()

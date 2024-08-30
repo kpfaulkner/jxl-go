@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -28,7 +29,12 @@ type Frame struct {
 }
 
 func (f *Frame) readFrameHeader() (FrameHeader, error) {
+
+	x := f.reader.MustShowBits(32)
+	fmt.Printf("XXXXXX %x\n", x)
 	f.reader.ZeroPadToByte()
+	x = f.reader.MustShowBits(32)
+	fmt.Printf("XXXXXX2 %x\n", x)
 	var err error
 	f.header, err = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
 	if err != nil {
@@ -71,8 +77,13 @@ func (f *Frame) readTOC() error {
 		}
 	} else {
 		f.tocPermutation = make([]uint32, tocEntries)
-		for i := 0; i < int(tocEntries); i++ {
-			f.tocPermutation[i] = uint32(i)
+		for i := uint32(0); i < tocEntries; i++ {
+			a := i
+			fmt.Printf("XXXX %d\n", a)
+			if a == 134 {
+				fmt.Printf("boom\n")
+			}
+			f.tocPermutation[i] = a
 		}
 	}
 	f.reader.ZeroPadToByte()
@@ -93,6 +104,7 @@ func (f *Frame) readTOC() error {
 			if err != nil {
 				return err
 			}
+			fmt.Printf("XXXX buf %d\n", i)
 			f.buffers[i] = b
 		}
 	}
@@ -102,8 +114,9 @@ func (f *Frame) readTOC() error {
 // TODO(kpfaulkner) really need to check this.
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
 	length := f.tocLengths[index]
+	fmt.Printf("XXXXX buf %d has length %d\n", index, length)
 	buffer := make([]uint8, length+4)
-	err := f.reader.ReadBytesToBuffer(buffer, uint32(length)+4)
+	err := f.reader.ReadBytesToBuffer(buffer, length)
 	if err != nil {
 		return nil, err
 	}

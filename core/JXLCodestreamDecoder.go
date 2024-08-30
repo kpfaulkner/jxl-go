@@ -131,7 +131,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 		frameCount := 0
 		reference := make([][][][]float32, 4)
 		header := FrameHeader{}
-		lfBuffer := make([][][][]float32, 4)
+		lfBuffer := make([][][][]float32, 5)
 
 		var matrix *color.OpsinInverseMatrix
 		if imageHeader.xybEncoded {
