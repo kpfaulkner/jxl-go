@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -26,6 +27,7 @@ type Frame struct {
 
 	// unsure about this
 	buffers [][]uint8
+	decoded bool
 }
 
 func (f *Frame) readFrameHeader() (FrameHeader, error) {
@@ -188,8 +190,28 @@ func (f *Frame) skipFrameData() error {
 	return nil
 }
 
+// gets a bit reader for each TOC entry???
+func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
+	if len(f.tocLengths) == 1 {
+		panic("getBitreader panic... unsure what to do")
+	}
+	permutedIndex := f.tocPermutation[index]
+
+	return jxlio.NewBitreader(bytes.NewReader(f.buffers[permutedIndex]), true), nil
+}
+
 func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 
+	if f.decoded {
+		return nil
+	}
+	f.decoded = true
+
+	lfGlobalBitReader, err := f.getBitreader(0)
+	if err != nil {
+		return err
+	}
+	lfGlobal, err := NewLFGlobalWithReader(lfGlobalBitReader, f)
 	// TODO(kpfaulkner)
 	return nil
 }

@@ -15,7 +15,11 @@ const (
 	VARDCT  = 0
 	MODULAR = 1
 
-	USE_LF_FRAME = 32
+	NOISE                      = 1
+	PATCHES                    = 2
+	SPLINES                    = 16
+	USE_LF_FRAME               = 32
+	SKIP_ADAPTIVE_LF_SMOOTHING = 128
 
 	BLEND_REPLACE = 0
 	BLEND_ADD     = 1
