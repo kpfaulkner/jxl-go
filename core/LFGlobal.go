@@ -81,7 +81,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		}
 	}
 
-	lf.gModular, err = NewGlobalModularWithREader(reader, lf.frame)
+	lf.gModular, err = NewGlobalModularWithReader(reader, lf.frame)
 
 	return lf, nil
 }

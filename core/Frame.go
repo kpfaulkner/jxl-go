@@ -212,6 +212,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 	lfGlobal, err := NewLFGlobalWithReader(lfGlobalBitReader, f)
+	fmt.Printf("%v\n", lfGlobal)
 	// TODO(kpfaulkner)
 	return nil
 }

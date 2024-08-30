@@ -11,7 +11,7 @@ type LFChannelCorrelation struct {
 }
 
 func NewLFChannelCorrelation() (*LFChannelCorrelation, error) {
-	NewLFChannelCorrelationWithReaderAndDefault(nil, true)
+	return NewLFChannelCorrelationWithReaderAndDefault(nil, true)
 }
 
 func NewLFChannelCorrelationWithReaderAndDefault(reader *jxlio.Bitreader, allDefault bool) (*LFChannelCorrelation, error) {

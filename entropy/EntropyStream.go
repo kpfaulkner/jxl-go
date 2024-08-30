@@ -164,6 +164,14 @@ func (es *EntropyStream) ReadSymbol(reader *jxlio.Bitreader, context int) (int32
 	return es.ReadSymbolWithMultiplier(reader, context, 0)
 }
 
+func (es *EntropyStream) TryReadSymbol(reader *jxlio.Bitreader, context int) int32 {
+	v, err := es.ReadSymbol(reader, context)
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
 func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, context int, distanceMultiplier int) (int32, error) {
 	if es.numToCopy77 > 0 {
 		es.copyPos77++
