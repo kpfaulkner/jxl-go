@@ -86,10 +86,6 @@ func (f *Frame) readTOC() error {
 		f.tocPermutation = make([]uint32, tocEntries)
 		for i := uint32(0); i < tocEntries; i++ {
 			a := i
-			fmt.Printf("XXXX %d\n", a)
-			if a == 134 {
-				fmt.Printf("boom\n")
-			}
 			f.tocPermutation[i] = a
 		}
 	}
@@ -111,7 +107,6 @@ func (f *Frame) readTOC() error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("XXXX buf %d\n", i)
 			f.buffers[i] = b
 		}
 	}
@@ -121,7 +116,6 @@ func (f *Frame) readTOC() error {
 // TODO(kpfaulkner) really need to check this.
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
 	length := f.tocLengths[index]
-	fmt.Printf("XXXXX buf %d has length %d\n", index, length)
 	buffer := make([]uint8, length+4)
 	err := f.reader.ReadBytesToBuffer(buffer, length)
 	if err != nil {
@@ -362,6 +356,7 @@ func (f *Frame) decodePassGroups() error {
 					channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
 				}
 			}
+			f.lfGlobal.gModular.stream.channels[i] = channel
 			j++
 		}
 	}
