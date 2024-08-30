@@ -24,7 +24,7 @@ func NewPrefixSymbolDistributionWithReader(reader *jxlio.Bitreader, alphabetSize
 		return rcvr
 	}
 
-	hskip := reader.TryReadBits(2)
+	hskip := reader.MustReadBits(2)
 	if hskip == 1 {
 		rcvr.populateSimplePrefix(reader)
 	} else {
@@ -80,7 +80,7 @@ func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitrea
 	//for i := int32(0); i < int32(rcvr.alphabetSize); i++ {
 	//	code := leve11Table.GetVLC(reader)
 	//	if code == 16 {
-	//		extra := 3 + reader.TryReadBits(2)
+	//		extra := 3 + reader.MustReadBits(2)
 	//		if prevRepeatCount > 0 {
 	//			extra = 4*(prevRepeatCount-2) - prevRepeatCount + extra
 	//		}
@@ -93,7 +93,7 @@ func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitrea
 	//		prevZeroCount = 0
 	//		level2Counts[prev] += int(extra)
 	//	} else if code == 17 {
-	//		extra := 3 + reader.TryReadBits(3)
+	//		extra := 3 + reader.MustReadBits(3)
 	//		if prevZeroCount > 0 {
 	//			extra = 8*(prevZeroCount-2) - prevZeroCount + extra
 	//		}
@@ -143,14 +143,14 @@ func (rcvr *PrefixSymbolDistribution) populateSimplePrefix(reader *jxlio.Bitread
 	panic("not implemented")
 	//symbols := make([]int, 4)
 	//var lens []int = nil
-	//nsym := 1 + reader.TryReadBits(2)
+	//nsym := 1 + reader.MustReadBits(2)
 	//treeSelect := false
 	//bits := 0
 	//for i := 0; i < int(nsym); i++ {
-	//	symbols[i] = int(reader.TryReadBits(rcvr.logAlphabetSize))
+	//	symbols[i] = int(reader.MustReadBits(rcvr.logAlphabetSize))
 	//}
 	//if nsym == 4 {
-	//	treeSelect = reader.TryReadBool()
+	//	treeSelect = reader.MustReadBool()
 	//}
 	//switch nsym {
 	//case 1:

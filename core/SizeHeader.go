@@ -17,13 +17,13 @@ func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader, error) {
 	sh := &SizeHeader{}
 	var err error
 
-	div8 := reader.TryReadBool()
+	div8 := reader.MustReadBool()
 	if div8 {
-		sh.height = 1 + uint32(reader.TryReadBits(5))<<3
+		sh.height = 1 + uint32(reader.MustReadBits(5))<<3
 	} else {
 		sh.height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 	}
-	ratio := reader.TryReadBits(3)
+	ratio := reader.MustReadBits(3)
 	if ratio != 0 {
 		sh.width, err = getWidthFromRatio(uint32(ratio), sh.height)
 		if err != nil {
@@ -33,7 +33,7 @@ func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader, error) {
 		}
 	} else {
 		if div8 {
-			sh.width = 1 + uint32(reader.TryReadBits(5))<<3
+			sh.width = 1 + uint32(reader.MustReadBits(5))<<3
 		} else {
 			sh.width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 		}

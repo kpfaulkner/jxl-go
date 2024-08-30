@@ -18,10 +18,10 @@ func NewBitDepthHeader() *BitDepthHeader {
 
 func NewBitDepthHeaderWithReader(reader *jxlio.Bitreader) *BitDepthHeader {
 	bh := &BitDepthHeader{}
-	bh.usesFloatSamples = reader.TryReadBool()
+	bh.usesFloatSamples = reader.MustReadBool()
 	if bh.usesFloatSamples {
 		bh.bitsPerSample = reader.MustReadU32(32, 0, 16, 0, 24, 0, 1, 6)
-		bh.expBits = 1 + uint32(reader.TryReadBits(4))
+		bh.expBits = 1 + uint32(reader.MustReadBits(4))
 	} else {
 		bh.bitsPerSample = reader.MustReadU32(8, 0, 10, 0, 12, 0, 1, 6)
 		bh.expBits = 0

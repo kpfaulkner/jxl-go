@@ -114,7 +114,7 @@ func NewImageHeader() *ImageHeader {
 func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error) {
 	header := NewImageHeader()
 
-	headerBits := reader.TryReadBits(16)
+	headerBits := reader.MustReadBits(16)
 	if uint32(headerBits) != CODESTREAM_HEADER {
 		return nil, errors.New("Not a JXL codestream: 0xFF0A magic mismatch")
 	}
@@ -129,27 +129,27 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		return nil, err
 	}
 
-	allDefault := reader.TryReadBool()
+	allDefault := reader.MustReadBool()
 	extraFields := false
 	if !allDefault {
-		extraFields = reader.TryReadBool()
+		extraFields = reader.MustReadBool()
 	}
 
 	if extraFields {
-		header.orientation = 1 + uint32(reader.TryReadBits(3))
-		if reader.TryReadBool() {
+		header.orientation = 1 + uint32(reader.MustReadBits(3))
+		if reader.MustReadBool() {
 			header.intrinsicSize, err = NewSizeHeader(reader, level)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if reader.TryReadBool() {
+		if reader.MustReadBool() {
 			header.previewHeader, err = NewPreviewHeader(reader)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if reader.TryReadBool() {
+		if reader.MustReadBool() {
 			header.animationHeader, err = NewAnimationHeader(reader)
 			if err != nil {
 				return nil, err
@@ -178,7 +178,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 	} else {
 		header.bitDepth = NewBitDepthHeaderWithReader(reader)
-		header.modular16BitBuffers = reader.TryReadBool()
+		header.modular16BitBuffers = reader.MustReadBool()
 		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
 		header.extraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
 		alphaIndicies := make([]int32, extraChannelCount)
@@ -198,7 +198,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 		header.alphaIndices = make([]int32, numAlphaChannels)
 		copy(header.alphaIndices, alphaIndicies[:numAlphaChannels])
-		header.xybEncoded = reader.TryReadBool()
+		header.xybEncoded = reader.MustReadBool()
 		header.colorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
 		if err != nil {
 			return nil, err
@@ -223,7 +223,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 	}
 
-	defaultMatrix := reader.TryReadBool()
+	defaultMatrix := reader.MustReadBool()
 	if !defaultMatrix && header.xybEncoded {
 		header.opsinInverseMatrix = color.NewOpsinInverseMatrixWithReader(reader)
 	} else {
@@ -234,7 +234,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if defaultMatrix {
 		cwMask = 0
 	} else {
-		cwMask = int32(reader.TryReadBits(3))
+		cwMask = int32(reader.MustReadBits(3))
 	}
 
 	if cwMask&1 != 0 {

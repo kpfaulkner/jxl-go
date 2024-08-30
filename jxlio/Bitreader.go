@@ -6,34 +6,37 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/bits"
 )
 
 type Bitreader struct {
-	in        io.ReadSeeker
-	cache     uint64
-	cacheBits int
-	bitsRead  int64
+	// stream/reader we're using most of the time
+	stream       io.ReadSeeker
+	littleEndian bool
+
+	index       uint8
+	currentByte uint8
 }
 
-func NewBitreader(in io.ReadSeeker) (br *Bitreader) {
-	br = &Bitreader{}
-	br.cache = 0
-	br.cacheBits = 0
-	br.bitsRead = 0
-	br.in = in
-	return
+func NewBitreader(in io.ReadSeeker, le bool) *Bitreader {
+
+	br := &Bitreader{}
+	br.stream = in
+	//br.origStream = in
+	br.littleEndian = le
+	return br
 }
 
+// utter hack to seek about the place
 func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
 
-	n, err := br.in.Seek(offset, whence)
+	n, err := br.stream.Seek(offset, whence)
 	if err != nil {
 		return 0, err
 	}
 
-	br.ZeroPadToByte()
-	_, err = br.DrainCache()
+	// reset tracking
+	br.index = uint8(offset)
+	br.currentByte = 0
 	return n, err
 }
 
@@ -53,170 +56,90 @@ func (br *Bitreader) Close() {
 	panic("Bitreader.Close() not implemented")
 }
 
-func (br *Bitreader) DrainCache() ([]byte, error) {
-	if br.cacheBits%8 != 0 {
-		return nil, errors.New("you must align before drainCache")
-	}
-
-	cacheBytes := br.cacheBits / 8
-	if cacheBytes == 0 {
-		return nil, nil
-	}
-	buffer := make([]byte, cacheBytes)
-	br.Read2(buffer)
-	return buffer, nil
-}
-
-func (br *Bitreader) GetBitsCount() int64 {
-
-	return br.bitsRead
-}
-
-func (br *Bitreader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int, length int) (int, error) {
-	if length == 0 {
-		return 0, nil
-	}
-	if br.cacheBits%8 != 0 {
-		return 0, errors.New("you must align before readBytes")
-	}
-	cacheBytes := br.cacheBits / 8
-	for i := 0; i < cacheBytes; i++ {
-		if length-1 < 1 {
-			return i, nil
-		}
-		length--
+// loop one byte at a time and read.... not efficient rework later FIXME(kpfaulkner)
+// Most of the time we probably just want to fill the buffer... but have seen that in some cases
+// we might just want to partially populate the buffer. Hence the numBytes parameter.
+func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
+	for i := uint32(0); i < numBytes; i++ {
 		b, err := br.ReadBits(8)
+		if err != nil {
+			return err
+		}
+		buffer[i] = uint8(b)
+	}
+	return nil
+}
+
+// read single bit and will cache the current byte we're working on.
+// Need to look more at how JXLatte does it..
+func (br *Bitreader) readBit() (uint8, error) {
+	if br.index == 0 {
+		buffer := make([]byte, 1)
+		_, err := br.stream.Read(buffer)
 		if err != nil {
 			return 0, err
 		}
-		buffer[offset+i] = byte(b)
+		br.currentByte = buffer[0]
 	}
-	remaining, err := ReadFullyWithOffset(br.in, buffer, offset+cacheBytes, length)
-	if err != nil {
-		return 0, err
+
+	var v bool
+	// determine if we're little endian or big endian.
+	if br.littleEndian {
+		v = (br.currentByte & (1 << br.index)) != 0
+	} else {
+		v = (br.currentByte & (1 << (7 - br.index))) != 0
 	}
-	br.bitsRead += int64((length - remaining) * 8)
-	ret := cacheBytes + length - remaining
-	if ret == 0 {
-		return -1, nil
+	br.index = (br.index + 1) % 8
+	if v {
+		return 1, nil
+	} else {
+		return 0, nil
 	}
-	return ret, nil
 }
 
-func (br *Bitreader) Read2(buffer []byte) (int, error) {
-	return br.ReadByteArrayWithOffsetAndLength(buffer, 0, len(buffer))
+func (br *Bitreader) ReadBits(bits uint32) (uint64, error) {
+	if bits < 1 || bits > 64 {
+
+		return 0, errors.New("num bits must be between 1 and 64")
+	}
+	var v uint64
+	for i := uint32(0); i < bits; i++ {
+		bit, err := br.readBit()
+		if err != nil {
+			return 0, err
+		}
+		if br.littleEndian {
+			v |= uint64(bit) << i
+		} else {
+			v |= uint64(bit) << (bits - 1 - i)
+		}
+	}
+	return v, nil
 }
 
-func (br *Bitreader) Read3() int {
-
-	b, err := br.ReadBits(8)
-	if err != nil {
-		return -1
-	}
-	return int(b)
-}
-
-func (br *Bitreader) MustReadBits(bits int) uint32 {
-	b, err := br.ReadBits(bits)
-	if err != nil {
-		panic("unable to read bits")
+func (br *Bitreader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error {
+	if length == 0 {
+		return nil
 	}
 
-	return b
+	_, err := br.Seek(offset, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	err = br.ReadBytesToBuffer(buffer, length)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (br *Bitreader) ReadByte() (uint8, error) {
-	b := make([]byte, 1)
-	_, err := br.in.Read(b)
-	return b[0], err
-}
-
-// ReadBytes reads a number of bytes (bit at a time...  gotta find a better way)
-func (br *Bitreader) ReadByteArray(noBytes int) ([]uint8, error) {
-	ba := make([]uint8, noBytes)
-	_, err := br.in.Read(ba)
-	return ba, err
-	//for i := 0; i < noBytes; i++ {
-	//	b, err := br.ReadBits(8)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	ba[i] = byte(b)
-	//}
-	return ba, nil
-}
-
-func (br *Bitreader) ReadBits(bits int) (uint32, error) {
-	if bits == 0 {
-		return 0, nil
-	}
-	if bits < 0 || bits > 32 {
-		return 0, errors.New("Must read between 0-32 bits, inclusive")
-	}
-
-	if bits <= br.cacheBits {
-		//ret := uint32(br.cache&1 ^ (1 ^ 0<<bits))
-		ret := br.cache & ^(^uint64(0) << bits)
-		br.cacheBits -= bits
-		br.cache = br.cache >> bits
-		br.bitsRead += int64(bits)
-		return uint32(ret), nil
-	}
-
-	// FIXME(kpfaulkner)  Need to figure out options here..
-	//count := br.in.available()
-	count := 0
-	max := (64 - br.cacheBits) / 8
-	if count > 0 {
-		if count < max {
-			count = count
-		} else {
-			count = max
-		}
-	} else {
-		count = 1
-	}
-
-	eof := false
-	bb := make([]byte, 1)
-	for i := 0; i < count; i++ {
-
-		// read next byte.
-		_, err := br.in.Read(bb)
-		if err != nil {
-			return 0, err
-		}
-		b := bb[0]
-		if b < 0 {
-			eof = true
-			break
-		}
-		br.cache |= uint64(b) & 0xFF << uint64(br.cacheBits)
-		br.cacheBits += 8
-	}
-	if eof && bits > br.cacheBits {
-		return 0, errors.New(fmt.Sprintf("%s%d", "Unable to read enough bits: ", br.GetBitsCount()+int64(bits)))
-	}
-	return br.ReadBits(bits)
-}
-
-func (br *Bitreader) ReadBool() (bool, error) {
-	v, err := br.ReadBits(1)
-
+	v, err := br.ReadBits(8)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-
-	return v != 0, nil
-}
-
-func (br *Bitreader) MustReadBool() bool {
-	b, err := br.ReadBool()
-	if err != nil {
-		panic("unable to read bool")
-	}
-
-	return b
+	return uint8(v), nil
 }
 
 func (br *Bitreader) MustReadEnum() int32 {
@@ -300,7 +223,7 @@ func (br *Bitreader) ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 
 
 	c := []int{c0, c1, c2, c3}
 	u := []int{u0, u1, u2, u3}
-	b, err := br.ReadBits(u[choice])
+	b, err := br.ReadBits(uint32(u[choice]))
 	if err != nil {
 		return 0, err
 	}
@@ -311,6 +234,33 @@ func (br *Bitreader) MustReadU64() uint64 {
 	v, err := br.ReadU64()
 	if err != nil {
 		panic("unable to read U64")
+	}
+	return v
+}
+
+func (br *Bitreader) ReadBool() (bool, error) {
+	v, err := br.readBit()
+	if err != nil {
+		return false, err
+	}
+	return v == 1, nil
+}
+
+func (br *Bitreader) MustReadBool() bool {
+	ok, err := br.ReadBool()
+	if err != nil {
+		// really need to remove these panics and force error inspection
+		panic(err)
+	}
+	return ok
+}
+
+func (br *Bitreader) MustReadBits(bits uint32) uint64 {
+	v, err := br.ReadBits(bits)
+	if err != nil {
+
+		// really need to remove these panics and force error inspection
+		panic(err)
 	}
 	return v
 }
@@ -367,7 +317,7 @@ func (br *Bitreader) ReadU8() int {
 	if n == 0 {
 		return 1
 	}
-	return int(br.MustReadBits(int(n)) + 1<<n)
+	return int(br.MustReadBits(uint32(n)) + 1<<n)
 }
 
 func (br *Bitreader) MustShowBits(bits int) int {
@@ -381,16 +331,17 @@ func (br *Bitreader) MustShowBits(bits int) int {
 // utter hack... read and reset ReadSeeker.
 func (br *Bitreader) ShowBits(bits int) (int, error) {
 
-	curPos, err := br.in.Seek(0, io.SeekCurrent)
+	curPos, err := br.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return 0, err
 	}
 
-	b, err := br.ReadByte()
+	b, err := br.ReadBits(uint32(bits))
 	if err != nil {
 		return 0, err
 	}
-	_, err = br.in.Seek(curPos, io.SeekStart)
+
+	_, err = br.Seek(curPos, io.SeekStart)
 	if err != nil {
 		return 0, err
 	}
@@ -399,56 +350,33 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	return int(b), nil
 }
 
-func (br *Bitreader) Skip(bytes int64) (int64, error) {
-	b, err := br.SkipBits(bytes << 3)
-	if err != nil {
-		return 0, err
+func (br *Bitreader) SkipBits(bits uint32) error {
+	numBytes := bits / 8
+	if numBytes > 0 {
+		buffer := make([]byte, numBytes)
+		_, err := br.stream.Read(buffer)
+		if err != nil {
+			return err
+		}
+		br.currentByte = buffer[numBytes-1]
 	}
-	return b >> 3, nil
+
+	// read bits so we can keep track of where we are.
+	for i := numBytes * 8; i < bits; i++ {
+		_, err := br.readBit()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (br *Bitreader) MustSkipBits(bits int64) int64 {
-	b, err := br.SkipBits(bits)
-	if err != nil {
-		panic("unable to skip bits")
-	}
-	return b
-}
-
-func (br *Bitreader) SkipBits(bits int64) (int64, error) {
-	if bits < 0 {
-		return 0, errors.New("illegal argument")
-	}
-
-	if bits == 0 {
-		return 0, nil
-	}
-
-	if bits <= int64(br.cacheBits) {
-		br.cacheBits -= int(bits)
-		br.cache >>= bits
-		br.bitsRead += bits
-		return bits, nil
-	}
-
-	cacheSave := br.cacheBits
-	br.SkipBits(int64(br.cacheBits))
-
-	bits -= int64(cacheSave)
-	dangler := bits % 8
-	b, err := SkipFully(br.in, (bits-dangler)/8)
+func (br *Bitreader) Skip(bytes uint32) (int64, error) {
+	err := br.SkipBits(bytes << 3)
 	if err != nil {
 		return 0, err
 	}
-	skipped := bits - dangler - 8*int64(b)
-	br.bitsRead += skipped
-	skipped += int64(cacheSave)
-
-	_, err = br.ReadBits(int(dangler))
-	if err != nil {
-		return 0, err
-	}
-	return skipped + dangler, nil
+	return int64(bytes), nil
 }
 
 func (br *Bitreader) GetBytePos() int64 {
@@ -461,35 +389,32 @@ func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
 		return 0, fmt.Errorf("number of bytes number should be between 1 and 8.")
 	}
 
-	ba, err := br.ReadByteArray(noBytes)
+	ba := make([]byte, 8)
+	err := br.ReadBytesToBuffer(ba, uint32(noBytes))
 	if err != nil {
 		return 0, err
 	}
 
-	tt := binary.LittleEndian.Uint64(ba)
-	return tt, nil
+	if br.littleEndian {
+		return binary.LittleEndian.Uint64(ba), nil
+	} else {
+		return binary.BigEndian.Uint64(ba), nil
+	}
 }
 
 func (br *Bitreader) ZeroPadToByte() error {
-	remaining := br.cacheBits % 8
-	if remaining > 0 {
-		padding, err := br.ReadBits(remaining)
-		if err != nil {
-			return err
-		}
-		if padding != 0 {
-			return errors.New("nonzero zero-padding-to-byte")
-		}
-	}
+	panic("ZeroPadToByte not implemented... need to investigate")
+	//remaining := br.cacheBits % 8
+	//if remaining > 0 {
+	//	padding, err := br.ReadBits(remaining)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if padding != 0 {
+	//		return errors.New("nonzero zero-padding-to-byte")
+	//	}
+	//}
 	return nil
-}
-
-func UnpackSignedOrig(value int32) int32 {
-	if value&1 == 0 {
-		return int32(uint32(value) >> 1)
-	}
-
-	return int32(bits.Reverse32(uint32(value)) | 0x80_00_00_00)
 }
 
 // JPEGXL spec states unpackedsigned is

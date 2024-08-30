@@ -96,8 +96,12 @@ func (br *BoxReader) readAllBoxesOrig() ([]ContainerBoxHeader, error) {
 func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 
 	var boxHeaders []ContainerBoxHeader
+	//boxSizeArray := make([]byte, 4)
+	boxSizeArray := make([]byte, 8)
+	boxTag := make([]byte, 4)
 	for {
-		boxSizeArray, err := br.reader.ReadBytesToSlice(4)
+
+		err := br.reader.ReadBytesToBuffer(boxSizeArray, 4)
 		if err != nil {
 			if err == io.EOF {
 				// simple end of file... return with boxHeaders
@@ -108,7 +112,7 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 
 		boxSize := makeTag(boxSizeArray, 0, 4)
 		if boxSize == 1 {
-			boxSizeArray, err = br.reader.ReadBytesToSlice(8)
+			err = br.reader.ReadBytesToBuffer(boxSizeArray, 8)
 			if err != nil {
 				return nil, err
 			}
@@ -124,7 +128,7 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 			return nil, errors.New("invalid box size")
 		}
 
-		boxTag, err := br.reader.ReadBytesToSlice(4)
+		err = br.reader.ReadBytesToBuffer(boxTag, 4)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +138,7 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 		switch tag {
 		case JXLP:
 			// reads next 4 bytes as additional tag?
-			boxTag, err = br.reader.ReadBytesToSlice(4)
+			err = br.reader.ReadBytesToBuffer(boxTag, 4)
 			if err != nil {
 				return nil, err
 			}
@@ -289,7 +293,7 @@ func (br *BoxReader) readSizeAndType() (offset uint64, boxSize uint64, tag uint6
 
 // returns number of bytes that were NOT skipped.
 func (br *BoxReader) SkipFully(i int64) (int64, error) {
-	n, err := br.reader.Skip(uint64(i))
+	n, err := br.reader.Skip(uint32(i))
 	return i - n, err
 }
 

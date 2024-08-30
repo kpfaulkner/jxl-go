@@ -83,7 +83,7 @@ func (rcvr *VLCTable) GetVLC(reader *jxlio.Bitreader) (int, error) {
 	index := reader.MustShowBits(rcvr.bits)
 	symbol := rcvr.table[index][0]
 	length := rcvr.table[index][1]
-	err := reader.SkipBits(uint64(length))
+	err := reader.SkipBits(uint32(length))
 	if err != nil {
 		return 0, err
 	}
