@@ -31,6 +31,8 @@ type Frame struct {
 	lfGlobal   *LFGlobal
 	buffer     [][][]float32
 	globalTree *MATree
+	hfGlobal   *HFGlobal
+	passes     []Pass
 }
 
 func (f *Frame) readFrameHeader() (FrameHeader, error) {
@@ -238,6 +240,30 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 	if err != nil {
 		return err
 	}
+
+	hfGlobalReader, err := f.getBitreader(1 + int(f.numLFGroups))
+	if err != nil {
+		return err
+	}
+
+	if f.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	} else {
+		f.hfGlobal = nil
+	}
+
+	err = f.decodePasses(hfGlobalReader)
+	if err != nil {
+		return err
+	}
+
+	err = f.decodePassGroups()
+
+	if err != nil {
+		return err
+	}
+
+	panic("boom")
 	// TODO(kpfaulkner)
 	return nil
 }
@@ -263,5 +289,85 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 	//lfReplacementCHannelIndicies := []int{}
 
 	//for i:=0;i<f.lfGlobal.gModular.
+	return nil
+}
+
+func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
+
+	var err error
+	f.passes = make([]Pass, f.header.passes.numPasses)
+	for pass := 0; pass < len(f.passes); pass++ {
+		prevMinShift := uint32(0)
+		if pass > 0 {
+			prevMinShift = f.passes[pass-1].minShift
+		}
+
+		f.passes[pass], err = NewPassWithReader(reader, f, uint32(pass), prevMinShift)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *Frame) decodePassGroups() error {
+	numPasses := len(f.passes)
+	passGroups := make([][]PassGroup, numPasses)
+
+	for pass := 0; pass < numPasses; pass++ {
+		for group := 0; group < int(f.numGroups); group++ {
+			br, err := f.getBitreader(1 + int(f.numLFGroups) + 1 + pass*int(f.numGroups) + pass)
+			if err != nil {
+				return err
+			}
+			replaced := f.passes[pass].replacedChannels
+			for i := 0; i < len(replaced); i++ {
+				info := replaced[i]
+				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+				rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
+				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
+				info.origin = pos
+				size := passGroupSize.Min(chanSize.Minus(info.origin))
+				info.width = int(size.X)
+				info.height = int(size.Y)
+				replaced[i] = info
+			}
+			f.passes[pass].replacedChannels = replaced
+			fmt.Printf("%v\n", br)
+		}
+	}
+
+	for pass := 0; pass < numPasses; pass++ {
+		j := 0
+		fmt.Printf("%v\n", j)
+		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+			//if f.passes[pass].replacedChannels[i] == nil {
+			//	continue
+			//}
+			channel, ok := f.lfGlobal.gModular.stream.channels[i].(*ModularChannel)
+			if !ok {
+				return errors.New("trying to get ModularChannel when one didn't exist")
+			}
+
+			//public static native void arraycopy(Object src,  int  srcPos,
+			//	Object dest, int destPos,
+			//	int length);
+			//
+			for group := 0; group < int(f.numGroups); group++ {
+				newChannelInfo := passGroups[pass][group].modularPassGroupInfo[j]
+				buff := passGroups[pass][group].modularPassGroupBuffer[j]
+				for y := 0; y < newChannelInfo.height; y++ {
+					channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
+				}
+			}
+			j++
+		}
+	}
+	if f.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	}
+
 	return nil
 }

@@ -277,8 +277,8 @@ func (ms *ModularStream) applyTransforms() error {
 	panic("ModularStream::applyTransforms not implemented")
 }
 
-func (ms *ModularStream) getDecodedBuffer() [][][]int32 {
-	bands := make([][][]int32, len(ms.channels))
+func (ms *ModularStream) getDecodedBuffer() [][][]uint32 {
+	bands := make([][][]uint32, len(ms.channels))
 	for i := 0; i < len(bands); i++ {
 		mi := ms.channels[i].(*ModularChannel)
 		bands[i] = mi.buffer

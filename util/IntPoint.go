@@ -13,7 +13,7 @@ type IntPoint struct {
 	Y uint32
 }
 
-func coordinates(index uint32, rowStride uint32) IntPoint {
+func Coordinates(index uint32, rowStride uint32) IntPoint {
 	return IntPoint{
 		X: index % rowStride,
 		Y: index / rowStride,
@@ -32,7 +32,7 @@ func (ip IntPoint) Times(factor uint32) IntPoint {
 	return IntPoint{ip.X * factor, ip.Y * factor}
 }
 
-func (ip IntPoint) timesWithIntPoint(p IntPoint) IntPoint {
+func (ip IntPoint) TimesWithIntPoint(p IntPoint) IntPoint {
 	return IntPoint{ip.X * p.X, ip.Y * p.Y}
 }
 
@@ -84,6 +84,6 @@ func (ip IntPoint) Minus(p IntPoint) IntPoint {
 	return IntPoint{X: ip.X - p.X, Y: ip.Y - p.Y}
 }
 
-func (ip IntPoint) min(p IntPoint) IntPoint {
+func (ip IntPoint) Min(p IntPoint) IntPoint {
 	return IntPoint{X: uint32(math.Min(float64(ip.X), float64(p.X))), Y: uint32(math.Min(float64(ip.Y), float64(p.Y)))}
 }

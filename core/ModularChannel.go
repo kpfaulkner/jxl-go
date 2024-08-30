@@ -8,7 +8,7 @@ import (
 
 type ModularChannel struct {
 	ModularChannelInfo
-	buffer  [][]int32
+	buffer  [][]uint32
 	decoded bool
 }
 
@@ -30,9 +30,9 @@ func NewModularChannelWithAllParams(width int, height int, hshift int32, vshift 
 	}
 
 	if width == 0 || height == 0 {
-		mc.buffer = make([][]int32, 0)
+		mc.buffer = make([][]uint32, 0)
 	} else {
-		mc.buffer = util.MakeMatrix2D[int32](height, width)
+		mc.buffer = util.MakeMatrix2D[uint32](height, width)
 	}
 	return mc
 }
