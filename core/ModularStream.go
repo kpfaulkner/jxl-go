@@ -46,21 +46,21 @@ func NewTransformInfo(reader *jxlio.Bitreader) TransformInfo {
 
 	tr := reader.MustReadBits(2)
 	if tr != SQUEEZE {
-		ti.beginC = int(reader.MustReadU32(3, 6, 10, 13, 0, 8, 72, 1096))
+		ti.beginC = int(reader.MustReadU32(0, 3, 8, 6, 72, 10, 1096, 13))
 	} else {
 		ti.beginC = 0
 	}
 
 	if tr == RCT {
-		ti.rctType = int(reader.MustReadU32(0, 2, 4, 6, 6, 0, 2, 10))
+		ti.rctType = int(reader.MustReadU32(6, 0, 0, 2, 2, 4, 10, 6))
 	} else {
 		ti.rctType = 0
 	}
 
 	if tr == PALETTE {
-		ti.numC = int(reader.MustReadU32(0, 0, 0, 13, 1, 3, 4, 1))
-		ti.nbColours = int(reader.MustReadU32(8, 10, 12, 16, 0, 256, 1280, 5376))
-		ti.nbDeltas = int(reader.MustReadU32(0, 8, 10, 16, 0, 1, 257, 1281))
+		ti.numC = int(reader.MustReadU32(1, 0, 3, 0, 4, 0, 1, 13))
+		ti.nbColours = int(reader.MustReadU32(0, 8, 256, 10, 1280, 12, 5376, 16))
+		ti.nbDeltas = int(reader.MustReadU32(0, 0, 1, 8, 257, 10, 1281, 16))
 		ti.dPred = int(reader.MustReadBits(4))
 	} else {
 		ti.numC = 0
@@ -70,7 +70,7 @@ func NewTransformInfo(reader *jxlio.Bitreader) TransformInfo {
 	}
 
 	if tr == SQUEEZE {
-		numSq := reader.MustReadU32(0, 4, 6, 8, 0, 1, 9, 41)
+		numSq := reader.MustReadU32(0, 0, 1, 4, 9, 6, 41, 8)
 		ti.sp = make([]SqueezeParam, numSq)
 		for i := 0; i < int(numSq); i++ {
 			ti.sp[i] = NewSqueezeParam(reader)
@@ -78,7 +78,7 @@ func NewTransformInfo(reader *jxlio.Bitreader) TransformInfo {
 	} else {
 		ti.sp = nil
 	}
-	panic("BOOM")
+
 	return ti
 }
 

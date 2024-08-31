@@ -18,7 +18,7 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 	if passIndex > 0 {
 		p.maxShift = prevMinShift
 	} else {
-		p.maxShift = 0
+		p.maxShift = 3
 	}
 
 	n := -1

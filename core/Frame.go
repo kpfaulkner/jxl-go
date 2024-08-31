@@ -187,11 +187,12 @@ func (f *Frame) skipFrameData() error {
 
 // gets a bit reader for each TOC entry???
 func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
+
 	if len(f.tocLengths) == 1 {
 		panic("getBitreader panic... unsure what to do")
 	}
 	permutedIndex := f.tocPermutation[index]
-
+	fmt.Printf("XXXX getBitreader index %d : perm %d\n", index, permutedIndex)
 	return jxlio.NewBitreader(bytes.NewReader(f.buffers[permutedIndex]), true), nil
 }
 
@@ -305,8 +306,76 @@ func (f *Frame) decodePassGroups() error {
 	passGroups := make([][]PassGroup, numPasses)
 
 	for pass := 0; pass < numPasses; pass++ {
+		for group := 4; group < int(f.numGroups); group++ {
+			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
+			if err != nil {
+				return err
+			}
+			replaced := f.passes[pass].replacedChannels
+			for i := 0; i < len(replaced); i++ {
+				info := replaced[i]
+				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+				rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
+				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
+				info.origin = pos
+				size := passGroupSize.Min(chanSize.Minus(info.origin))
+				info.width = int(size.X)
+				info.height = int(size.Y)
+				replaced[i] = info
+			}
+			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
+			if err != nil {
+				return err
+			}
+			//f.passes[pass].replacedChannels = replaced
+			passGroups[pass][group] = *pg
+			fmt.Printf("%v\n", br)
+		}
+	}
+
+	for pass := 0; pass < numPasses; pass++ {
+		j := 0
+		fmt.Printf("%v\n", j)
+		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+			//if f.passes[pass].replacedChannels[i] == nil {
+			//	continue
+			//}
+			channel, ok := f.lfGlobal.gModular.stream.channels[i].(*ModularChannel)
+			if !ok {
+				return errors.New("trying to get ModularChannel when one didn't exist")
+			}
+
+			//public static native void arraycopy(Object src,  int  srcPos,
+			//	Object dest, int destPos,
+			//	int length);
+			//
+			for group := 0; group < int(f.numGroups); group++ {
+				newChannelInfo := passGroups[pass][group].modularPassGroupInfo[j]
+				buff := passGroups[pass][group].modularPassGroupBuffer[j]
+				for y := 0; y < newChannelInfo.height; y++ {
+					channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
+				}
+			}
+			f.lfGlobal.gModular.stream.channels[i] = channel
+			j++
+		}
+	}
+	if f.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	}
+
+	return nil
+}
+
+func (f *Frame) decodePassGroupsORIG() error {
+	numPasses := len(f.passes)
+	passGroups := make([][]PassGroup, numPasses)
+
+	for pass := 0; pass < numPasses; pass++ {
 		for group := 0; group < int(f.numGroups); group++ {
-			br, err := f.getBitreader(1 + int(f.numLFGroups) + 1 + pass*int(f.numGroups) + pass)
+			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
 			if err != nil {
 				return err
 			}
