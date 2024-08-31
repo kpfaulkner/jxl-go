@@ -37,11 +37,7 @@ type Frame struct {
 
 func (f *Frame) readFrameHeader() (FrameHeader, error) {
 
-	x := f.reader.MustShowBits(32)
-	fmt.Printf("XXXXXX %x\n", x)
 	f.reader.ZeroPadToByte()
-	x = f.reader.MustShowBits(32)
-	fmt.Printf("XXXXXX2 %x\n", x)
 	var err error
 	f.header, err = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
 	if err != nil {

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -82,6 +84,10 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	}
 
 	lf.gModular, err = NewGlobalModularWithReader(reader, lf.frame)
+	if err != nil {
+		fmt.Printf("XXXXX NewGlobalModularWithReader error: %v\n", err)
+		return nil, err
+	}
 
 	return lf, nil
 }

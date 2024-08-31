@@ -43,17 +43,24 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 			}
 		} else {
 			x := reader.ReadU8()
-			if x >= len(asd.frequencies) {
-				return nil, errors.New("Invalid frequency position")
-			}
+			asd.alphabetSize = 1 + x
+			asd.frequencies = make([]int, asd.alphabetSize)
+
+			//if x >= len(asd.frequencies) {
+			//	return nil, errors.New("Invalid frequency position")
+			//}
 			asd.frequencies[x] = 1 << 12
 			uniqPos = x
 		}
 	} else if reader.MustReadBool() {
 		asd.alphabetSize = 1 + reader.ReadU8()
+		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
+			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
+		}
 		if asd.alphabetSize == 1 {
 			uniqPos = 0
 		}
+
 		asd.frequencies = make([]int, asd.alphabetSize)
 		for i := 0; i < asd.alphabetSize; i++ {
 			asd.frequencies[i] = (1 << 12) / asd.alphabetSize
@@ -68,7 +75,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 				break
 			}
 		}
-		shift := reader.MustReadBits(uint32(l)) | 1<<l - 1
+		shift := (reader.MustReadBits(uint32(l)) | 1<<l) - 1
 		if shift > 13 {
 			return nil, errors.New("Shift > 13")
 		}
@@ -98,6 +105,11 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 				omitLog = logCounts[i]
 				omitPos = i
 			}
+		}
+
+		fmt.Printf("AlphabetSize %d\n", asd.alphabetSize)
+		if asd.alphabetSize == 3 {
+			fmt.Printf("snoop\n")
 		}
 		if omitPos < 0 || omitPos+1 < asd.alphabetSize && logCounts[omitPos+1] == 13 {
 			return nil, errors.New("Invalid OmitPos")
@@ -129,9 +141,12 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 						bitcount = 0
 					}
 					if bitcount > uint32(logCounts[i])-1 {
-						bitcount = uint32(logCounts[i])
+						bitcount = uint32(logCounts[i] - 1)
 					}
+					//a := 1 << (logCounts[i] - 1)
+					//b := reader.MustReadBits(bitcount) << (logCounts[i] - 1 - int(bitcount))
 					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(bitcount)<<(logCounts[i]-1-int(bitcount)))
+					//asd.frequencies[i] = int(a + b)
 				}
 			}
 			totalCount += asd.frequencies[i]
@@ -166,21 +181,21 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int) {
 		if asd.cutoffs[i] > bucketSize {
 			overfull.AddFirst(i)
 		} else if asd.cutoffs[i] < bucketSize {
-			overfull.AddFirst(i)
+			underfull.AddFirst(i)
 		}
 	}
 	for i := asd.alphabetSize; i < tableSize; i++ {
-		overfull.AddFirst(i)
+		underfull.AddFirst(i)
 	}
 	for !overfull.IsEmpty() {
 		u := underfull.RemoveFirst()
-		o := underfull.RemoveFirst()
+		o := overfull.RemoveFirst()
 		by := bucketSize - asd.cutoffs[*u]
 		asd.cutoffs[*o] -= by
 		asd.symbols[*u] = *o
 		asd.offsets[*u] = asd.cutoffs[*o]
 		if asd.cutoffs[*o] < bucketSize {
-			overfull.AddFirst(*o)
+			underfull.AddFirst(*o)
 		} else if asd.cutoffs[*o] > bucketSize {
 			overfull.AddFirst(*o)
 		}

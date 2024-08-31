@@ -35,8 +35,8 @@ func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
 	}
 
 	// reset tracking
-	br.index = uint8(offset)
-	br.currentByte = 0
+	//br.index = uint8(offset)
+	//br.currentByte = 0
 	return n, err
 }
 
@@ -334,6 +334,33 @@ func (br *Bitreader) MustShowBits(bits int) int {
 }
 
 // utter hack... read and reset ReadSeeker.
+func (br *Bitreader) ShowBitsOrig(bits int) (int, error) {
+
+	curPos, err := br.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 0, err
+	}
+	oldCur := br.currentByte
+	oldIndex := br.index
+
+	b, err := br.ReadBits(uint32(bits))
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = br.Seek(curPos, io.SeekStart)
+	if err != nil {
+		return 0, err
+	}
+	br.currentByte = oldCur
+	br.index = oldIndex
+
+	return int(b), nil
+}
+
+// WRONG WRONG WRONG
+// When just performing ReadBits I get whats expected... but show bits is wrong... really unsure how?!?!
+// unless the curPos, err := br.Seek(0, io.SeekCurrent) is adjusting the content somehow?!?!
 func (br *Bitreader) ShowBits(bits int) (int, error) {
 
 	curPos, err := br.Seek(0, io.SeekCurrent)
@@ -355,7 +382,6 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	br.currentByte = oldCur
 	br.index = oldIndex
 
-	fmt.Printf("B is %0b\n", b)
 	return int(b), nil
 }
 

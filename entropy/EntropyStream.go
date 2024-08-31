@@ -2,6 +2,7 @@ package entropy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -38,6 +39,7 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 	if es.usesLZ77 {
 		es.window = make([]int32, 1<<20)
 	}
+	es.state = NewANSState()
 	return es
 }
 
@@ -48,7 +50,11 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 		return nil, errors.New("Num Dists must be positive")
 	}
 
+	x := reader.MustShowBits(32)
+	fmt.Printf("XXXXX BEGIN %d\n", int32(x))
+
 	es := &EntropyStream{}
+	es.state = NewANSState()
 	es.usesLZ77 = reader.MustReadBool()
 	if es.usesLZ77 {
 		if disallowLZ77 {
@@ -100,12 +106,19 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 			es.dists[i] = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
 		}
 	} else {
+		x := reader.MustShowBits(32)
+		fmt.Printf("XXXXX PRIOR %d\n", int32(x))
 		for i := 0; i < len(es.dists); i++ {
 			d, err := NewANSSymbolDistribution(reader, es.logAlphabetSize)
 			if err != nil {
 				return nil, err
 			}
 			es.dists[i] = d
+		}
+		x = reader.MustShowBits(32)
+		fmt.Printf("XXXXX %d\n", int32(x))
+		if x == 172542 {
+			fmt.Printf("snoop\n")
 		}
 	}
 
@@ -259,11 +272,11 @@ func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *Hybr
 	if n > 32 {
 		return 0, errors.New("n is too large")
 	}
-	low := token & (1<<config.LsbInToken - 1)
+	low := token & ((1 << config.LsbInToken) - 1)
 	token = int32(uint32(token) >> config.LsbInToken)
-	token &= 1<<config.MsbInToken - 1
+	token &= (1 << config.MsbInToken) - 1
 	token |= 1 << config.MsbInToken
-	return int32(int32(token<<n) | int32(reader.MustReadBits(uint32(n)))<<int32(config.MsbInToken) | int32(low)), nil
+	return ((int32(token<<n)|int32(reader.MustReadBits(uint32(n))))<<int32(config.LsbInToken) | int32(low)), nil
 }
 
 func (es *EntropyStream) ValidateFinalState() bool {
@@ -271,7 +284,7 @@ func (es *EntropyStream) ValidateFinalState() bool {
 		return true
 	}
 	s, err := es.state.GetState()
-	if err != nil || s != 0x13000 {
+	if err != nil || s != 0x130000 {
 		return false
 	}
 
