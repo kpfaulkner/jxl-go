@@ -21,8 +21,24 @@ type ANSSymbolDistribution struct {
 func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*ANSSymbolDistribution, error) {
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
+
+	trigger := false
+	if logAlphabetSize == 6 {
+		fmt.Printf("boomage\n")
+		trigger = true
+
+	}
+	x := reader.MustShowBits(32)
+	fmt.Printf("XXXXX2 %d\n", int32(x))
+
+	if x == 204998060 {
+		fmt.Printf("snoop\n")
+	}
 	uniqPos := -1
 	if reader.MustReadBool() {
+		if trigger {
+			fmt.Printf("boomage\n")
+		}
 		//asd.asd = 1 << logAlphabetSize
 		//asd.frequencies = make([]int, alphabetSize)
 		if reader.MustReadBool() {
@@ -118,6 +134,9 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		numSame := 0
 		prev := 0
 		for i := 0; i < asd.alphabetSize; i++ {
+			if x == 204998060 && i == 3 {
+				fmt.Printf("snoop\n")
+			}
 			if same[i] != 0 {
 				numSame = same[i] - 1
 				if i > 0 {
@@ -136,22 +155,23 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 				if logCounts[i] == 1 {
 					asd.frequencies[i] = 1
 				} else {
-					bitcount := uint32(shift) - uint32(12-logCounts[i]+1)>>1
+					bitcount := int32(shift) - int32(uint32(12-logCounts[i]+1)>>1)
 					if bitcount < 0 {
 						bitcount = 0
 					}
-					if bitcount > uint32(logCounts[i])-1 {
-						bitcount = uint32(logCounts[i] - 1)
+					if bitcount > int32(logCounts[i])-1 {
+						bitcount = int32(logCounts[i] - 1)
 					}
+					fmt.Printf("XXX bitcount %d : i is %d\n", bitcount, i)
 					//a := 1 << (logCounts[i] - 1)
 					//b := reader.MustReadBits(bitcount) << (logCounts[i] - 1 - int(bitcount))
-					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(bitcount)<<(logCounts[i]-1-int(bitcount)))
+					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-int(bitcount)))
 					//asd.frequencies[i] = int(a + b)
 				}
 			}
 			totalCount += asd.frequencies[i]
 		}
-		asd.frequencies[omitPos] = 1<<12 - totalCount
+		asd.frequencies[omitPos] = (1 << 12) - totalCount
 	}
 	asd.generateAliasMapping(uniqPos)
 	return asd, nil

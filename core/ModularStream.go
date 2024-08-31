@@ -103,6 +103,10 @@ type ModularStream struct {
 	stream         *entropy.EntropyStream
 }
 
+func NewModularStreamWithStreamIndex(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelArray []ModularChannelInfo) (*ModularStream, error) {
+	return NewModularStreamWithChannels(reader, frame, streamIndex, len(channelArray), 0, nil)
+}
+
 func NewModularStreamWithReader(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int) (*ModularStream, error) {
 	return NewModularStreamWithChannels(reader, frame, streamIndex, channelCount, ecStart, nil)
 }

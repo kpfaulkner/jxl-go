@@ -324,7 +324,12 @@ func (f *Frame) decodePassGroups() error {
 				info.height = int(size.Y)
 				replaced[i] = info
 			}
-			f.passes[pass].replacedChannels = replaced
+			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
+			if err != nil {
+				return err
+			}
+			//f.passes[pass].replacedChannels = replaced
+			passGroups[pass][group] = *pg
 			fmt.Printf("%v\n", br)
 		}
 	}

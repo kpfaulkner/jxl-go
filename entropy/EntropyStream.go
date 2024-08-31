@@ -106,6 +106,9 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 			es.dists[i] = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
 		}
 	} else {
+		if es.logAlphabetSize == 35 {
+			fmt.Printf("snoop\n")
+		}
 		x := reader.MustShowBits(32)
 		fmt.Printf("XXXXX PRIOR %d\n", int32(x))
 		for i := 0; i < len(es.dists); i++ {
