@@ -19,6 +19,14 @@ func CeilLog1p(x int64) int {
 	return 64 - xx
 }
 
+func FloorLog1p(x int64) int64 {
+	c := int64(CeilLog1p(x))
+	if (x+1)&x != 0 {
+		return c - 1
+	}
+	return c
+}
+
 func CeilLog2(x int64) int {
 	return CeilLog1p(x - 1)
 }

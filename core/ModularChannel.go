@@ -8,14 +8,24 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
+var (
+	oneL24OverKP1 = make([]int64, 64)
+)
+
 type ModularChannel struct {
 	ModularChannelInfo
 	buffer  [][]uint32
 	decoded bool
 	err     [][][]uint32
 	pred    [][]int32
-	subpred []int32
+	subpred []uint32
 	weight  []int32
+}
+
+func init() {
+	for i := int64(0); i < int64(len(oneL24OverKP1)); i++ {
+		oneL24OverKP1[i] = (1 << 24) / (i + 1)
+	}
 }
 
 func NewModularChannelFromInfo(info ModularChannelInfo) *ModularChannel {
@@ -44,6 +54,40 @@ func NewModularChannelWithAllParams(width int, height int, hshift int32, vshift 
 }
 
 func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (int32, error) {
+
+	n3 := mc.north(x, y) << 3
+	nw3 := mc.northWest(x, y) << 3
+	ne3 := mc.northEastEast(x, y) << 3
+	w3 := mc.west(x, y) << 3
+	nn3 := mc.northNorth(x, y) << 3
+	tN := mc.errorNorth(x, y, 4)
+	tW := mc.errorWest(x, y, 4)
+	tNE := mc.errorNorthEast(x, y, 4)
+	tNW := mc.errorNorthWest(x, y, 4)
+	mc.subpred[0] = w3 + ne3 - n3
+	mc.subpred[1] = n3 - (((tW + tN + tNE) * uint32(wpParams.param1)) >> 5)
+	mc.subpred[2] = w3 - (((tW + tN + tNW) * uint32(wpParams.param2)) >> 5)
+	mc.subpred[3] = n3 - ((tNW*uint32(wpParams.param3a) +
+		tN*uint32(wpParams.param3b) +
+		tNE*uint32(wpParams.param3c) +
+		(nn3-n3)*uint32(wpParams.param3d) +
+		(nw3-w3)*uint32(wpParams.param3e)) >> 5)
+
+	wSum := int32(0)
+	for e := int32(0); e < 4; e++ {
+		eSum := mc.errorNorth(x, y, e) + mc.errorWest(x, y, e) + mc.errorNorthWest(x, y, e) +
+			mc.errorWestWest(x, y, e) + mc.errorNorthEast(x, y, e)
+		if x+1 == int32(mc.width) {
+			eSum += mc.errorWest(x, y, e)
+		}
+		shift := util.FloorLog1p(int64(eSum)) - 5
+		if shift < 0 {
+			shift = 0
+		}
+		mc.weight[e] = 4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift)
+		wSum += mc.weight[e]
+	}
+	panic("todo")
 
 	return 0, nil
 }
@@ -110,7 +154,12 @@ func (mc *ModularChannel) errorNorth(x int32, y int32, e int32) uint32 {
 	}
 	return 0
 }
-
+func (mc *ModularChannel) errorWest(x int32, y int32, e int32) uint32 {
+	if x > 0 {
+		return mc.err[e][y][x-1]
+	}
+	return 0
+}
 func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) uint32 {
 	if x > 1 {
 		return mc.err[e][y][x-2]

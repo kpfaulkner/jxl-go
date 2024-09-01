@@ -10,7 +10,7 @@ type WPParams struct {
 	param3c int
 	param3d int
 	param3e int
-	weight  [4]int
+	weight  [4]int64
 }
 
 func NewWPParams(reader *jxlio.Bitreader) *WPParams {
