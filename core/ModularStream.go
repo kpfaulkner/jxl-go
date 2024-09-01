@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -104,7 +105,7 @@ type ModularStream struct {
 }
 
 func NewModularStreamWithStreamIndex(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelArray []ModularChannelInfo) (*ModularStream, error) {
-	return NewModularStreamWithChannels(reader, frame, streamIndex, len(channelArray), 0, nil)
+	return NewModularStreamWithChannels(reader, frame, streamIndex, len(channelArray), 0, channelArray)
 }
 
 func NewModularStreamWithReader(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int) (*ModularStream, error) {
@@ -158,8 +159,9 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 	}
 
 	for i := 0; i < int(nbTransforms); i++ {
-		panic("TODO implement rest of transform")
+
 		if ms.transforms[i].tr == PALETTE {
+			panic("TODO implement palette transform")
 			//if ms.transforms[i].beginC < ms.nbMetaChannels {
 			//	ms.nbMetaChannels += 2 - ms.transforms[i].numC
 			//} else {
@@ -177,6 +179,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			//ms.channels = append([]ModularChannelBase{&ModularChannelInfo{width: ms.transforms[i].nbColours, height: ms.transforms[i].numC, hshift: -1, vshift: -1}}, ms.channels...)
 
 		} else if ms.transforms[i].tr == SQUEEZE {
+			panic("TODO implement squeeze transform")
 			//squeezeList := []SqueezeParam{}
 			//if len(ms.transforms[i].sp) == 0 {
 			//	first := ms.nbMetaChannels
@@ -203,13 +206,13 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			//		}
 			//	}
 
-		} else {
+		} else if ms.transforms[i].tr == RCT {
 			//squeezeList = append(squeezeList, ms.transforms[i].sp...)
+			continue
+		} else {
+			return nil, fmt.Errorf("illegal transform type %d", ms.transforms[i].tr)
 		}
-
-		panic("TODO implement rest of squeeze list")
 	}
-
 	if !useGlobalTree {
 		tree, err := NewMATreeWithReader(reader)
 		if err != nil {
