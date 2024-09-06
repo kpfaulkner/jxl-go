@@ -7,6 +7,10 @@ import (
 	"math/bits"
 )
 
+type signedInts interface {
+	int8 | int16 | int32 | int64
+}
+
 func SignedPow(base float32, exponent float32) float32 {
 	if base < 0 {
 		return -float32(math.Pow(float64(-base), float64(exponent)))
@@ -77,8 +81,64 @@ func Min[T cmp.Ordered](args ...T) T {
 	return min
 }
 
-func isNan[T comparable](arg T) bool {
+func Clamp3(v int32, a int32, b int32) int32 {
+	var lower int32
+	if a < b {
+		lower = a
+	} else {
+		lower = b
+	}
+
+	upper := lower ^ a ^ b
+	if v < lower {
+		return lower
+	}
+	if v > upper {
+		return upper
+	}
+	return v
+}
+
+func Clamp(v int32, a int32, b int32, c int32) int32 {
+	var lower int32
+	if a < b {
+		lower = a
+	} else {
+		lower = b
+	}
+	upper := lower ^ a ^ b
+	if lower < c {
+		lower = lower
+	} else {
+		lower = c
+	}
+
+	if upper > c {
+		upper = upper
+	} else {
+		upper = c
+	}
+
+	if v < lower {
+		return lower
+	}
+
+	if v > upper {
+		return upper
+	}
+
+	return v
+
+}
+func isNan[T cmp.Ordered](arg T) bool {
 	return arg != arg
+}
+
+func Abs[T signedInts](a T) T {
+	if a < 0 {
+		return -a
+	}
+	return a
 }
 
 func MatrixIdentity(i int) [][]float32 {

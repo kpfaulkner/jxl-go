@@ -5,11 +5,11 @@ import "github.com/kpfaulkner/jxl-go/jxlio"
 type WPParams struct {
 	param1  int
 	param2  int
-	param3a int
-	param3b int
-	param3c int
-	param3d int
-	param3e int
+	param3a int32
+	param3b int32
+	param3c int32
+	param3d int32
+	param3e int32
 	weight  [4]int64
 }
 
