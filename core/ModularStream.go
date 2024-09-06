@@ -290,43 +290,54 @@ func (ms *ModularStream) applyTransforms() error {
 	}
 	ms.transformed = true
 	for i := len(ms.transforms) - 1; i >= 0; i-- {
-		spa := ms.squeezeMap[i]
-		for j := len(spa) - 1; j >= 0; j-- {
-			sp := spa[j]
-			begin := sp.beginC
-			end := begin + sp.numC - 1
-			var offset int
-			if sp.inPlace {
-				offset = end + 1
-			} else {
-				offset = len(ms.channels) + begin - end - 1
-			}
-			for c := begin; c <= end; c++ {
-				r := offset + c - begin
-				ch, err := ms.getChannel(c)
-				if err != nil {
-					return err
-				}
-				residu, err := ms.getChannel(r)
-				if err != nil {
-					return err
-				}
-				var output *ModularChannel
-				if sp.horizontal {
-					outputInfo := NewModularChannelInfo(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift)
-					output = inverseHorizontalSqueeze(outputInfo, ch, residu)
+		if ms.transforms[i].tr == SQUEEZE {
+			spa := ms.squeezeMap[i]
+			for j := len(spa) - 1; j >= 0; j-- {
+				sp := spa[j]
+				begin := sp.beginC
+				end := begin + sp.numC - 1
+				var offset int
+				if sp.inPlace {
+					offset = end + 1
 				} else {
-
-					outputInfo := NewModularChannelInfo(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1)
-					output = inverseHorizontalSqueeze(outputInfo, ch, residu)
-
+					offset = len(ms.channels) + begin - end - 1
 				}
+				for c := begin; c <= end; c++ {
+					r := offset + c - begin
+					ch, err := ms.getChannel(c)
+					if err != nil {
+						return err
+					}
+					residu, err := ms.getChannel(r)
+					if err != nil {
+						return err
+					}
+					var output *ModularChannel
+					if sp.horizontal {
+						outputInfo := NewModularChannelInfo(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift)
+						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
+						if err != nil {
+							return err
+						}
+					} else {
 
+						outputInfo := NewModularChannelInfo(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1)
+						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
+						if err != nil {
+							return err
+						}
+					}
+					ms.channels[c] = output
+				}
+				for c := 0; c < end-begin+1; c++ {
+					ms.channels = append(ms.channels[:offset], ms.channels[offset+1:]...)
+				}
 			}
+		} else if ms.transforms[i].tr == RCT {
+			panic("ModularStream::applyTransforms RCT not implemented")
 		}
-
 	}
-	panic("ModularStream::applyTransforms not implemented")
+	return nil
 }
 
 func inverseHorizontalSqueeze(info *ModularChannelInfo, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {

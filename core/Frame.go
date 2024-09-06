@@ -258,6 +258,49 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
+	modularBuffer := f.lfGlobal.gModular.stream.getDecodedBuffer()
+	for c := 0; c < len(modularBuffer); c++ {
+		cIn := c
+		var scaleFactor float32
+		isModularColour := f.header.encoding == MODULAR && c < f.getColorChannelCount()
+		isModularXYB := f.globalMetadata.xybEncoded && isModularColour
+		var cOut int
+		if isModularXYB {
+			cOut = f.cMap[c]
+		} else {
+			cOut = c
+		}
+		cOut += len(f.buffer) - len(modularBuffer)
+		ecIndex := c
+		if f.header.encoding == MODULAR {
+			ecIndex -= f.globalMetadata.getColourChannelCount()
+		}
+		if isModularXYB {
+			scaleFactor = f.lfGlobal.lfDequant[cOut]
+		} else if isModularColour && f.globalMetadata.bitDepth.expBits != 0 {
+			scaleFactor = 1.0
+		} else if isModularColour {
+			// FIXME(kpfaulkner) need to check this.
+			scaleFactor = 1.0 / ^(^0 << f.globalMetadata.bitDepth.bitsPerSample)
+		}
+		if isModularXYB && cIn == 2 {
+			for y := uint32(0); y < f.height; y++ {
+				for x := uint32(0); x < f.width; x++ {
+					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+				}
+			}
+		} else {
+			for y := uint32(0); y < f.height; y++ {
+				for x := uint32(0); x < f.width; x++ {
+					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
+				}
+			}
+		}
+
+		f.invertSubsampling()
+
+	}
+
 	panic("boom")
 	// TODO(kpfaulkner)
 	return nil
@@ -439,4 +482,8 @@ func (f *Frame) decodePassGroupsORIG() error {
 	}
 
 	return nil
+}
+
+func (f *Frame) invertSubsampling() {
+
 }
