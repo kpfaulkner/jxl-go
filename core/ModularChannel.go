@@ -80,10 +80,24 @@ func (mc *ModularChannel) prediction(x int32, y int32, k int32) (int32, error) {
 		return util.Clamp3(v, n, w), nil
 	case 6:
 		return (mc.pred[y][x] + 3) >> 3, nil
-
-		panic("BOOM")
+	case 7:
+		return mc.northEast(x, y), nil
+	case 8:
+		return mc.northWest(x, y), nil
+	case 9:
+		return mc.westWest(x, y), nil
+	case 10:
+		return (mc.west(x, y) + mc.northWest(x, y)) / 2, nil
+	case 11:
+		return (mc.north(x, y) + mc.northWest(x, y)) / 2, nil
+	case 12:
+		return (mc.north(x, y) + mc.northEast(x, y)) / 2, nil
+	case 13:
+		return (6*mc.north(x, y) - 2*mc.northNorth(x, y) + 7*mc.west(x, y) +
+			mc.westWest(x, y) + mc.northEastEast(x, y) + 3*mc.northEast(x, y) + 8) / 16, nil
+	default:
+		return 0, errors.New("Illegal predictor state")
 	}
-
 }
 func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (int32, error) {
 
@@ -376,20 +390,19 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				return err
 			}
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
-			trueValue := diff + mc.prediction(x, y, leafNode.predictor)
-			diff = bits.UnpackSigned(diff)*leafNode.multiplier + leafNode.offset
-			trueValue := diff + mc.prediction(x, y, leafNode.predictor)
-			mc.set(x, y, trueValue)
+			p, err := mc.prediction(x, y, leafNode.predictor)
+			if err != nil {
+				return err
+			}
+			trueValue := diff + p
+			mc.buffer[y][x] = trueValue
 			if useWP {
 				for e := 0; e < 4; e++ {
-					mc.err[e][y][x] = int(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
+					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
 				}
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
 			}
 		}
 	}
-	mc.decoded = true
-	panic("decode not implemented")
-
 	return nil
 }
