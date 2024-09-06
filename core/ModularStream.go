@@ -102,6 +102,8 @@ type ModularStream struct {
 	distMultiplier int
 	nbMetaChannels int
 	stream         *entropy.EntropyStream
+	transformed    bool
+	squeezeMap     map[int][]SqueezeParam
 }
 
 func NewModularStreamWithStreamIndex(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelArray []ModularChannelInfo) (*ModularStream, error) {
@@ -117,6 +119,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 	ms := &ModularStream{}
 	ms.streamIndex = streamIndex
 	ms.frame = frame
+	ms.squeezeMap = make(map[int][]SqueezeParam)
 
 	if channelCount == 0 {
 		ms.tree = nil
@@ -281,7 +284,118 @@ func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) e
 }
 
 func (ms *ModularStream) applyTransforms() error {
+
+	if ms.transformed {
+		return nil
+	}
+	ms.transformed = true
+	for i := len(ms.transforms) - 1; i >= 0; i-- {
+		spa := ms.squeezeMap[i]
+		for j := len(spa) - 1; j >= 0; j-- {
+			sp := spa[j]
+			begin := sp.beginC
+			end := begin + sp.numC - 1
+			var offset int
+			if sp.inPlace {
+				offset = end + 1
+			} else {
+				offset = len(ms.channels) + begin - end - 1
+			}
+			for c := begin; c <= end; c++ {
+				r := offset + c - begin
+				ch, err := ms.getChannel(c)
+				if err != nil {
+					return err
+				}
+				residu, err := ms.getChannel(r)
+				if err != nil {
+					return err
+				}
+				var output *ModularChannel
+				if sp.horizontal {
+					outputInfo := NewModularChannelInfo(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift)
+					output = inverseHorizontalSqueeze(outputInfo, ch, residu)
+				} else {
+
+					outputInfo := NewModularChannelInfo(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1)
+					output = inverseHorizontalSqueeze(outputInfo, ch, residu)
+
+				}
+
+			}
+		}
+
+	}
 	panic("ModularStream::applyTransforms not implemented")
+}
+
+func inverseHorizontalSqueeze(info *ModularChannelInfo, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {
+
+	if info.height != orig.height+res.height ||
+		(orig.height != res.height && orig.height != 1+res.height) ||
+		info.width != orig.width || res.width != orig.width {
+		return nil, errors.New("Corrupted squeeze transform")
+	}
+	ch := NewModularChannelFromInfo(*info)
+	for y := 0; y < ch.height; y++ {
+		for x := 0; x < ch.width; x++ {
+			avg := orig.buffer[y][x]
+			residu := res.buffer[y][x]
+			var nextAvg int32
+			if y+1 < orig.height {
+				nextAvg = orig.buffer[y+1][x]
+			} else {
+				nextAvg = avg
+			}
+			var top int32
+			if y > 0 {
+				top = ch.buffer[2*y-1][x]
+			} else {
+				top = avg
+			}
+			diff := residu + tendancy(top, avg, nextAvg)
+			first := avg + diff/2
+			ch.buffer[2*y][x] = first
+			ch.buffer[2*y+1][x] = first - diff
+		}
+	}
+	if orig.height > res.height {
+		// FIXME(kpfaulkner) really check this!!!!
+		copy(ch.buffer[2*res.height:], orig.buffer[res.height:])
+		panic("UNSURE")
+	}
+
+	return ch, nil
+}
+
+func tendancy(a int32, b int32, c int32) int32 {
+	if a >= b && b >= c {
+		x := (4*a - 3*c - b + 6) / 12
+		d := 2 * (a - b)
+		e := 2 * (b - c)
+		if (x - (x & 1)) > d {
+			x = d + 1
+		}
+		if (x + (x & 1)) > e {
+			x = e
+		}
+		return x
+	}
+
+	if a <= b && b <= c {
+		x := (4*a - 3*c - b - 6) / 12
+		d := 2 * (a - b)
+		e := 2 * (b - c)
+		if (x + (x & 1)) < d {
+			x = d - 1
+		}
+		if (x - (x & 1)) < e {
+			x = e
+		}
+		return x
+	}
+
+	return 0
 }
 
 func (ms *ModularStream) getDecodedBuffer() [][][]uint32 {
@@ -291,4 +405,20 @@ func (ms *ModularStream) getDecodedBuffer() [][][]uint32 {
 		bands[i] = mi.buffer
 	}
 	return bands
+}
+
+func (ms *ModularStream) getChannel(c int) (*ModularChannel, error) {
+	cc, ok := ms.channels[c].(*ModularChannel)
+	if !ok {
+		return nil, errors.New("channel not a ModularChannel")
+	}
+	return cc, nil
+}
+
+func (ms *ModularStream) getChannelInfo(c int) (*ModularChannelInfo, error) {
+	cc, ok := ms.channels[c].(*ModularChannelInfo)
+	if !ok {
+		return nil, errors.New("channel not a ModularChannelInfo")
+	}
+	return cc, nil
 }

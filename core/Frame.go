@@ -249,7 +249,11 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 	}
 
 	err = f.decodePassGroups()
+	if err != nil {
+		return err
+	}
 
+	err = f.lfGlobal.gModular.stream.applyTransforms()
 	if err != nil {
 		return err
 	}

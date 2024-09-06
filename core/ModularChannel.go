@@ -324,6 +324,8 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 					return mc.north(x, y) - mc.northNorth(x, y), nil
 				case 14:
 					return mc.west(x, y) - mc.westWest(x, y), nil
+				case 15:
+					return maxError, nil
 				default:
 					if k-16 >= 4*channelIndex {
 						return 0, nil
