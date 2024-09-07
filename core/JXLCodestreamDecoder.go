@@ -19,8 +19,9 @@ var (
 )
 
 type JXLOptions struct {
-	debug     bool
-	parseOnly bool
+	debug           bool
+	parseOnly       bool
+	renderVarblocks bool
 }
 
 func NewJXLOptions(options *JXLOptions) *JXLOptions {
@@ -213,6 +214,27 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			err = jxl.performColourTransforms(matrix, frame)
 			if err != nil {
 				return err
+			}
+
+			if header.encoding == VARDCT && jxl.options.renderVarblocks {
+				panic("VARDCT not implemented yet")
+			}
+
+			if header.frameType == REGULAR_FRAME || header.frameType == SKIP_PROGRESSIVE {
+				found := false
+				for i := uint32(0); i < 4; i++ {
+					if util.Matrix3Equal(reference[i], canvas) && i != header.saveAsReference {
+						found = true
+						break
+					}
+				}
+				if found {
+					canvas = util.DeepCopy3[float32](canvas)
+				}
+				err = jxl.blendFrame(canvas, reference, frame)
+				if err != nil {
+					return err
+				}
 			}
 
 			// TODO(kpfaulkner)
@@ -460,4 +482,8 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 		}
 	}
 	return nil
+}
+
+func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][][][]float32, frame *Frame) error {
+	panic("boom")
 }

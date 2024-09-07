@@ -267,3 +267,43 @@ func transposeMatrixInto(src [][]float32, dest [][]float32, srcStart IntPoint, d
 		}
 	}
 }
+
+func Matrix3Equal[T comparable](a [][][]T, b [][][]T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		for j := 0; j < len(a[i]); j++ {
+			for k := 0; k < len(a[i][j]); k++ {
+				if a[i][j][k] != b[i][j][k] {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func DeepCopy3[T comparable](a [][][]T) [][][]T {
+
+	if a == nil {
+		return nil
+	}
+	matrixCopy := make([][][]T, len(a))
+	for i := 0; i < len(a); i++ {
+		if a[i] == nil {
+			continue
+		}
+		matrixCopy[i] = make([][]T, len(a[i]))
+		for j := 0; j < len(a[i]); j++ {
+			if a[i][j] == nil {
+				continue
+			}
+			matrixCopy[i][j] = make([]T, len(a[i][j]))
+			for k := 0; k < len(a[i][j]); k++ {
+				matrixCopy[i][j][k] = a[i][j][k]
+			}
+		}
+	}
+	return matrixCopy
+}
