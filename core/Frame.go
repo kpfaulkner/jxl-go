@@ -297,14 +297,26 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			}
 		}
 
-		f.invertSubsampling()
+	}
+	f.invertSubsampling()
 
+	if f.header.restorationFilter.gab {
+		f.performGabConvolution()
+	}
+
+	if f.header.restorationFilter.epfIterations > 0 {
+		f.performEdgePreservingFilter()
 	}
 
 	panic("boom")
 	// TODO(kpfaulkner)
 	return nil
 }
+
+func (f *Frame) isVisible() bool {
+	return f.header.frameType == REGULAR_FRAME || f.header.frameType == SKIP_PROGRESSIVE && (f.header.duration != 0 || f.header.isLast)
+}
+
 func (f *Frame) getColorChannelCount() int {
 	if f.globalMetadata.xybEncoded || f.header.encoding == VARDCT {
 		return 3
@@ -485,5 +497,68 @@ func (f *Frame) decodePassGroupsORIG() error {
 }
 
 func (f *Frame) invertSubsampling() {
+	for c := 0; c < 3; c++ {
+		xShift := f.header.jpegUpsampling[c].X
+		yShift := f.header.jpegUpsampling[c].Y
+		for xShift > 0 {
+			xShift--
+			oldChannel := f.buffer[c]
+			newChannel := util.MakeMatrix2D[float32](len(oldChannel), 0)
+			for y := 0; y < len(oldChannel); y++ {
+				oldRow := oldChannel[y]
+				newRow := make([]float32, len(oldRow)*2)
+				for x := 0; x < len(oldRow); x++ {
+					b75 := 0.075 * oldRow[x]
+					xx := 0
+					if x != 0 {
+						xx = x - 1
+					}
+					newRow[2*x] = b75 + 0.25*oldRow[xx]
+					xx := len(oldRow) - 1
+					if x+1 == len(oldRow) {
+						xx = x + 1
+					}
+					newRow[2*x+1] = b75 + 0.25*oldRow[xx]
+				}
+				newChannel[y] = newRow
+			}
+			f.buffer[c] = newChannel
+		}
+		for yShift > 0 {
+			yShift--
+			oldChannel := f.buffer[c]
+			newChannel := util.MakeMatrix2D[float32](len(oldChannel)*2, 0)
+			for y := 0; y < len(oldChannel); y++ {
+				oldRow := oldChannel[y]
+				xx := 0
+				if y == 0 {
+					xx = y - 1
+				}
+				oldRowPrev := oldChannel[xx]
+				xx = len(oldChannel) - 1
+				if y+1 == len(oldChannel) {
+					xx = y + 1
+				}
+				oldRowNext := oldChannel[xx]
+				firstNewRow := make([]float32, len(oldRow))
+				secondNewRow := make([]float32, len(oldRow))
+				for x := 0; x < len(oldRow); x++ {
+					b75 := 0.075 * oldRow[x]
+					firstNewRow[x] = b75 + 0.25*oldRowPrev[x]
+					secondNewRow[x] = b75 + 0.25*oldRowNext[x]
+				}
+				newChannel[2*y] = firstNewRow
+				newChannel[2*y+1] = secondNewRow
+			}
+			f.buffer[c] = newChannel
+		}
+	}
+}
 
+func (f *Frame) performGabConvolution() error {
+	panic("not implemented")
+}
+
+func (f *Frame) performEdgePreservingFilter() error {
+	panic("not implemented")
 }

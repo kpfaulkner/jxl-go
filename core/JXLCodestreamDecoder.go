@@ -169,7 +169,20 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			if err != nil {
 				return err
 			}
+
+			if header.lfLevel > 0 {
+				lfBuffer[header.lfLevel-1] = frame.buffer
+			}
+			save := (header.saveAsReference != 0 || header.duration == 0) && !header.isLast && header.frameType != LF_FRAME
+			if frame.isVisible() {
+				visibleFrames++
+				invisibleFrames = 0
+			} else {
+				invisibleFrames++
+			}
+
 			// TODO(kpfaulkner)
+			panic("not implemented yet")
 
 		}
 
