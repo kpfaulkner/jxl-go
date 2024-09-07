@@ -552,11 +552,94 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 			}
 			break
 		case BLEND_BLEND:
-			break
+			for cy := frameStart.Y; cy < frameSize.Y+frameStart.Y; cy++ {
+				for cx := frameStart.X; cx < frameSize.X+frameStart.X; cx++ {
+					var oldAlpha float32
 
+					if jxl.imageHeader.hasAlpha() {
+						oldAlpha = 1.0
+					} else {
+						if ref != nil {
+							oldAlpha = refBuffer[imageColours+int(info.alphaChannel)][cy][cx]
+						} else {
+							oldAlpha = 0.0
+						}
+					}
+					var newAlpha float32
+					if jxl.imageHeader.hasAlpha() {
+						newAlpha = 1.0
+					} else {
+						newAlpha = frame.getSample(uint32(frameColours)+info.alphaChannel, cx, cy)
+					}
+
+					if info.clamp {
+						newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
+					}
+					var alpha = float32(1.0)
+					var oldSample float32
+					if ref != nil {
+						oldSample = ref[cy][cx]
+					} else {
+						oldSample = 0.0
+					}
+					newSample := frame.getSample(uint32(frameC), cx, cy)
+					if isAlpha || !premult {
+						alpha = oldAlpha + newAlpha*(1-oldAlpha)
+					}
+					if isAlpha {
+						canvas[c][cy][cx] = alpha
+					} else if premult {
+						canvas[c][cy][cx] = newSample + oldSample*(1-newAlpha)
+					} else {
+						canvas[c][cy][cx] = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / alpha
+					}
+				}
+			}
+			break
+		case BLEND_MULADD:
+			for cy := frameStart.Y; cy < frameSize.Y+frameStart.Y; cy++ {
+				for cx := frameStart.X; cx < frameSize.X+frameStart.X; cx++ {
+					var oldAlpha float32
+					if !jxl.imageHeader.hasAlpha() {
+						oldAlpha = 1.0
+					} else {
+						if ref != nil {
+							oldAlpha = refBuffer[imageColours+int(info.alphaChannel)][cy][cx]
+						} else {
+							oldAlpha = 0.0
+						}
+					}
+					var newAlpha float32
+					if !jxl.imageHeader.hasAlpha() {
+						newAlpha = 1.0
+					} else {
+						newAlpha = frame.getSample(uint32(frameColours)+info.alphaChannel, cx, cy)
+					}
+
+					if info.clamp {
+						newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
+					}
+					var oldSample float32
+					if ref !nil {
+						oldSample = ref[cy][cx]
+					} else {
+						oldSample = 0.0
+					}
+					newSample := frame.getSample(uint32(frameC), cx, cy)
+					if isAlpha {
+						canvas[c][cy][cx] = oldAlpha
+					} else {
+						canvas[c][cy][cx] = oldSample + newSample*newAlpha
+					}
+
+				}
+			}
+			break
+		default:
+			return errors.New("Illegal blend mode")
 		}
 	}
-	panic("boom")
+	return nil
 }
 
 // FIXME(kpfaulkner) really unsure about this

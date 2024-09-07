@@ -585,6 +585,17 @@ func (f *Frame) initializeNoise(seed0 int64) error {
 	//}
 }
 
+func (f *Frame) getSample(c uint32, x uint32, y uint32) float32 {
+
+	if x < f.header.origin.X ||
+		y < f.header.origin.Y ||
+		x-f.header.origin.X >= f.width ||
+		y-f.header.origin.Y >= f.height {
+		return 0
+	}
+	return f.buffer[c][y-f.header.origin.Y][x-f.header.origin.X]
+}
+
 func (f *Frame) upsample() error {
 	var err error
 	for c := 0; c < len(f.buffer); c++ {
