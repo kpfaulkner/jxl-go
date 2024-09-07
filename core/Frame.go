@@ -599,6 +599,33 @@ func (f *Frame) upsample() error {
 	return nil
 }
 
-func (f *Frame) performUpsampling(i [][]float32, c int) ([][]float32, error) {
+func (f *Frame) performUpsampling(buffer [][]float32, c int) ([][]float32, error) {
 
+	colour := f.getColorChannelCount()
+	var k uint32
+	if c < colour {
+		k = f.header.upsampling
+	} else {
+		k = f.header.ecUpsampling[c-colour]
+	}
+	if k == 1 {
+		return buffer, nil
+	}
+
+	// FIXME(kpfaulkner) not implemented
+	panic("not implemented")
+}
+
+func (f *Frame) renderSplines() error {
+	if f.lfGlobal.splines == nil {
+		return nil
+	}
+
+	panic("renderSplines not implemented")
+}
+
+func (f *Frame) synthesizeNoise() error {
+	if f.lfGlobal.noiseParameters == nil {
+		return nil
+	}
 }

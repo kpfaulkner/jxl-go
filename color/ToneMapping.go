@@ -54,3 +54,7 @@ func NewToneMappingWithReader(reader *jxlio.Bitreader) (*ToneMapping, error) {
 	}
 	return tm, nil
 }
+
+func (tm *ToneMapping) GetIntensityTarget() float32 {
+	return tm.intensityTarget
+}

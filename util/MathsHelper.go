@@ -99,6 +99,28 @@ func Clamp3(v int32, a int32, b int32) int32 {
 	return v
 }
 
+func Clamp3Float32(v float32, a float32, b float32) float32 {
+	var lower float32
+	if a < b {
+		lower = a
+	} else {
+		lower = b
+	}
+	var upper float32
+	if a < b {
+		upper = b
+	} else {
+		upper = a
+	}
+	if v < lower {
+		return lower
+	}
+	if v > upper {
+		return upper
+	}
+	return v
+}
+
 func Clamp(v int32, a int32, b int32, c int32) int32 {
 	var lower int32
 	if a < b {

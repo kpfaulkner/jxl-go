@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -146,7 +147,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 		if !jxl.options.parseOnly {
 			canvas = util.MakeMatrix3D[float32](imageHeader.getColourChannelCount()+len(imageHeader.extraChannelInfo), int(imageHeader.size.height), int(imageHeader.size.width))
 		}
-		invisibleFrames := 0
+		invisibleFrames := int64(0)
 		visibleFrames := 0
 
 		// XXXXXXXXXXX JXLCodestreamDecoder line 337
@@ -181,11 +182,35 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 				invisibleFrames++
 			}
 
-			err = frame.initializeNoise((visibleFrames << 32) | invisibleFrames)
+			err = frame.initializeNoise(int64(visibleFrames<<32) | invisibleFrames)
 			if err != nil {
 				return err
 			}
 			err = frame.upsample()
+			if err != nil {
+				return err
+			}
+
+			if save && header.saveBeforeCT {
+				reference[header.saveAsReference] = frame.buffer
+			}
+
+			err = jxl.computePatches(reference, frame)
+			if err != nil {
+				return err
+			}
+
+			err = frame.renderSplines()
+			if err != nil {
+				return err
+			}
+
+			err = frame.synthesizeNoise()
+			if err != nil {
+				return err
+			}
+
+			err = jxl.performColourTransforms(matrix, frame)
 			if err != nil {
 				return err
 			}
@@ -263,4 +288,176 @@ func (jxl *JXLCodestreamDecoder) readSignatureAndBoxes() ([]byte, error) {
 	//}
 
 	return nil, nil
+}
+
+func (jxl *JXLCodestreamDecoder) computePatches(references [][][][]float32, frame *Frame) error {
+
+	header := frame.header
+	frameBuffer := frame.buffer
+	colourChannels := jxl.imageHeader.getColourChannelCount()
+	extraChannels := len(jxl.imageHeader.extraChannelInfo)
+	patches := frame.lfGlobal.patches
+	for i := 0; i < len(patches); i++ {
+		patch := patches[i]
+		if patch.ref > 3 {
+			return errors.New("patch out of range")
+		}
+		refBuffer := references[patch.ref]
+		if refBuffer == nil || len(refBuffer) == 0 {
+			continue
+		}
+		if patch.height+int32(patch.origin.Y) > int32(len(refBuffer[0])) || patch.width+int32(patch.origin.X) > int32(len(refBuffer[0][0])) {
+			return errors.New("patch too large")
+		}
+		for j := 0; i < len(patch.positions); j++ {
+			x0 := patch.positions[j].X
+			y0 := patch.positions[j].Y
+			if x0 < 0 || y0 < 0 {
+				return errors.New("patch size out of bounds")
+			}
+
+			if patch.height+int32(y0) > int32(header.height) || patch.width+int32(x0) > int32(header.width) {
+				return errors.New("patch size out of bounds")
+			}
+
+			for d := int32(0); d < int32(colourChannels)+int32(extraChannels); d++ {
+				var c int32
+				if d < int32(colourChannels) {
+					c = 0
+				} else {
+					c = d - int32(colourChannels) + 1
+				}
+				info := patch.blendingInfos[j][c]
+				if info.mode == 0 {
+					continue
+				}
+				var premult bool
+				if jxl.imageHeader.hasAlpha() {
+					premult = jxl.imageHeader.extraChannelInfo[info.alphaChannel].alphaAssociated
+				} else {
+					premult = true
+				}
+				isAlpha := c > 0 && jxl.imageHeader.extraChannelInfo[c-1].ecType == bundle.ALPHA
+				if info.mode > 0 && header.upsampling > 1 && c > 0 && header.ecUpsampling[c-1]<<jxl.imageHeader.extraChannelInfo[c-1].dimShift != header.upsampling {
+					return errors.New("Alpha channel upsampling mismatch during patches")
+				}
+				for y := int32(0); y < patch.height; y++ {
+					for x := int32(0); x < patch.width; x++ {
+						oldX := x + int32(x0)
+						oldY := y + int32(y0)
+						newX := x + int32(patch.origin.X)
+						newY := y + int32(patch.origin.Y)
+						oldSample := frameBuffer[d][oldY][oldX]
+						newSample := refBuffer[d][newY][newX]
+						alpha := float32(0.0)
+						newAlpha := float32(0.0)
+						oldAlpha := float32(0.0)
+						if info.mode > 3 {
+							if jxl.imageHeader.hasAlpha() {
+								oldAlpha = frameBuffer[uint32(colourChannels)+info.alphaChannel][oldY][oldX]
+							} else {
+								oldAlpha = 1.0
+							}
+							if jxl.imageHeader.hasAlpha() {
+								newAlpha = refBuffer[uint32(colourChannels)+info.alphaChannel][newY][newX]
+							} else {
+								newAlpha = 1.0
+							}
+							if info.clamp {
+								newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
+							}
+							if info.mode < 6 || !isAlpha || !premult {
+								alpha = oldAlpha + newAlpha*(1-oldAlpha)
+							}
+
+							var sample float32
+							switch info.mode {
+							case 0:
+								sample = oldSample
+								break
+							case 1:
+								sample = newSample
+								break
+							case 2:
+								sample = oldSample + newSample
+								break
+							case 3:
+								sample = oldSample * newSample
+								break
+							case 4:
+								if isAlpha {
+									sample = float32(alpha)
+								} else {
+									if premult {
+										sample = newSample + oldSample*(1-newAlpha)
+									} else {
+										sample = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / float32(alpha)
+									}
+								}
+								break
+							case 5:
+								if isAlpha {
+									sample = float32(alpha)
+								} else {
+									if premult {
+										sample = oldSample + newSample*(1-newAlpha)
+									} else {
+										sample = (oldSample*newAlpha + newSample*oldAlpha*(1-newAlpha)) / float32(alpha)
+									}
+								}
+								break
+							case 6:
+								if isAlpha {
+									sample = newAlpha
+								} else {
+									sample = oldSample + float32(alpha)*newSample
+								}
+								break
+							case 7:
+								if isAlpha {
+									sample = oldAlpha
+								} else {
+									sample = newSample + float32(alpha)*oldSample
+								}
+								break
+							default:
+								return errors.New("Challenge complete how did we get here")
+							}
+							frameBuffer[d][oldY][oldX] = sample
+						}
+					}
+				}
+
+			}
+		}
+	}
+	return nil
+}
+
+func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInverseMatrix, frame *Frame) error {
+	frameBuffer := frame.buffer
+	if matrix != nil {
+		err := matrix.InvertXYB(frameBuffer, jxl.imageHeader.toneMapping.GetIntensityTarget())
+		if err != nil {
+			return err
+		}
+	}
+
+	if frame.header.doYCbCr {
+		size, err := frame.getPaddedFrameSize()
+		if err != nil {
+			return err
+		}
+		for y := uint32(0); y < size.Y; y++ {
+			for x := uint32(0); x < size.X; x++ {
+				cb := frameBuffer[0][y][x]
+				yh := frameBuffer[1][y][x] + 0.50196078431372549019
+				cr := frameBuffer[2][y][x]
+				frameBuffer[0][y][x] = yh + 1.402*cr
+				frameBuffer[1][y][x] = yh - 0.34413628620102214650*cb - 0.71413628620102214650*cr
+				frameBuffer[2][y][x] = yh + 1.772*cb
+			}
+		}
+	}
+	return nil
 }

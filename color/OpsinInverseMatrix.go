@@ -1,6 +1,8 @@
 package color
 
 import (
+	"errors"
+
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -98,4 +100,26 @@ func (oim *OpsinInverseMatrix) GetMatrix(prim *CIEPrimaries, white *CIEXY) (*Ops
 	}
 
 	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.opsinBias, oim.quantBias, oim.quantBiasNumerator), nil
+}
+
+func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget float32) error {
+
+	if len(buffer) < 3 {
+		return errors.New("Can only XYB on 3 channels")
+	}
+	itScale := 255.0 / intensityTarget
+	for y := 0; y < len(buffer[0]); y++ {
+		for x := 0; x < len(buffer[0][y]); x++ {
+			gammaL := buffer[1][y][x] + buffer[0][y][x] - oim.cbrtOpsinBias[0]
+			gammaM := buffer[1][y][x] - buffer[0][y][x] - oim.cbrtOpsinBias[1]
+			gammaS := buffer[2][y][x] - oim.cbrtOpsinBias[2]
+			mixL := gammaL*gammaL*gammaL + oim.opsinBias[0]
+			mixM := gammaM*gammaM*gammaM + oim.opsinBias[1]
+			mixS := gammaS*gammaS*gammaS + oim.opsinBias[2]
+			for c := 0; c < 3; c++ {
+				buffer[c][y][x] = (mixL*oim.matrix[c][0] + mixM*oim.matrix[c][1] + mixS*oim.matrix[c][2]) * itScale
+			}
+		}
+	}
+	return nil
 }
