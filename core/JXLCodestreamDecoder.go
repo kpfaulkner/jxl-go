@@ -181,6 +181,10 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 				invisibleFrames++
 			}
 
+			err = frame.initializeNoise((visibleFrames << 32) | invisibleFrames)
+			if err != nil {
+				return err
+			}
 			// TODO(kpfaulkner)
 			panic("not implemented yet")
 

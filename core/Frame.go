@@ -562,3 +562,25 @@ func (f *Frame) performGabConvolution() error {
 func (f *Frame) performEdgePreservingFilter() error {
 	panic("not implemented")
 }
+
+func (f *Frame) initializeNoise(seed0 int64) error {
+	if f.lfGlobal.noiseParameters == nil || len(f.lfGlobal.noiseParameters) == 0 {
+		return nil
+	}
+	// FIXME(kpfaulkner) yet to do.
+	panic("not implemented")
+
+	//rowStride := util.CeilDiv(f.header.width, f.header.groupDim)
+	//localNoiseBuffer := util.MakeMatrix3D[float32](3, int(f.header.height), int(f.header.width))
+	//numGroups := rowStride * util.CeilDiv(f.header.height, f.header.groupDim)
+	//for group := uint32(0); group < numGroups; group++ {
+	//	groupXYUp := util.Coordinates(group, rowStride).Times(f.header.upsampling)
+	//	for iy := uint32(0); iy < f.header.upsampling; iy++ {
+	//		for ix := uint32(0); ix < f.header.upsampling; ix++ {
+	//			x0 := (groupXYUp.X + ix) * f.header.groupDim
+	//			y0 := (groupXYUp.Y + iy) * f.header.groupDim
+	//
+	//		}
+	//	}
+	//}
+}
