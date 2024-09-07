@@ -185,6 +185,11 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			if err != nil {
 				return err
 			}
+			err = frame.upsample()
+			if err != nil {
+				return err
+			}
+
 			// TODO(kpfaulkner)
 			panic("not implemented yet")
 

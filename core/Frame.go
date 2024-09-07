@@ -584,3 +584,21 @@ func (f *Frame) initializeNoise(seed0 int64) error {
 	//	}
 	//}
 }
+
+func (f *Frame) upsample() error {
+	var err error
+	for c := 0; c < len(f.buffer); c++ {
+		f.buffer[c], err = f.performUpsampling(f.buffer[c], c)
+		if err != nil {
+			return err
+		}
+	}
+	f.width = f.width * f.header.upsampling
+	f.height = f.height * f.header.upsampling
+	f.header.origin = f.header.origin.Times(f.header.upsampling)
+	return nil
+}
+
+func (f *Frame) performUpsampling(i [][]float32, c int) ([][]float32, error) {
+
+}
