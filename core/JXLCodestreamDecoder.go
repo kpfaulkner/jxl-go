@@ -485,5 +485,83 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 }
 
 func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][][][]float32, frame *Frame) error {
+
+	width := jxl.imageHeader.size.width
+	height := jxl.imageHeader.size.height
+	header := frame.header
+	frameStart := header.origin.Max(util.ZERO)
+	frameSize := util.NewIntPointWithXY(width, height).Min(header.origin.Plus(util.NewIntPointWithXY(header.width, header.height))).Minus(frameStart)
+	frameColours := frame.getColorChannelCount()
+	imageColours := jxl.imageHeader.getColourChannelCount()
+	for c := int32(0); c < int32(len(canvas)); c++ {
+		var frameC int32
+		if frameColours != imageColours {
+			if c == 0 {
+				frameC = 1
+			} else {
+				frameC = c + 2
+			}
+		} else {
+			frameC = c
+		}
+		frameBuffer := frame.buffer[frameC]
+		var info *BlendingInfo
+		if frameC < int32(frameColours) {
+			info = frame.header.blendingInfo
+		} else {
+			info = &frame.header.ecBlendingInfo[frameC-int32(frameColours)]
+		}
+		isAlpha := c >= int32(imageColours) && jxl.imageHeader.extraChannelInfo[c-int32(imageColours)].ecType == bundle.ALPHA
+		var premult bool
+		if jxl.imageHeader.hasAlpha() {
+			premult = jxl.imageHeader.extraChannelInfo[info.alphaChannel].alphaAssociated
+		} else {
+			premult = true
+		}
+		refBuffer := reference[info.source]
+		if info.mode == BLEND_REPLACE || refBuffer == nil && info.mode == BLEND_ADD {
+			jxl.copyToCanvas(canvas[c], frameStart, frameStart.Minus(header.origin), frameSize, frameBuffer)
+			continue
+		}
+		ref := refBuffer[c]
+		switch info.mode {
+		case BLEND_ADD:
+			for y := uint32(0); y < frameSize.Y; y++ {
+				cy := y + frameStart.Y
+				for x := uint32(0); x < frameSize.X; x++ {
+					cx := x + frameStart.X
+					canvas[c][cy][cx] = ref[cy][cx] + frameBuffer[y][x]
+				}
+			}
+			break
+		case BLEND_MULT:
+			for y := uint32(0); y < frameSize.Y; y++ {
+				cy := y + frameStart.Y
+				if ref != nil {
+					for x := uint32(0); x < frameSize.X; x++ {
+						cx := x + frameStart.X
+						newSample := frameBuffer[y][x]
+						if info.clamp {
+							newSample = util.Clamp3Float32(newSample, 0.0, 1.0)
+						}
+						canvas[c][cy][cx] = newSample * ref[cy][cx]
+					}
+				} else {
+					util.FillFloat32(canvas[c][cy], frameStart.X, frameSize.X, 0.0)
+				}
+			}
+			break
+		case BLEND_BLEND:
+			break
+
+		}
+	}
 	panic("boom")
+}
+
+// FIXME(kpfaulkner) really unsure about this
+func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start util.IntPoint, off util.IntPoint, size util.IntPoint, frameBuffer [][]float32) {
+	for y := uint32(0); y < size.Y; y++ {
+		copy(canvas[y+start.X][off.X:], frameBuffer[y+off.Y][off.X:off.X+size.X])
+	}
 }

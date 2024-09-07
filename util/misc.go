@@ -39,3 +39,9 @@ func MakeMatrix4D[T any](a int, b int, c int, d int) [][][][]T {
 	}
 	return matrix
 }
+
+func FillFloat32(a []float32, fromIndex uint32, toIndex uint32, val float32) {
+	for i := fromIndex; i < toIndex; i++ {
+		a[i] = val
+	}
+}
