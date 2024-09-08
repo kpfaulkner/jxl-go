@@ -1,6 +1,10 @@
 package core
 
-import "github.com/kpfaulkner/jxl-go/util"
+import (
+	"math"
+
+	"github.com/kpfaulkner/jxl-go/util"
+)
 
 type NoiseGroup struct {
 	rng *XorShiro
@@ -18,9 +22,9 @@ func NewNoiseGroupWithHeader(header *FrameHeader, seed0 int64, noiseBuffer [][][
 		for y := 0; y < int(ySize); y++ {
 			for x := 0; x < int(xSize); x++ {
 				ng.rng.fill(bits)
-				for i:=0;i<16 && x+i < int(xSize);i++ {
-					f := (bits[i] >> 9 |  0x3f_80_00_00
-					noiseBuffer[c][y0+int32(y)][x0+int32(x)+int32(i)] = IntBitsToFloat(f))
+				for i := 0; i < 16 && x+i < int(xSize); i++ {
+					f := (uint32(bits[i]) >> 9) | 0x3f_80_00_00
+					noiseBuffer[c][y0+int32(y)][x0+int32(x)+int32(i)] = math.Float32frombits(f)
 				}
 			}
 		}
