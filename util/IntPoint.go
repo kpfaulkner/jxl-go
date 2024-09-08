@@ -95,3 +95,10 @@ func (ip IntPoint) Min(p IntPoint) IntPoint {
 func (ip IntPoint) Max(p IntPoint) IntPoint {
 	return IntPoint{X: uint32(math.Max(float64(ip.X), float64(p.X))), Y: uint32(math.Max(float64(ip.Y), float64(p.Y)))}
 }
+
+func IntPointSizeOf[T comparable](a [][]T) IntPoint {
+	if len(a) == 0 {
+		return ZERO
+	}
+	return IntPoint{X: uint32(len(a[0])), Y: uint32(len(a))}
+}

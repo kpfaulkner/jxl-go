@@ -9,7 +9,6 @@ import (
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -237,18 +236,37 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 				}
 			}
 
-			// TODO(kpfaulkner)
-			panic("not implemented yet")
+			if save && !header.saveBeforeCT {
+				reference[header.saveAsReference] = canvas
+			}
 
+			if header.isLast {
+				break
+			}
 		}
 
-		fmt.Printf("XXXX %v %v %v %v %v %v\n", reference, header, lfBuffer, matrix, canvas, invisibleFrames, visibleFrames)
+		err = jxl.bitReader.ZeroPadToByte()
+		if err != nil {
+			return err
+		}
 
+		// TOOD(kpfaulkner) unsure if need to perform similar drain cache functionality here. Don't think we do.
+
+		if jxl.options.parseOnly {
+			return nil
+		}
+
+		orientation := imageHeader.orientation
+		orientedCanvas := util.MakeMatrix3D[float32](len(canvas), 0, 0)
+		for i := 0; i < len(orientedCanvas); i++ {
+			orientedCanvas[i], err = jxl.transposeBuffer(canvas[i], orientation)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
-	bits := jxl.bitReader.MustShowBits(16)
-	log.Debugf("Initial bits %016b\n", bits)
-
+	panic("make JXL image here?")
 	return nil
 }
 
@@ -620,7 +638,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 						newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
 					}
 					var oldSample float32
-					if ref !nil {
+					if ref != nil {
 						oldSample = ref[cy][cx]
 					} else {
 						oldSample = 0.0
@@ -647,4 +665,90 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start util.Int
 	for y := uint32(0); y < size.Y; y++ {
 		copy(canvas[y+start.X][off.X:], frameBuffer[y+off.Y][off.X:off.X+size.X])
 	}
+}
+
+func (jxl *JXLCodestreamDecoder) transposeBuffer(src [][]float32, orientation uint32) ([][]float32, error) {
+
+	size := util.IntPointSizeOf(src)
+	var dest [][]float32
+	if orientation > 4 {
+		dest = util.MakeMatrix2D[float32](int(size.X), int(size.Y))
+	} else if orientation > 1 {
+		dest = util.MakeMatrix2D[float32](int(size.Y), int(size.X))
+	} else {
+		dest = nil
+	}
+
+	switch orientation {
+	case 1:
+		return src, nil
+	case 2:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[p.Y][size.X-1-p.X] = src[p.X][p.Y]
+		}
+	case 3:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[size.Y-1-p.Y][size.X-1-p.X] = src[p.X][p.Y]
+		}
+	case 4:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[size.Y-1-p.Y][p.X] = src[p.X][p.Y]
+		}
+	case 5:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[p.X][p.Y] = src[p.Y][p.X]
+		}
+	case 6:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[p.X][size.Y-1-p.Y] = src[p.Y][p.X]
+		}
+	case 7:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[size.X-1-p.X][size.Y-1-p.Y] = src[p.Y][p.X]
+		}
+	case 8:
+		transposeIter := util.RangeIteratorWithIntPoint(size)
+		for {
+			p, err := transposeIter()
+			if err == io.EOF {
+				break
+			}
+			dest[size.X-1-p.X][p.Y] = src[p.Y][p.X]
+		}
+	default:
+		return nil, errors.New("Invalid orientation")
+
+	}
+
+	return nil, nil
 }
