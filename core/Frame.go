@@ -10,6 +10,10 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
+var (
+	cMap = []int{0, 2, 1}
+)
+
 type Frame struct {
 	globalMetadata   *ImageHeader
 	options          *JXLOptions
@@ -188,12 +192,13 @@ func (f *Frame) skipFrameData() error {
 // gets a bit reader for each TOC entry???
 func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
 
+	fmt.Printf("getBitreader %d\n", index)
 	if len(f.tocLengths) == 1 {
 		panic("getBitreader panic... unsure what to do")
 	}
 	permutedIndex := f.tocPermutation[index]
-	fmt.Printf("XXXX getBitreader index %d : perm %d\n", index, permutedIndex)
-	return jxlio.NewBitreader(bytes.NewReader(f.buffers[permutedIndex]), true), nil
+	fmt.Printf("XXXX getBitreader index %d : perm %d : bufLen %d\n", index, permutedIndex, len(f.buffers[permutedIndex]))
+	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), true, index), nil
 }
 
 func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
@@ -266,7 +271,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		isModularXYB := f.globalMetadata.xybEncoded && isModularColour
 		var cOut int
 		if isModularXYB {
-			cOut = f.cMap[c]
+			cOut = cMap[c]
 		} else {
 			cOut = c
 		}
@@ -281,7 +286,9 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			scaleFactor = 1.0
 		} else if isModularColour {
 			// FIXME(kpfaulkner) need to check this.
-			scaleFactor = 1.0 / ^(^0 << f.globalMetadata.bitDepth.bitsPerSample)
+			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.bitDepth.bitsPerSample))
+		} else {
+			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.extraChannelInfo[ecIndex].bitDepth.bitsPerSample))
 		}
 		if isModularXYB && cIn == 2 {
 			for y := uint32(0); y < f.height; y++ {
@@ -365,7 +372,7 @@ func (f *Frame) decodePassGroups() error {
 	passGroups := make([][]PassGroup, numPasses)
 
 	for pass := 0; pass < numPasses; pass++ {
-		for group := 4; group < int(f.numGroups); group++ {
+		for group := 0; group < int(f.numGroups); group++ {
 			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
 			if err != nil {
 				return err
@@ -384,6 +391,11 @@ func (f *Frame) decodePassGroups() error {
 				info.height = int(size.Y)
 				replaced[i] = info
 			}
+
+			if pass == 0 && group == 0 {
+				fmt.Printf("snoop\n")
+			}
+
 			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
 			if err != nil {
 				return err
@@ -514,7 +526,7 @@ func (f *Frame) invertSubsampling() {
 						xx = x - 1
 					}
 					newRow[2*x] = b75 + 0.25*oldRow[xx]
-					xx := len(oldRow) - 1
+					xx = len(oldRow) - 1
 					if x+1 == len(oldRow) {
 						xx = x + 1
 					}
@@ -639,4 +651,6 @@ func (f *Frame) synthesizeNoise() error {
 	if f.lfGlobal.noiseParameters == nil {
 		return nil
 	}
+
+	panic("synthesizeNoise not implemented")
 }

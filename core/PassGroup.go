@@ -2,12 +2,13 @@ package core
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
 type PassGroup struct {
-	modularPassGroupBuffer [][][]uint32
+	modularPassGroupBuffer [][][]int32
 	modularPassGroupInfo   []ModularChannelInfo
 	frame                  *Frame
 	groupID                uint32
@@ -26,11 +27,15 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 		pg.hfCoefficients = nil
 	}
 
+	fmt.Printf("Passgroup pass %d group %d\n", pass, group)
 	stream, err := NewModularStreamWithStreamIndex(reader, frame, int(18+3*frame.numLFGroups+frame.numGroups*pass+group), replacedChannels)
 	if err != nil {
 		return nil, err
 	}
 
+	if pass == 0 && group == 4 {
+		fmt.Printf("boom\n")
+	}
 	err = stream.decodeChannels(reader, false)
 	if err != nil {
 		return nil, err

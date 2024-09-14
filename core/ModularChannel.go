@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -99,6 +100,7 @@ func (mc *ModularChannel) prediction(x int32, y int32, k int32) (int32, error) {
 		return 0, errors.New("Illegal predictor state")
 	}
 }
+
 func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (int32, error) {
 
 	n3 := mc.north(x, y) << 3
@@ -130,7 +132,7 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		if shift < 0 {
 			shift = 0
 		}
-		mc.weight[e] = 4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift)
+		mc.weight[e] = int32(4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift))
 		wSum += mc.weight[e]
 	}
 
@@ -260,6 +262,7 @@ func (mc *ModularChannel) walkerFunc(k int32) int32 {
 func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.EntropyStream,
 	wpParams *WPParams, tree *MATree, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int) error {
 
+	fmt.Printf("decode start : bits read %d\n", reader.BitsRead())
 	if mc.decoded {
 		return nil
 	}
@@ -273,11 +276,25 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		mc.weight = make([]int32, 4)
 	}
 
+	////////////////////////////////////////////////////////////////
+	// WARNING:
+	// below when y0=0, the values being read are incorrect. This is causing
+	// Java goes from bits read from 15x476 entries to 4x493
+	// where as this cgoes does 5x476 then 5x492... and gets worse from there.
+	// FIXME(kpfaulkner)
+	///////////////////////////////////////////////////////////
 	var err error
 	for y0 := 0; y0 < mc.height; y0++ {
+		fmt.Printf("decode start : y : %d bits read %d\n", y0, reader.BitsRead())
+		if y0 == 0 {
+			fmt.Printf("snoop\n")
+		}
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
 		for x0 := 0; x0 < mc.width; x0++ {
+			if y0 == 0 && x0 == 103 && reader.BitsRead() == 476 {
+				fmt.Printf("snoop\n")
+			}
 			x := int32(x0)
 			var maxError int32
 			if useWP {
@@ -289,7 +306,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				maxError = 0
 			}
 
-			leafNode := refinedTree.walk(func(k int32) (int32, error) {
+			leafNode, err := refinedTree.walk(func(k int32) (int32, error) {
 				switch k {
 				case 0:
 					return channelIndex, nil
@@ -387,10 +404,14 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 					return 0, nil
 				}
 			})
+			if err != nil {
+				return err
+			}
 			diff, err := stream.ReadSymbolWithMultiplier(reader, int(leafNode.context), distMultiplier)
 			if err != nil {
 				return err
 			}
+			fmt.Printf("decode bits read %d\n", reader.BitsRead())
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
 			p, err := mc.prediction(x, y, leafNode.predictor)
 			if err != nil {

@@ -184,14 +184,18 @@ func (t *MATree) useWeightedPredictor() bool {
 		t.rightChildNode.useWeightedPredictor()
 }
 
-func (t *MATree) walk(walkerFunc func(inp int32) int32) *MATree {
+func (t *MATree) walk(walkerFunc func(inp int32) (int32, error)) (*MATree, error) {
 
 	if t.isLeafNode() {
-		return t
+		return t, nil
 	}
 
 	var branch *MATree
-	if walkerFunc(t.property) > t.value {
+	value, err := walkerFunc(t.property)
+	if err != nil {
+		return nil, err
+	}
+	if value > t.value {
 		branch = t.leftChildNode
 	} else {
 		branch = t.rightChildNode

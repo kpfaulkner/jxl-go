@@ -254,8 +254,10 @@ func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) e
 		}
 	}
 
+	// FIXME(kpfaulkner) issue with reading too many bits somewhere in this for loop I think.
 	groupDim := int(ms.frame.header.groupDim)
 	for i := 0; i < len(ms.channels); i++ {
+		fmt.Printf("decodeChannels bitread %d\n", reader.BitsRead())
 		channel, ok := ms.channels[i].(*ModularChannel)
 		if !ok {
 			return errors.New("tryint to get ModularChannel when one didn't exist")
@@ -264,7 +266,7 @@ func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) e
 			(channel.width > groupDim || channel.height > groupDim) {
 			break
 		}
-		err := channel.decode(reader, ms.stream, ms.wpParams, ms.tree, ms, i, ms.streamIndex, ms.distMultiplier)
+		err := channel.decode(reader, ms.stream, ms.wpParams, ms.tree, ms, int32(i), int32(ms.streamIndex), ms.distMultiplier)
 		if err != nil {
 			return err
 		}
@@ -409,8 +411,8 @@ func tendancy(a int32, b int32, c int32) int32 {
 	return 0
 }
 
-func (ms *ModularStream) getDecodedBuffer() [][][]uint32 {
-	bands := make([][][]uint32, len(ms.channels))
+func (ms *ModularStream) getDecodedBuffer() [][][]int32 {
+	bands := make([][][]int32, len(ms.channels))
 	for i := 0; i < len(bands); i++ {
 		mi := ms.channels[i].(*ModularChannel)
 		bands[i] = mi.buffer

@@ -3,12 +3,15 @@ package entropy
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
 var distPrefixTable = NewVLCTable(7, [][]int{{10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {13, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}})
+
+var count int
 
 type ANSSymbolDistribution struct {
 	SymbolDistributionBase
@@ -22,6 +25,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
 
+	fmt.Printf("ANSSymbolDistribution bitsread %d\n", reader.BitsRead())
 	trigger := false
 	if logAlphabetSize == 6 {
 		fmt.Printf("boomage\n")
@@ -134,6 +138,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		numSame := 0
 		prev := 0
 		for i := 0; i < asd.alphabetSize; i++ {
+			fmt.Printf("ANSSymbolDistribution step 1 bitsread %d\n", reader.BitsRead())
 			if x == 204998060 && i == 3 {
 				fmt.Printf("snoop\n")
 			}
@@ -162,7 +167,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 					if bitcount > int32(logCounts[i])-1 {
 						bitcount = int32(logCounts[i] - 1)
 					}
-					fmt.Printf("XXX bitcount %d : i is %d\n", bitcount, i)
+					//fmt.Printf("XXX bitcount %d : i is %d\n", bitcount, i)
 					//a := 1 << (logCounts[i] - 1)
 					//b := reader.MustReadBits(bitcount) << (logCounts[i] - 1 - int(bitcount))
 					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-int(bitcount)))
@@ -232,35 +237,77 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int) {
 }
 
 func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *ANSState) (int, error) {
-	var state int
+	var state int32
 	var err error
+	count++
+	if count > 267063 {
+		os.Exit(1)
+	}
+	if count == 267062 {
+		fmt.Printf("snoop\n")
+	}
+
 	if stateObj.HasState() {
+
 		state, err = stateObj.GetState()
 		if err != nil {
 			return 0, err
 		}
+		//fmt.Printf("hasState %d\n", state)
+		if state == 956007366 {
+			fmt.Printf("COUNT for target state is %d\n", count)
+		}
 	} else {
-		state = int(reader.MustReadBits(32))
+		state = int32(reader.MustReadBits(32))
+		//fmt.Printf("NOT hasState %d\n", state)
+	}
+	//fmt.Printf("state is now %d\n", state)
+	origState := state
+
+	if origState == 98963606 {
+		fmt.Printf("snoop\n")
 	}
 
 	index := state & 0xFFF
 	i := uint32(index) >> asd.logBucketSize
-	pos := index & (1<<asd.logBucketSize - 1)
-	greater := pos >= asd.cutoffs[i]
+	pos := index & ((1 << asd.logBucketSize) - 1)
+	greater := pos >= int32(asd.cutoffs[i])
 	var symbol int
 	var offset int
 	if greater {
 		symbol = asd.symbols[i]
-		offset = asd.offsets[i] + pos
+		offset = asd.offsets[i] + int(pos)
 	} else {
 		symbol = int(i)
-		offset = pos
+		offset = int(pos)
 	}
 
-	state = asd.frequencies[symbol]*int(uint32(state)>>12) + offset
-	if state&0xFFFF0000 == 0 {
-		state = state<<16 | int(reader.MustReadBits(16))
+	if symbol == 0 && pos == 6 && offset == 488 {
+		fmt.Printf("snoop %d\n", origState)
 	}
-	stateObj.SetState(state)
+
+	state = int32(asd.frequencies[symbol])*int32(uint32(state)>>12) + int32(offset)
+	if uint32(state)&0xFFFF0000 == 0 {
+		if state == 6634 {
+			fmt.Printf("snoop\n")
+		}
+		//x := reader.MustShowBits(16)
+		//fmt.Printf("XXX show bits %x\n", x)
+		state = (state << 16) | int32(reader.MustReadBits(16))
+
+	}
+
+	if state == 496208888 {
+		fmt.Printf("snoop\n")
+	}
+	if state == 10437574 {
+		fmt.Printf("snoop\n")
+	}
+
+	if state == 98963606 {
+		fmt.Printf("snoop\n")
+	}
+
+	stateObj.SetState(int32(state))
 	return symbol, nil
 }

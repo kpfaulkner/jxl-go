@@ -30,15 +30,15 @@ func NewWPParams(reader *jxlio.Bitreader) *WPParams {
 	} else {
 		wp.param1 = int(reader.MustReadBits(5))
 		wp.param2 = int(reader.MustReadBits(5))
-		wp.param3a = int(reader.MustReadBits(5))
-		wp.param3b = int(reader.MustReadBits(5))
-		wp.param3c = int(reader.MustReadBits(5))
-		wp.param3d = int(reader.MustReadBits(5))
-		wp.param3e = int(reader.MustReadBits(5))
-		wp.weight[0] = int(reader.MustReadBits(4))
-		wp.weight[1] = int(reader.MustReadBits(4))
-		wp.weight[2] = int(reader.MustReadBits(4))
-		wp.weight[3] = int(reader.MustReadBits(4))
+		wp.param3a = int32(reader.MustReadBits(5))
+		wp.param3b = int32(reader.MustReadBits(5))
+		wp.param3c = int32(reader.MustReadBits(5))
+		wp.param3d = int32(reader.MustReadBits(5))
+		wp.param3e = int32(reader.MustReadBits(5))
+		wp.weight[0] = int64(reader.MustReadBits(4))
+		wp.weight[1] = int64(reader.MustReadBits(4))
+		wp.weight[2] = int64(reader.MustReadBits(4))
+		wp.weight[3] = int64(reader.MustReadBits(4))
 	}
 
 	return &wp

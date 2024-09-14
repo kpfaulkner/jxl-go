@@ -119,7 +119,7 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 			es.dists[i] = d
 		}
 		x = reader.MustShowBits(32)
-		fmt.Printf("XXXXX %d\n", int32(x))
+		//fmt.Printf("XXXXX %d\n", int32(x))
 		if x == 172542 {
 			fmt.Printf("snoop\n")
 		}

@@ -15,6 +15,15 @@ type Bitreader struct {
 
 	index       uint8
 	currentByte uint8
+	tempIndex   int
+	bitsRead    uint64
+}
+
+func NewBitreaderWithIndex(in io.ReadSeeker, le bool, index int) *Bitreader {
+
+	br := NewBitreader(in, le)
+	br.tempIndex = index
+	return br
 }
 
 func NewBitreader(in io.ReadSeeker, le bool) *Bitreader {
@@ -90,6 +99,8 @@ func (br *Bitreader) readBit() (uint8, error) {
 		v = (br.currentByte & (1 << (7 - br.index))) != 0
 	}
 	br.index = (br.index + 1) % 8
+
+	br.bitsRead++
 	if v {
 		return 1, nil
 	} else {
@@ -330,6 +341,7 @@ func (br *Bitreader) MustShowBits(bits int) int {
 	if err != nil {
 		panic("unable to show bits")
 	}
+	br.bitsRead -= uint64(bits)
 	return b
 }
 
@@ -448,6 +460,10 @@ func (br *Bitreader) ZeroPadToByte() error {
 		}
 	}
 	return nil
+}
+
+func (br *Bitreader) BitsRead() uint64 {
+	return br.bitsRead
 }
 
 // JPEGXL spec states unpackedsigned is

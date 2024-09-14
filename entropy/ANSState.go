@@ -3,7 +3,7 @@ package entropy
 import "errors"
 
 type ANSState struct {
-	state    int
+	state    int32
 	hasState bool
 }
 
@@ -12,7 +12,7 @@ func NewANSState() (rcvr *ANSState) {
 	rcvr.hasState = false
 	return
 }
-func (rcvr *ANSState) GetState() (int, error) {
+func (rcvr *ANSState) GetState() (int32, error) {
 	if rcvr.hasState {
 		return rcvr.state, nil
 	}
@@ -26,7 +26,7 @@ func (rcvr *ANSState) HasState() bool {
 func (rcvr *ANSState) Reset() {
 	rcvr.hasState = false
 }
-func (rcvr *ANSState) SetState(state int) {
+func (rcvr *ANSState) SetState(state int32) {
 
 	rcvr.state = state
 	rcvr.hasState = true
