@@ -76,7 +76,7 @@ func NewMATreeWithReader(reader *jxlio.Bitreader) (*MATree, error) {
 				return nil, errors.New("invalid predictor value")
 			}
 
-			offset := int32(jxlio.UnpackSigned(uint32(stream.TryReadSymbol(reader, 3))))
+			offset := jxlio.UnpackSigned(uint32(stream.TryReadSymbol(reader, 3)))
 
 			var mulLog int32
 			if mulLog, err = stream.ReadSymbol(reader, 4); err != nil {

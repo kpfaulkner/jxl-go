@@ -113,18 +113,24 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	tNE := mc.errorNorthEast(x, y, 4)
 	tNW := mc.errorNorthWest(x, y, 4)
 	mc.subpred[0] = w3 + ne3 - n3
-	mc.subpred[1] = n3 - int32((uint32(tW+tN+tNE)*uint32(wpParams.param1))>>5)
-	mc.subpred[2] = w3 - int32((uint32(tW+tN+tNW)*uint32(wpParams.param2))>>5)
-	mc.subpred[3] = n3 - int32((tNW*wpParams.param3a+
-		tN*wpParams.param3b+
-		tNE*wpParams.param3c+
-		(nn3-n3)*wpParams.param3d+
-		(nw3-w3)*wpParams.param3e)>>5)
+	mc.subpred[1] = n3 - ((tW+tN+tNE)*(int32(wpParams.param1)))>>5
+	mc.subpred[2] = w3 - ((tW+tN+tNW)*(int32(wpParams.param2)))>>5
+	mc.subpred[3] = n3 - ((tNW*wpParams.param3a +
+		tN*wpParams.param3b +
+		tNE*wpParams.param3c +
+		(nn3-n3)*wpParams.param3d +
+		(nw3-w3)*wpParams.param3e) >> 5)
 
 	wSum := int32(0)
 	for e := int32(0); e < 4; e++ {
-		eSum := mc.errorNorth(x, y, e) + mc.errorWest(x, y, e) + mc.errorNorthWest(x, y, e) +
-			mc.errorWestWest(x, y, e) + mc.errorNorthEast(x, y, e)
+		//eSum := mc.errorNorth(x, y, e) + mc.errorWest(x, y, e) + mc.errorNorthWest(x, y, e) +
+		//	mc.errorWestWest(x, y, e) + mc.errorNorthEast(x, y, e)
+		en := mc.errorNorth(x, y, e)
+		ew := mc.errorWest(x, y, e)
+		enw := mc.errorNorthWest(x, y, e)
+		eww := mc.errorWestWest(x, y, e)
+		ene := mc.errorNorthEast(x, y, e)
+		eSum := en + ew + enw + eww + ene
 		if x+1 == int32(mc.width) {
 			eSum += mc.errorWest(x, y, e)
 		}
@@ -292,6 +298,17 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
 		for x0 := 0; x0 < mc.width; x0++ {
+			if y0 == 0 && x0 == 1 {
+
+				fmt.Printf("snoop\n")
+			}
+			if y0 == 0 && x0 == 2 {
+				// weight goes wrong.
+				fmt.Printf("snoop\n")
+			}
+			if y0 == 0 && x0 == 20 {
+				fmt.Printf("snoop\n")
+			}
 			if y0 == 0 && x0 == 103 && reader.BitsRead() == 476 {
 				fmt.Printf("snoop\n")
 			}
@@ -363,10 +380,13 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 						}
 						rC := channel.buffer[y][x]
 						if k2 == k {
+
+							k2++
 							return util.Abs(rC), nil
 						}
 						k2++
 						if k2 == k {
+							k2++
 							return rC, nil
 						}
 						k2++
@@ -392,10 +412,13 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 						}
 						rG = rC - util.Clamp3(rW+rN-rNW, rN, rW)
 						if k2 == k {
+
+							k2++
 							return util.Abs(rG), nil
 						}
 						k2++
 						if k2 == k {
+							k2++
 							return rG, nil
 						}
 						k2++
@@ -412,6 +435,9 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				return err
 			}
 			fmt.Printf("decode bits read %d\n", reader.BitsRead())
+			if reader.BitsRead() == 832 {
+				fmt.Printf("snoop\n")
+			}
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
 			p, err := mc.prediction(x, y, leafNode.predictor)
 			if err != nil {
@@ -421,6 +447,9 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			mc.buffer[y][x] = trueValue
 			if useWP {
 				for e := 0; e < 4; e++ {
+					if e == 1 && y == 0 && x == 1 {
+						fmt.Printf("snoop\n")
+					}
 					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
 				}
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
