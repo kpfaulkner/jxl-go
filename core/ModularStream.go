@@ -14,6 +14,12 @@ const (
 	SQUEEZE = 2
 )
 
+var (
+	permutationLUT = [][]int{
+		{0, 1, 2}, {1, 2, 0}, {2, 0, 1},
+		{0, 2, 1}, {1, 0, 2}, {2, 1, 0}}
+)
+
 type SqueezeParam struct {
 	horizontal bool
 	inPlace    bool
@@ -287,6 +293,7 @@ func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) e
 
 func (ms *ModularStream) applyTransforms() error {
 
+	// HERE  20240921
 	if ms.transformed {
 		return nil
 	}
@@ -336,7 +343,91 @@ func (ms *ModularStream) applyTransforms() error {
 				}
 			}
 		} else if ms.transforms[i].tr == RCT {
-			panic("ModularStream::applyTransforms RCT not implemented")
+
+			// HERE... need to implement
+			permutation := ms.transforms[i].rctType / 7
+			transType := ms.transforms[i].rctType % 7
+			v := [3]*ModularChannel{}
+			start := ms.transforms[i].beginC
+			var err error
+			for j := 0; j < 3; j++ {
+				v[j], err = ms.getChannel(start + j)
+				if err != nil {
+					return err
+				}
+			}
+			var rct func(int32, int32) error
+			switch transType {
+			case 0:
+				rct = func(x int32, y int32) error {
+					return nil
+				}
+				break
+
+			case 1:
+				rct = func(x int32, y int32) error {
+					v[2].buffer[y][x] += v[0].buffer[y][x]
+					return nil
+				}
+			case 2:
+				rct = func(x int32, y int32) error {
+					v[1].buffer[y][x] += v[0].buffer[y][x]
+					return nil
+				}
+				break
+			case 3:
+				rct = func(x int32, y int32) error {
+					a := v[0].buffer[y][x]
+					v[2].buffer[y][x] += a
+					v[1].buffer[y][x] += a
+					return nil
+				}
+				break
+			case 4:
+				rct = func(x int32, y int32) error {
+					v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1
+					return nil
+				}
+				break
+			case 5:
+				rct = func(x int32, y int32) error {
+					a := v[0].buffer[y][x]
+					ac := a + v[2].buffer[y][x]
+					v[1].buffer[y][x] += (a + ac) >> 1
+					v[2].buffer[y][x] = ac
+					return nil
+				}
+				break
+			case 6:
+				rct = func(x int32, y int32) error {
+					b := v[1].buffer[y][x]
+					c := v[2].buffer[y][x]
+					tmp := v[0].buffer[y][x] - (c >> 1)
+					f := tmp - (b >> 1)
+					v[0].buffer[y][x] = f + b
+					v[1].buffer[y][x] = c + tmp
+					v[2].buffer[y][x] = f
+					return nil
+				}
+				break
+			default:
+				return errors.New("illegal RCT type")
+			}
+
+			for y := 0; y < v[0].height; y++ {
+				for x := 0; x < v[0].width; x++ {
+					err = rct(int32(x), int32(y))
+					if err != nil {
+						return err
+					}
+				}
+			}
+
+			for j := 0; j < 3; j++ {
+				ms.channels[start+permutationLUT[permutation][j]] = v[j]
+			}
+		} else if ms.transforms[i].tr == PALETTE {
+			panic("ModularStream::applyTransforms PALETTE not implemented")
 		}
 	}
 	return nil

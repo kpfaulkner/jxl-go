@@ -105,7 +105,7 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 
 	n3 := mc.north(x, y) << 3
 	nw3 := mc.northWest(x, y) << 3
-	ne3 := mc.northEastEast(x, y) << 3
+	ne3 := mc.northEast(x, y) << 3
 	w3 := mc.west(x, y) << 3
 	nn3 := mc.northNorth(x, y) << 3
 	tN := mc.errorNorth(x, y, 4)
@@ -174,88 +174,103 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 // Could try and use IfThenElse but that gets messy quickly. Prefer some simple 'if' statements.
 func (mc *ModularChannel) west(x int32, y int32) int32 {
 	if x > 0 {
-		return mc.buffer[y][x-1]
+		a := mc.buffer[y][x-1]
+		return a
 	}
 	if y > 0 {
-		return mc.buffer[y-1][x]
+		a := mc.buffer[y-1][x]
+		return a
 	}
 	return 0
 }
 
 func (mc *ModularChannel) north(x int32, y int32) int32 {
 	if y > 0 {
-		return mc.buffer[y-1][x]
+		a := mc.buffer[y-1][x]
+		return a
 	}
 	if x > 0 {
-		return mc.buffer[y][x-1]
+		a := mc.buffer[y][x-1]
+		return a
 	}
 	return 0
 }
 
 func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 	if x > 0 && y > 0 {
-		return mc.buffer[y-1][x-1]
+
+		a := mc.buffer[y-1][x-1]
+		return a
 	}
 	return mc.west(x, y)
 }
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
 	if x+1 < int32(mc.width) && y > 0 {
-		return mc.buffer[y-1][x+1]
+		a := mc.buffer[y-1][x+1]
+		return a
 	}
 	return mc.north(x, y)
 }
 
 func (mc *ModularChannel) northNorth(x int32, y int32) int32 {
 	if y > 1 {
-		return mc.buffer[y-2][x]
+		a := mc.buffer[y-2][x]
+		return a
 	}
 	return mc.north(x, y)
 }
 
 func (mc *ModularChannel) northEastEast(x int32, y int32) int32 {
 	if x+2 < int32(mc.width) && y > 0 {
-		return mc.buffer[y-1][x+2]
+		a := mc.buffer[y-1][x+2]
+		return a
 	}
 	return mc.northEast(x, y)
 }
 
 func (mc *ModularChannel) westWest(x int32, y int32) int32 {
 	if x > 1 {
-		return mc.buffer[y][x-2]
+		a := mc.buffer[y][x-2]
+		return a
 	}
 	return mc.west(x, y)
 }
 
 func (mc *ModularChannel) errorNorth(x int32, y int32, e int32) int32 {
 	if y > 0 {
-		return mc.err[e][y-1][x]
+		a := mc.err[e][y-1][x]
+		return a
 	}
 	return 0
 }
 func (mc *ModularChannel) errorWest(x int32, y int32, e int32) int32 {
 	if x > 0 {
-		return mc.err[e][y][x-1]
+		a := mc.err[e][y][x-1]
+		return a
 	}
 	return 0
 }
 func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
 	if x > 1 {
-		return mc.err[e][y][x-2]
+		a := mc.err[e][y][x-2]
+		return a
 	}
 	return 0
 }
 
 func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 	if x > 0 && y > 0 {
-		return mc.err[e][y-1][x-1]
+		a := mc.err[e][y-1][x-1]
+		return a
 	}
 	return mc.errorNorth(x, y, e)
 }
 
 func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
 	if x+1 < int32(mc.width) && y > 0 {
-		return mc.err[e][y-1][x+1]
+		a := mc.err[e][y-1][x+1]
+		return a
 	}
 
 	return mc.errorNorth(x, y, e)
@@ -291,14 +306,16 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	///////////////////////////////////////////////////////////
 	var err error
 	for y0 := 0; y0 < mc.height; y0++ {
-		fmt.Printf("decode start : y : %d bits read %d\n", y0, reader.BitsRead())
+		//fmt.Printf("decode start : y : %d bits read %d\n", y0, reader.BitsRead())
 		if y0 == 0 {
 			fmt.Printf("snoop\n")
 		}
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
+
+		//fmt.Printf("refinedTree size %d\n", refinedTree.getSize())
 		for x0 := 0; x0 < mc.width; x0++ {
-			if y0 == 0 && x0 == 1 {
+			if y0 == 1 && x0 == 1 {
 
 				fmt.Printf("snoop\n")
 			}
@@ -324,6 +341,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			}
 
 			leafNode, err := refinedTree.walk(func(k int32) (int32, error) {
+				//fmt.Printf("walk %d\n", k)
 				switch k {
 				case 0:
 					return channelIndex, nil
@@ -430,12 +448,21 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			if err != nil {
 				return err
 			}
+
+			if x0 == 106 && y0 == 192 {
+				fmt.Printf("snoop\n")
+			}
+
+			if y0 == 192 {
+				fmt.Printf("coord %d:%d context %d : bits reads %d\n", x0, y0, leafNode.context, reader.BitsRead())
+			}
 			diff, err := stream.ReadSymbolWithMultiplier(reader, int(leafNode.context), distMultiplier)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("decode bits read %d\n", reader.BitsRead())
-			if reader.BitsRead() == 832 {
+			//fmt.Printf("decode bits read %d\n", reader.BitsRead())
+
+			if reader.BitsRead() == 800 {
 				fmt.Printf("snoop\n")
 			}
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
@@ -453,6 +480,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
 				}
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
+				fmt.Printf("err reader %d : X=%d:Y=%d : %d : %d : %d : %d : %d\n", reader.BitsRead(), x, y, mc.err[0][y][x], mc.err[1][y][x], mc.err[2][y][x], mc.err[3][y][x], mc.err[4][y][x])
 			}
 		}
 	}

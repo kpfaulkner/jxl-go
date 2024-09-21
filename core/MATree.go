@@ -2,6 +2,8 @@ package core
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -201,4 +203,28 @@ func (t *MATree) walk(walkerFunc func(inp int32) (int32, error)) (*MATree, error
 		branch = t.rightChildNode
 	}
 	return branch.walk(walkerFunc)
+}
+
+func (t *MATree) getSize() int {
+	size := 1
+	if !t.isLeafNode() {
+		size += t.leftChildNode.getSize()
+		size += t.rightChildNode.getSize()
+	}
+	return size
+}
+
+// Prints the tree to the console. Used for comparing implementations
+func DisplayTree(node *MATree, depth int) {
+	fmt.Printf(" %s : property %d, context %d, value %d\n", strings.Repeat(" ", depth), node.property, node.context, node.value)
+
+	//if node.leftChildNode != nil {
+	if !node.leftChildNode.isLeafNode() {
+		DisplayTree(node.leftChildNode, depth+1)
+	}
+	//if node.rightChildNode != nil {
+	if !node.rightChildNode.isLeafNode() {
+		DisplayTree(node.rightChildNode, depth+1)
+	}
+	return
 }

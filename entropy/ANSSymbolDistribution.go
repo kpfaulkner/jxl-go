@@ -138,7 +138,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		numSame := 0
 		prev := 0
 		for i := 0; i < asd.alphabetSize; i++ {
-			fmt.Printf("ANSSymbolDistribution step 1 bitsread %d\n", reader.BitsRead())
+			//fmt.Printf("ANSSymbolDistribution step 1 bitsread %d\n", reader.BitsRead())
 			if x == 204998060 && i == 3 {
 				fmt.Printf("snoop\n")
 			}

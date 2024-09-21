@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"image"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -367,42 +368,54 @@ func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 	return nil
 }
 
+// JXLatte seems to break the processing (somehow?  thread race condition?) into group 0->22
+// then 23 onwards. So going to do the same just to make it easier to compare outputs.
 func (f *Frame) decodePassGroups() error {
 	numPasses := len(f.passes)
 	passGroups := make([][]PassGroup, numPasses)
 
-	for pass := 0; pass < numPasses; pass++ {
-		for group := 0; group < int(f.numGroups); group++ {
-			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
-			if err != nil {
-				return err
-			}
-			replaced := f.passes[pass].replacedChannels
-			for i := 0; i < len(replaced); i++ {
-				info := replaced[i]
-				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-				rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
-				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
-				info.origin = pos
-				size := passGroupSize.Min(chanSize.Minus(info.origin))
-				info.width = int(size.X)
-				info.height = int(size.Y)
-				replaced[i] = info
-			}
+	for pass := 0; pass < 1; pass++ {
+		//groupStartStop := []image.Point{{0, 22}, {23, int(f.numGroups)}}
+		//groupStartStop := []image.Point{{23, int(f.numGroups)}}
+		groupStartStop := []image.Point{{0, 1}}
+		for _, p := range groupStartStop {
+			for group := p.X; group < p.Y; group++ {
+				//for group := 22; group < int(f.numGroups); group++ {
+				br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
+				if err != nil {
+					return err
+				}
+				replaced := f.passes[pass].replacedChannels
+				for i := 0; i < len(replaced); i++ {
+					info := replaced[i]
+					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+					passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+					rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
+					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+					chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
+					info.origin = pos
+					size := passGroupSize.Min(chanSize.Minus(info.origin))
+					info.width = int(size.X)
+					info.height = int(size.Y)
+					replaced[i] = info
+				}
 
-			if pass == 0 && group == 0 {
-				fmt.Printf("snoop\n")
-			}
+				if pass == 0 && group == 0 {
+					fmt.Printf("snoop\n")
+				}
 
-			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
-			if err != nil {
-				return err
+				if group == 22 {
+					fmt.Printf("snoop\n")
+				}
+
+				pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
+				if err != nil {
+					return err
+				}
+				//f.passes[pass].replacedChannels = replaced
+				passGroups[pass][group] = *pg
+				fmt.Printf("%v\n", br)
 			}
-			//f.passes[pass].replacedChannels = replaced
-			passGroups[pass][group] = *pg
-			fmt.Printf("%v\n", br)
 		}
 	}
 

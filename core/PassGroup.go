@@ -44,12 +44,12 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 	pg.modularPassGroupBuffer = stream.getDecodedBuffer()
 	pg.modularPassGroupInfo = make([]ModularChannelInfo, len(pg.modularPassGroupBuffer))
 	for c := 0; c < len(pg.modularPassGroupBuffer); c++ {
-		ci, ok := stream.channels[c].(*ModularChannelInfo)
+		ci, ok := stream.channels[c].(*ModularChannel)
 		if !ok {
 			return nil, errors.New("ModularChannelInfo not found")
 		}
 
-		pg.modularPassGroupInfo[c] = *ci
+		pg.modularPassGroupInfo[c] = *NewModularChannelInfoFromInfo(ci.ModularChannelInfo)
 	}
 
 	return pg, nil
