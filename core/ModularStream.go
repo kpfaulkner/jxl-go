@@ -494,24 +494,7 @@ func tendancy(a int32, b int32, c int32) int32 {
 func (ms *ModularStream) getDecodedBuffer() [][][]int32 {
 	bands := make([][][]int32, len(ms.channels))
 	for i := 0; i < len(bands); i++ {
-		mi := ms.channels[i].(*ModularChannel)
-		bands[i] = mi.buffer
+		bands[i] = ms.channels[i].buffer
 	}
 	return bands
-}
-
-func (ms *ModularStream) getChannel(c int) (*ModularChannel, error) {
-	cc, ok := ms.channels[c].(*ModularChannel)
-	if !ok {
-		return nil, errors.New("channel not a ModularChannel")
-	}
-	return cc, nil
-}
-
-func (ms *ModularStream) getChannelInfo(c int) (*ModularChannelInfo, error) {
-	cc, ok := ms.channels[c].(*ModularChannelInfo)
-	if !ok {
-		return nil, errors.New("channel not a ModularChannelInfo")
-	}
-	return cc, nil
 }

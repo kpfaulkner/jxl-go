@@ -21,6 +21,7 @@ type Frame struct {
 	header           *FrameHeader
 	width            uint32
 	height           uint32
+	bounds           Rectangle
 	groupRowStride   uint32
 	lfGroupRowStride uint32
 	numGroups        uint32
@@ -29,6 +30,7 @@ type Frame struct {
 	tocPermutation   []uint32
 	tocLengths       []uint32
 
+	lfGroups []*LFGroup
 	// unsure about this
 	buffers    [][]uint8
 	decoded    bool
@@ -225,10 +227,12 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 	f.buffer = make([][][]float32, f.getColorChannelCount()+len(f.globalMetadata.extraChannelInfo))
 	for c := 0; c < len(f.buffer); c++ {
 		if c < 3 && c < f.getColorChannelCount() {
-			shiftedSize := paddedSize.ShiftRightWithIntPoint(f.header.jpegUpsampling[c])
-			f.buffer[c] = util.MakeMatrix2D[float32](int(shiftedSize.Y), int(shiftedSize.X))
+			//shiftedSize := paddedSize.ShiftRightWithIntPoint(f.header.jpegUpsampling[c])
+			shiftedHeight := paddedSize.height >> f.header.jpegUpsamplingY[c]
+			shiftedWidth := paddedSize.width >> f.header.jpegUpsamplingX[c]
+			f.buffer[c] = util.MakeMatrix2D[float32](int(shiftedHeight), int(shiftedWidth))
 		} else {
-			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.Y), int(paddedSize.X))
+			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.height), int(paddedSize.width))
 		}
 	}
 
@@ -331,19 +335,81 @@ func (f *Frame) getColorChannelCount() int {
 	return f.globalMetadata.getColourChannelCount()
 }
 
-// FIXME(kpfaulkner) look at latest JXLatte.
 func (f *Frame) getPaddedFrameSize() (Dimension, error) {
 
-	factorY := 1 << util.Max(f.header.jpegUpsampling)
+	factorY := 1 << util.Max(f.header.jpegUpsamplingY...)
+	factorX := 1 << util.Max(f.header.jpegUpsamplingX...)
+	var width uint32
+	var height uint32
+	if f.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	} else {
+		width = f.bounds.size.width
+		height = f.bounds.size.height
+	}
 
+	height = util.CeilDiv(uint32(height), factorY)
+	width = util.CeilDiv(uint32(width), factorX)
+	if f.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	} else {
+		return Dimension{
+			width:  width * factorX,
+			height: height * factorY,
+		}, nil
+	}
 }
 
 func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 
-	//lfReplacementChannels := []ModularChannelInfo{}
-	//lfReplacementCHannelIndicies := []int{}
+	// HERE 20240922
 
-	//for i:=0;i<f.lfGlobal.gModular.
+	lfReplacementChannels := []*ModularChannel{}
+	lfReplacementChannelIndicies := []int{}
+
+	for i := 0; i < len(f.lfGlobal.gModular.stream.channels); i++ {
+		ch := f.lfGlobal.gModular.stream.channels[i]
+		if !ch.decoded {
+			if ch.hshift >= 3 && ch.vshift >= 3 {
+				lfReplacementChannelIndicies = append(lfReplacementChannelIndicies, i)
+				height := f.header.lfGroupDim >> ch.vshift
+				width := f.header.lfGroupDim >> ch.hshift
+				lfReplacementChannels = append(lfReplacementChannels, NewModularChannelWithAllParams(height, width, ch.hshift, ch.vshift, false))
+			}
+		}
+	}
+
+	f.lfGroups = make([]*LFGroup, f.numLFGroups)
+
+	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
+		reader, err := f.getBitreader(1 + int(lfGroupID))
+		if err != nil {
+			return err
+		}
+
+		lfGroupPos := f.getLFGroupLocation(int32(lfGroupID))
+		replaced := make([]*ModularChannel, len(lfReplacementChannels))
+		for _, r := range lfReplacementChannels {
+			replaced = append(replaced, NewModularChannelFromChannel(*r))
+		}
+		frameSize, err := f.getPaddedFrameSize()
+		if err != nil {
+			return err
+		}
+		for i, info := range replaced {
+			lfHeight := frameSize.height >> info.vshift
+			lfWidth := frameSize.width >> info.hshift
+			info.origin.Y = uint32(lfGroupPos.Y) * info.size.height
+			info.origin.X = uint32(lfGroupPos.X) * info.size.width
+			info.size.height = util.Min(info.size.height, lfHeight-info.origin.Y)
+			info.size.width = util.Min(info.size.width, lfWidth-info.origin.X)
+			replaced[i] = info
+		}
+		f.lfGroups[lfGroupID], err = NewLFGroup(reader, f, int32(lfGroupID), replaced, lfBuffer)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

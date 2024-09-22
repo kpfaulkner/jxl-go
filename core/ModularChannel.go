@@ -70,17 +70,16 @@ func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
 	return mc
 }
 
-func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vshift int32, origin util.IntPoint, forceWP bool) *ModularChannel {
+func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vshift int32, forceWP bool) *ModularChannel {
 	mc := &ModularChannel{
 		width:   width,
 		height:  height,
 		hshift:  hshift,
 		vshift:  vshift,
-		origin:  origin,
 		forceWP: forceWP,
 		size: Dimension{
-			width:  width,
-			height: height,
+			width:  uint32(width),
+			height: uint32(height),
 		},
 	}
 
