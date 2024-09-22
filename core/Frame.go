@@ -348,21 +348,19 @@ func (f *Frame) getPaddedFrameSize() (Dimension, error) {
 		height = f.bounds.size.height
 	}
 
-	height = util.CeilDiv(uint32(height), factorY)
-	width = util.CeilDiv(uint32(width), factorX)
+	height = util.CeilDiv(height, uint32(factorY))
+	width = util.CeilDiv(width, uint32(factorX))
 	if f.header.encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		return Dimension{
-			width:  width * factorX,
-			height: height * factorY,
+			width:  width * uint32(factorX),
+			height: height * uint32(factorY),
 		}, nil
 	}
 }
 
 func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
-
-	// HERE 20240922
 
 	lfReplacementChannels := []*ModularChannel{}
 	lfReplacementChannelIndicies := []int{}
@@ -374,7 +372,7 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 				lfReplacementChannelIndicies = append(lfReplacementChannelIndicies, i)
 				height := f.header.lfGroupDim >> ch.vshift
 				width := f.header.lfGroupDim >> ch.hshift
-				lfReplacementChannels = append(lfReplacementChannels, NewModularChannelWithAllParams(height, width, ch.hshift, ch.vshift, false))
+				lfReplacementChannels = append(lfReplacementChannels, NewModularChannelWithAllParams(int32(height), int32(width), ch.hshift, ch.vshift, false))
 			}
 		}
 	}
@@ -457,8 +455,8 @@ func (f *Frame) decodePassGroups() error {
 				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
 				info.origin = pos
 				size := passGroupSize.Min(chanSize.Minus(info.origin))
-				info.width = int(size.X)
-				info.height = int(size.Y)
+				info.width = int32(size.X)
+				info.height = int32(size.Y)
 				replaced[i] = info
 			}
 
@@ -479,23 +477,14 @@ func (f *Frame) decodePassGroups() error {
 		j := 0
 		fmt.Printf("%v\n", j)
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-			//if f.passes[pass].replacedChannels[i] == nil {
-			//	continue
-			//}
-			channel, ok := f.lfGlobal.gModular.stream.channels[i].(*ModularChannel)
-			if !ok {
-				return errors.New("trying to get ModularChannel when one didn't exist")
-			}
-
-			//public static native void arraycopy(Object src,  int  srcPos,
-			//	Object dest, int destPos,
-			//	int length);
-			//
+			channel := f.lfGlobal.gModular.stream.channels[i]
+			channel.allocate()
 			for group := 0; group < int(f.numGroups); group++ {
-				newChannelInfo := passGroups[pass][group].modularPassGroupInfo[j]
-				buff := passGroups[pass][group].modularPassGroupBuffer[j]
-				for y := 0; y < newChannelInfo.height; y++ {
-					channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
+				newChannelInfo := passGroups[pass][group].modularStream.channels[j]
+				buff := newChannelInfo.buffer
+				for y := 0; y < len(buff); y++ {
+					//channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
+					copy(channel.buffer[y+int(newChannelInfo.origin.Y)], buff[y])
 				}
 			}
 			f.lfGlobal.gModular.stream.channels[i] = channel
@@ -510,77 +499,77 @@ func (f *Frame) decodePassGroups() error {
 }
 
 func (f *Frame) decodePassGroupsORIG() error {
-	numPasses := len(f.passes)
-	passGroups := make([][]PassGroup, numPasses)
-
-	for pass := 0; pass < numPasses; pass++ {
-		for group := 0; group < int(f.numGroups); group++ {
-			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
-			if err != nil {
-				return err
-			}
-			replaced := f.passes[pass].replacedChannels
-			for i := 0; i < len(replaced); i++ {
-				info := replaced[i]
-				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-				rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
-				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
-				info.origin = pos
-				size := passGroupSize.Min(chanSize.Minus(info.origin))
-				info.width = int(size.X)
-				info.height = int(size.Y)
-				replaced[i] = info
-			}
-			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
-			if err != nil {
-				return err
-			}
-			//f.passes[pass].replacedChannels = replaced
-			passGroups[pass][group] = *pg
-			fmt.Printf("%v\n", br)
-		}
-	}
-
-	for pass := 0; pass < numPasses; pass++ {
-		j := 0
-		fmt.Printf("%v\n", j)
-		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-			//if f.passes[pass].replacedChannels[i] == nil {
-			//	continue
-			//}
-			channel, ok := f.lfGlobal.gModular.stream.channels[i].(*ModularChannel)
-			if !ok {
-				return errors.New("trying to get ModularChannel when one didn't exist")
-			}
-
-			//public static native void arraycopy(Object src,  int  srcPos,
-			//	Object dest, int destPos,
-			//	int length);
-			//
-			for group := 0; group < int(f.numGroups); group++ {
-				newChannelInfo := passGroups[pass][group].modularPassGroupInfo[j]
-				buff := passGroups[pass][group].modularPassGroupBuffer[j]
-				for y := 0; y < newChannelInfo.height; y++ {
-					channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
-				}
-			}
-			f.lfGlobal.gModular.stream.channels[i] = channel
-			j++
-		}
-	}
-	if f.header.encoding == VARDCT {
-		panic("VARDCT not implemented")
-	}
+	//numPasses := len(f.passes)
+	//passGroups := make([][]PassGroup, numPasses)
+	//
+	//for pass := 0; pass < numPasses; pass++ {
+	//	for group := 0; group < int(f.numGroups); group++ {
+	//		br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		replaced := f.passes[pass].replacedChannels
+	//		for i := 0; i < len(replaced); i++ {
+	//			info := replaced[i]
+	//			shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+	//			passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+	//			rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
+	//			pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+	//			chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
+	//			info.origin = pos
+	//			size := passGroupSize.Min(chanSize.Minus(info.origin))
+	//			info.width = int32(size.X)
+	//			info.height = int32(size.Y)
+	//			replaced[i] = info
+	//		}
+	//		pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		//f.passes[pass].replacedChannels = replaced
+	//		passGroups[pass][group] = *pg
+	//		fmt.Printf("%v\n", br)
+	//	}
+	//}
+	//
+	//for pass := 0; pass < numPasses; pass++ {
+	//	j := 0
+	//	fmt.Printf("%v\n", j)
+	//	for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+	//		//if f.passes[pass].replacedChannels[i] == nil {
+	//		//	continue
+	//		//}
+	//		channel, ok := f.lfGlobal.gModular.stream.channels[i].(*ModularChannel)
+	//		if !ok {
+	//			return errors.New("trying to get ModularChannel when one didn't exist")
+	//		}
+	//
+	//		//public static native void arraycopy(Object src,  int  srcPos,
+	//		//	Object dest, int destPos,
+	//		//	int length);
+	//		//
+	//		for group := 0; group < int(f.numGroups); group++ {
+	//			newChannelInfo := passGroups[pass][group].modularPassGroupInfo[j]
+	//			buff := passGroups[pass][group].modularPassGroupBuffer[j]
+	//			for y := 0; y < newChannelInfo.height; y++ {
+	//				channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
+	//			}
+	//		}
+	//		f.lfGlobal.gModular.stream.channels[i] = channel
+	//		j++
+	//	}
+	//}
+	//if f.header.encoding == VARDCT {
+	//	panic("VARDCT not implemented")
+	//}
 
 	return nil
 }
 
 func (f *Frame) invertSubsampling() {
 	for c := 0; c < 3; c++ {
-		xShift := f.header.jpegUpsampling[c].X
-		yShift := f.header.jpegUpsampling[c].Y
+		xShift := f.header.jpegUpsamplingX[c]
+		yShift := f.header.jpegUpsamplingY[c]
 		for xShift > 0 {
 			xShift--
 			oldChannel := f.buffer[c]
@@ -666,15 +655,15 @@ func (f *Frame) initializeNoise(seed0 int64) error {
 	//}
 }
 
-func (f *Frame) getSample(c uint32, x uint32, y uint32) float32 {
+func (f *Frame) getImageSample(c int32, x int32, y int32) float32 {
 
-	if x < f.header.origin.X ||
-		y < f.header.origin.Y ||
-		x-f.header.origin.X >= f.width ||
-		y-f.header.origin.Y >= f.height {
+	frameY := y - f.bounds.origin.Y
+	frameX := x - f.bounds.origin.X
+
+	if frameY < 0 || frameX < 0 || frameY >= int32(f.bounds.size.height) || frameX >= int32(f.bounds.size.width) {
 		return 0
 	}
-	return f.buffer[c][y-f.header.origin.Y][x-f.header.origin.X]
+	return f.buffer[c][frameY][frameX]
 }
 
 func (f *Frame) upsample() error {
@@ -685,9 +674,11 @@ func (f *Frame) upsample() error {
 			return err
 		}
 	}
-	f.width = f.width * f.header.upsampling
-	f.height = f.height * f.header.upsampling
-	f.header.origin = f.header.origin.Times(f.header.upsampling)
+	f.bounds.size.height *= f.header.upsampling
+	f.bounds.size.width *= f.header.upsampling
+
+	f.bounds.origin.Y *= int32(f.header.upsampling)
+	f.bounds.origin.X *= int32(f.header.upsampling)
 	return nil
 }
 

@@ -587,7 +587,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					if jxl.imageHeader.hasAlpha() {
 						newAlpha = 1.0
 					} else {
-						newAlpha = frame.getSample(uint32(frameColours)+info.alphaChannel, cx, cy)
+						newAlpha = frame.getImageSample(uint32(frameColours)+info.alphaChannel, cx, cy)
 					}
 
 					if info.clamp {
@@ -600,7 +600,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					} else {
 						oldSample = 0.0
 					}
-					newSample := frame.getSample(uint32(frameC), cx, cy)
+					newSample := frame.getImageSample(uint32(frameC), cx, cy)
 					if isAlpha || !premult {
 						alpha = oldAlpha + newAlpha*(1-oldAlpha)
 					}
@@ -631,7 +631,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					if !jxl.imageHeader.hasAlpha() {
 						newAlpha = 1.0
 					} else {
-						newAlpha = frame.getSample(uint32(frameColours)+info.alphaChannel, cx, cy)
+						newAlpha = frame.getImageSample(uint32(frameColours)+info.alphaChannel, cx, cy)
 					}
 
 					if info.clamp {
@@ -643,7 +643,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					} else {
 						oldSample = 0.0
 					}
-					newSample := frame.getSample(uint32(frameC), cx, cy)
+					newSample := frame.getImageSample(uint32(frameC), cx, cy)
 					if isAlpha {
 						canvas[c][cy][cx] = oldAlpha
 					} else {
