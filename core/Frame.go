@@ -386,9 +386,9 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 		}
 
 		lfGroupPos := f.getLFGroupLocation(int32(lfGroupID))
-		replaced := make([]*ModularChannel, len(lfReplacementChannels))
+		replaced := make([]ModularChannel, len(lfReplacementChannels))
 		for _, r := range lfReplacementChannels {
-			replaced = append(replaced, NewModularChannelFromChannel(*r))
+			replaced = append(replaced, *NewModularChannelFromChannel(*r))
 		}
 		frameSize, err := f.getPaddedFrameSize()
 		if err != nil {
@@ -715,10 +715,19 @@ func (f *Frame) synthesizeNoise() error {
 	panic("synthesizeNoise not implemented")
 }
 
-func (f *Frame) getLFGroupSize(lfGroupID int32) Dimension {
+func (f *Frame) getLFGroupSize(lfGroupID int32) (Dimension, error) {
 	pos := f.getLFGroupLocation(lfGroupID)
-	paddedSize = f.getPaddedFrameSize()
+	paddedSize, err := f.getPaddedFrameSize()
+	if err != nil {
+		return Dimension{}, err
+	}
 
+	height := util.Min(f.header.lfGroupDim, paddedSize.height-uint32(pos.Y)*f.header.lfGroupDim)
+	width := util.Min(f.header.lfGroupDim, paddedSize.width-uint32(pos.X)*f.header.lfGroupDim)
+	return Dimension{
+		height: height,
+		width:  width,
+	}, nil
 }
 
 func (f *Frame) getLFGroupLocation(lfGroupID int32) *Point {

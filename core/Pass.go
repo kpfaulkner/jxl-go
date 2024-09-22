@@ -39,10 +39,7 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 	globalModular := frame.lfGlobal.gModular
 	p.replacedChannels = make([]ModularChannel, len(globalModular.stream.channels))
 	for i := 0; i < len(globalModular.stream.channels); i++ {
-		ch, ok := globalModular.stream.channels[i].(*ModularChannel)
-		if !ok {
-			return p, nil
-		}
+		ch := globalModular.stream.channels[i]
 		if !ch.decoded {
 			m := uint32(min(ch.hshift, ch.vshift))
 			if p.minShift <= m && m < p.maxShift {

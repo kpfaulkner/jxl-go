@@ -15,7 +15,7 @@ type LFGroup struct {
 	modularLFGroup *ModularStream
 }
 
-func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []*ModularChannel, lfBuffer [][][]float32) (*LFGroup, error) {
+func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []ModularChannel, lfBuffer [][][]float32) (*LFGroup, error) {
 	lfg := &LFGroup{
 		frame:     parent,
 		lfGroupID: index,

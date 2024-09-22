@@ -6,7 +6,6 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
-	"github.com/kpfaulkner/jxl-go/util"
 )
 
 const (
@@ -160,7 +159,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			} else {
 				dimShift = frame.globalMetadata.extraChannelInfo[i-ecStart].dimShift
 			}
-			ms.channels = append(ms.channels, NewModularChannelWithAllParams(w, h, dimShift, dimShift, util.ZERO, false))
+			ms.channels = append(ms.channels, NewModularChannelWithAllParams(w, h, dimShift, dimShift, false))
 		}
 	} else {
 		//ms.channels = append(ms.channels, channelArray...)
@@ -187,7 +186,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 				mc.forceWP = true
 				ms.channels[ms.transforms[i].beginC] = mc
 			}
-			mc := NewModularChannelWithAllParams(int32(ms.transforms[i].nbColours), int32(ms.transforms[i].numC), -1, -1, util.ZERO, false)
+			mc := NewModularChannelWithAllParams(int32(ms.transforms[i].nbColours), int32(ms.transforms[i].numC), -1, -1, false)
 			ms.channels = append([]*ModularChannel{mc}, ms.channels...)
 
 		} else if ms.transforms[i].tr == SQUEEZE {
@@ -284,6 +283,7 @@ func (ms *ModularStream) applyTransforms() error {
 		return nil
 	}
 	ms.transformed = true
+	var err error
 	for i := len(ms.transforms) - 1; i >= 0; i-- {
 		if ms.transforms[i].tr == SQUEEZE {
 			spa := ms.squeezeMap[i]
@@ -299,24 +299,18 @@ func (ms *ModularStream) applyTransforms() error {
 				}
 				for c := begin; c <= end; c++ {
 					r := offset + c - begin
-					ch, err := ms.getChannel(c)
-					if err != nil {
-						return err
-					}
-					residu, err := ms.getChannel(r)
-					if err != nil {
-						return err
-					}
+					ch := ms.channels[c]
+					residu := ms.channels[r]
 					var output *ModularChannel
 					if sp.horizontal {
-						outputInfo := NewModularChannelWithAllParams(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift, util.ZERO, false)
+						outputInfo := NewModularChannelWithAllParams(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
 						}
 					} else {
 
-						outputInfo := NewModularChannelWithAllParams(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1, util.ZERO, false)
+						outputInfo := NewModularChannelWithAllParams(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
@@ -337,10 +331,7 @@ func (ms *ModularStream) applyTransforms() error {
 			start := ms.transforms[i].beginC
 			var err error
 			for j := 0; j < 3; j++ {
-				v[j], err = ms.getChannel(start + j)
-				if err != nil {
-					return err
-				}
+				v[j] = ms.channels[start+j]
 			}
 			var rct func(int32, int32) error
 			switch transType {
@@ -429,12 +420,12 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 
 	channel.allocate()
 
-	for y := int32(0); y < channel.size.height; y++ {
-		for x := int32(0); x < channel.size.width; x++ {
+	for y := uint32(0); y < channel.size.height; y++ {
+		for x := uint32(0); x < channel.size.width; x++ {
 			avg := orig.buffer[y][x]
 			residu := res.buffer[y][x]
 			var nextAvg int32
-			if x+1 < orig.width {
+			if x+1 < uint32(orig.width) {
 				nextAvg = orig.buffer[y][x+1]
 			} else {
 				nextAvg = avg
@@ -453,7 +444,7 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 	}
 	if orig.size.width > res.size.width {
 		xs := 2 * res.size.width
-		for y := int32(0); y < channel.size.height; y++ {
+		for y := uint32(0); y < channel.size.height; y++ {
 			channel.buffer[y][xs] = orig.buffer[y][res.size.width]
 		}
 	}

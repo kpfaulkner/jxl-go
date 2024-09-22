@@ -488,8 +488,8 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 		if err != nil {
 			return err
 		}
-		for y := uint32(0); y < size.Y; y++ {
-			for x := uint32(0); x < size.X; x++ {
+		for y := uint32(0); y < size.height; y++ {
+			for x := uint32(0); x < size.width; x++ {
 				cb := frameBuffer[0][y][x]
 				yh := frameBuffer[1][y][x] + 0.50196078431372549019
 				cr := frameBuffer[2][y][x]
@@ -507,10 +507,23 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 	width := jxl.imageHeader.size.width
 	height := jxl.imageHeader.size.height
 	header := frame.header
-	frameStart := header.origin.Max(util.ZERO)
-	frameSize := util.NewIntPointWithXY(width, height).Min(header.origin.Plus(util.NewIntPointWithXY(header.width, header.height))).Minus(frameStart)
+	//frameStart := header.origin.Max(util.ZERO)
+	//frameSize := util.NewIntPointWithXY(width, height).Min(header.origin.Plus(util.NewIntPointWithXY(header.width, header.height))).Minus(frameStart)
+	frameStartY := int32(0)
+	if header.bounds.origin.X >= 0 {
+		frameStartY = header.bounds.origin.Y
+	}
+	frameStartX := int32(0)
+	if header.bounds.origin.X >= 0 {
+		frameStartX = header.bounds.origin.X
+	}
+	lowerCorner := header.bounds.computeLowerCorner()
+	frameHeight := util.Min(lowerCorner.Y, int32(height))
+	frameWidth := util.Min(lowerCorner.X, int32(width))
+
 	frameColours := frame.getColorChannelCount()
 	imageColours := jxl.imageHeader.getColourChannelCount()
+	hasAlpha := jxl.imageHeader.hasAlpha()
 	for c := int32(0); c < int32(len(canvas)); c++ {
 		var frameC int32
 		if frameColours != imageColours {
@@ -538,26 +551,29 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 		}
 		refBuffer := reference[info.source]
 		if info.mode == BLEND_REPLACE || refBuffer == nil && info.mode == BLEND_ADD {
-			jxl.copyToCanvas(canvas[c], frameStart, frameStart.Minus(header.origin), frameSize, frameBuffer)
+			offY := frameStartY - header.bounds.origin.Y
+			offX := frameStartX - header.bounds.origin.X
+			jxl.copyToCanvas(canvas[c], Point{Y: frameStartY, X: frameStartX}, Point{X: offX, Y: offY},
+				Dimension{width: uint32(frameWidth), height: uint32(frameHeight)}, frameBuffer)
 			continue
 		}
 		ref := refBuffer[c]
 		switch info.mode {
 		case BLEND_ADD:
-			for y := uint32(0); y < frameSize.Y; y++ {
-				cy := y + frameStart.Y
-				for x := uint32(0); x < frameSize.X; x++ {
-					cx := x + frameStart.X
+			for y := int32(0); y < frameHeight; y++ {
+				cy := y + frameStartY
+				for x := int32(0); x < frameWidth; x++ {
+					cx := x + frameStartX
 					canvas[c][cy][cx] = ref[cy][cx] + frameBuffer[y][x]
 				}
 			}
 			break
 		case BLEND_MULT:
-			for y := uint32(0); y < frameSize.Y; y++ {
-				cy := y + frameStart.Y
+			for y := int32(0); y < frameHeight; y++ {
+				cy := y + frameStartY
 				if ref != nil {
-					for x := uint32(0); x < frameSize.X; x++ {
-						cx := x + frameStart.X
+					for x := int32(0); x < frameWidth; x++ {
+						cx := x + frameStartX
 						newSample := frameBuffer[y][x]
 						if info.clamp {
 							newSample = util.Clamp3Float32(newSample, 0.0, 1.0)
@@ -565,13 +581,13 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 						canvas[c][cy][cx] = newSample * ref[cy][cx]
 					}
 				} else {
-					util.FillFloat32(canvas[c][cy], frameStart.X, frameSize.X, 0.0)
+					util.FillFloat32(canvas[c][cy], uint32(frameStartX), uint32(frameWidth), 0.0)
 				}
 			}
 			break
 		case BLEND_BLEND:
-			for cy := frameStart.Y; cy < frameSize.Y+frameStart.Y; cy++ {
-				for cx := frameStart.X; cx < frameSize.X+frameStart.X; cx++ {
+			for cy := frameStartY; cy < frameHeight+frameStartY; cy++ {
+				for cx := frameStartX; cx < frameWidth+frameStartX; cx++ {
 					var oldAlpha float32
 
 					if jxl.imageHeader.hasAlpha() {
@@ -587,7 +603,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					if jxl.imageHeader.hasAlpha() {
 						newAlpha = 1.0
 					} else {
-						newAlpha = frame.getImageSample(uint32(frameColours)+info.alphaChannel, cx, cy)
+						newAlpha = frame.getImageSample(int32(uint32(frameColours)+info.alphaChannel), cx, cy)
 					}
 
 					if info.clamp {
@@ -600,8 +616,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					} else {
 						oldSample = 0.0
 					}
-					newSample := frame.getImageSample(uint32(frameC), cx, cy)
-					if isAlpha || !premult {
+					newSample := frame.getImageSample(frameC, cx, cy)
+					if isAlpha || hasAlpha && !premult {
 						alpha = oldAlpha + newAlpha*(1-oldAlpha)
 					}
 					if isAlpha {
@@ -614,45 +630,45 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 				}
 			}
 			break
-		case BLEND_MULADD:
-			for cy := frameStart.Y; cy < frameSize.Y+frameStart.Y; cy++ {
-				for cx := frameStart.X; cx < frameSize.X+frameStart.X; cx++ {
-					var oldAlpha float32
-					if !jxl.imageHeader.hasAlpha() {
-						oldAlpha = 1.0
-					} else {
-						if ref != nil {
-							oldAlpha = refBuffer[imageColours+int(info.alphaChannel)][cy][cx]
-						} else {
-							oldAlpha = 0.0
-						}
-					}
-					var newAlpha float32
-					if !jxl.imageHeader.hasAlpha() {
-						newAlpha = 1.0
-					} else {
-						newAlpha = frame.getImageSample(uint32(frameColours)+info.alphaChannel, cx, cy)
-					}
-
-					if info.clamp {
-						newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
-					}
-					var oldSample float32
-					if ref != nil {
-						oldSample = ref[cy][cx]
-					} else {
-						oldSample = 0.0
-					}
-					newSample := frame.getImageSample(uint32(frameC), cx, cy)
-					if isAlpha {
-						canvas[c][cy][cx] = oldAlpha
-					} else {
-						canvas[c][cy][cx] = oldSample + newSample*newAlpha
-					}
-
-				}
-			}
-			break
+		//case BLEND_MULADD:
+		//	for cy := frameStartY; cy < frameHeight+frameStartY; cy++ {
+		//		for cx := frameStartX; cx < frameWidth+frameStartX; cx++ {
+		//			var oldAlpha float32
+		//			if !jxl.imageHeader.hasAlpha() {
+		//				oldAlpha = 1.0
+		//			} else {
+		//				if ref != nil {
+		//					oldAlpha = refBuffer[imageColours+int(info.alphaChannel)][cy][cx]
+		//				} else {
+		//					oldAlpha = 0.0
+		//				}
+		//			}
+		//			var newAlpha float32
+		//			if !jxl.imageHeader.hasAlpha() {
+		//				newAlpha = 1.0
+		//			} else {
+		//				newAlpha = frame.getImageSample(int32(uint32(frameColours)+info.alphaChannel), cx, cy)
+		//			}
+		//
+		//			if info.clamp {
+		//				newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
+		//			}
+		//			var oldSample float32
+		//			if ref != nil {
+		//				oldSample = ref[cy][cx]
+		//			} else {
+		//				oldSample = 0.0
+		//			}
+		//			newSample := frame.getImageSample(frameC, cx, cy)
+		//			if isAlpha {
+		//				canvas[c][cy][cx] = oldAlpha
+		//			} else {
+		//				canvas[c][cy][cx] = oldSample + newSample*newAlpha
+		//			}
+		//
+		//		}
+		//	}
+		//	break
 		default:
 			return errors.New("Illegal blend mode")
 		}
@@ -661,9 +677,9 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 }
 
 // FIXME(kpfaulkner) really unsure about this
-func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start util.IntPoint, off util.IntPoint, size util.IntPoint, frameBuffer [][]float32) {
-	for y := uint32(0); y < size.Y; y++ {
-		copy(canvas[y+start.X][off.X:], frameBuffer[y+off.Y][off.X:off.X+size.X])
+func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start Point, off Point, size Dimension, frameBuffer [][]float32) {
+	for y := uint32(0); y < size.height; y++ {
+		copy(canvas[y+uint32(start.X)][off.X:], frameBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.width])
 	}
 }
 

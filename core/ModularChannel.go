@@ -24,6 +24,13 @@ type Rectangle struct {
 	size   Dimension
 }
 
+func (r Rectangle) computeLowerCorner() Point {
+	return Point{
+		X: r.origin.X + int32(r.size.width),
+		Y: r.origin.Y + int32(r.size.height),
+	}
+}
+
 type ModularChannel struct {
 	width   int32
 	height  int32
@@ -53,7 +60,7 @@ func init() {
 //}
 
 func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
-	mc := NewModularChannelWithAllParams(ch.width, ch.height, ch.hshift, ch.vshift, ch.origin, ch.forceWP)
+	mc := NewModularChannelWithAllParams(ch.width, ch.height, ch.hshift, ch.vshift, ch.forceWP)
 	mc.decoded = ch.decoded
 	if ch.buffer != nil {
 		if mc.height == 0 || mc.width == 0 {
@@ -62,8 +69,8 @@ func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
 			mc.buffer = util.MakeMatrix2D[int32](int(mc.height), int(mc.width))
 		}
 	}
-	for y := int32(0); y < mc.size.height; y++ {
-		for x := int32(0); x < mc.size.width; x++ {
+	for y := uint32(0); y < mc.size.height; y++ {
+		for x := uint32(0); x < mc.size.width; x++ {
 			mc.buffer[y][x] = ch.buffer[y][x]
 		}
 	}
@@ -343,8 +350,8 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	tree = tree.compactify(channelIndex, streamIndex)
 	useWP := mc.forceWP || tree.useWeightedPredictor()
 	if useWP {
-		mc.err = util.MakeMatrix3D[int32](5, mc.height, mc.width)
-		mc.pred = util.MakeMatrix2D[int32](mc.height, mc.width)
+		mc.err = util.MakeMatrix3D[int32](5, int(mc.height), int(mc.width))
+		mc.pred = util.MakeMatrix2D[int32](int(mc.height), int(mc.width))
 		mc.subpred = make([]int32, 4)
 		mc.weight = make([]int32, 4)
 	}
@@ -357,7 +364,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	// FIXME(kpfaulkner)
 	///////////////////////////////////////////////////////////
 	var err error
-	for y0 := 0; y0 < mc.height; y0++ {
+	for y0 := int32(0); y0 < mc.height; y0++ {
 		//fmt.Printf("decode start : y : %d bits read %d\n", y0, reader.BitsRead())
 		if y0 == 0 {
 			fmt.Printf("snoop\n")
@@ -366,7 +373,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
 
 		//fmt.Printf("refinedTree size %d\n", refinedTree.getSize())
-		for x0 := 0; x0 < mc.width; x0++ {
+		for x0 := int32(0); x0 < mc.width; x0++ {
 			if y0 == 189 && x0 == 134 {
 
 				fmt.Printf("snoop\n")
@@ -436,10 +443,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 					}
 					k2 := int32(16)
 					for j := channelIndex - 1; j >= 0; j-- {
-						channel, ok := parent.channels[j].(*ModularChannel)
-						if !ok {
-							return 0, errors.New("channel not a ModularChannel")
-						}
+						channel := parent.channels[j]
 						if channel.width != mc.width || channel.height != mc.height ||
 							channel.hshift != mc.hshift || channel.vshift != mc.vshift {
 							continue
