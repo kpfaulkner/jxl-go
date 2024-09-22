@@ -8,24 +8,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type SizeHeader struct {
-	height uint32
-	width  uint32
-}
-
-func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader, error) {
-	sh := &SizeHeader{}
+func readSizeHeader(reader *jxlio.Bitreader, level int32) (*Dimension, error) {
+	dim := &Dimension{}
 	var err error
 
 	div8 := reader.MustReadBool()
 	if div8 {
-		sh.height = 1 + uint32(reader.MustReadBits(5))<<3
+		dim.height = 1 + uint32(reader.MustReadBits(5))<<3
 	} else {
-		sh.height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+		dim.height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 	}
 	ratio := reader.MustReadBits(3)
 	if ratio != 0 {
-		sh.width, err = getWidthFromRatio(uint32(ratio), sh.height)
+		dim.width, err = getWidthFromRatio(uint32(ratio), dim.height)
 		if err != nil {
 
 			log.Errorf("Error getting width from ratio: %v\n", err)
@@ -33,24 +28,24 @@ func NewSizeHeader(reader *jxlio.Bitreader, level int32) (*SizeHeader, error) {
 		}
 	} else {
 		if div8 {
-			sh.width = 1 + uint32(reader.MustReadBits(5))<<3
+			dim.width = 1 + uint32(reader.MustReadBits(5))<<3
 		} else {
-			sh.width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+			dim.width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 		}
 	}
 
 	maxDim := util.IfThenElse[uint64](level <= 5, 1<<18, 1<<28)
 	maxTimes := util.IfThenElse[uint64](level <= 5, 1<<30, 1<<40)
-	if sh.width > uint32(maxDim) || sh.height > uint32(maxDim) {
-		log.Errorf("Invalid size header: %d x %d", sh.width, sh.height)
-		return nil, fmt.Errorf("Invalid size header: %d x %d", sh.width, sh.height)
+	if dim.width > uint32(maxDim) || dim.height > uint32(maxDim) {
+		log.Errorf("Invalid size header: %d x %d", dim.width, dim.height)
+		return nil, fmt.Errorf("Invalid size header: %d x %d", dim.width, dim.height)
 	}
-	if uint64(sh.width*sh.height) > maxTimes {
-		log.Errorf("Width times height too large: %d %d", sh.width, sh.height)
-		return nil, fmt.Errorf("Width times height too large: %d %d", sh.width, sh.height)
+	if uint64(dim.width*dim.height) > maxTimes {
+		log.Errorf("Width times height too large: %d %d", dim.width, dim.height)
+		return nil, fmt.Errorf("Width times height too large: %d %d", dim.width, dim.height)
 	}
 
-	return sh, nil
+	return dim, nil
 }
 
 func getWidthFromRatio(ratio uint32, height uint32) (uint32, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
 )
 
 const (
@@ -86,6 +87,7 @@ func NewTransformInfo(reader *jxlio.Bitreader) TransformInfo {
 		ti.sp = nil
 	}
 
+	ti.tr = int(tr)
 	return ti
 }
 
@@ -97,7 +99,7 @@ type ModularStream struct {
 
 	// HACK HACK HACK... utterly hate this. Using it to convert between ModularChannelInfo and ModularChannel
 	// FIXME(kpfaulkner) refactor this to be cleaner.
-	channels []any
+	channels []*ModularChannel
 
 	// This feels utterly dirty. But ModularChannelInfo is just a few primatives
 	// and doesn't really need an interface. I will probably change my mind on this...
@@ -112,7 +114,7 @@ type ModularStream struct {
 	squeezeMap     map[int][]SqueezeParam
 }
 
-func NewModularStreamWithStreamIndex(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelArray []ModularChannelInfo) (*ModularStream, error) {
+func NewModularStreamWithStreamIndex(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelArray []ModularChannel) (*ModularStream, error) {
 	return NewModularStreamWithChannels(reader, frame, streamIndex, len(channelArray), 0, channelArray)
 }
 
@@ -121,7 +123,7 @@ func NewModularStreamWithReader(reader *jxlio.Bitreader, frame *Frame, streamInd
 }
 
 // ModularStream.java line 63... TODO(kpfaulkner) continue
-func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannelInfo) (*ModularStream, error) {
+func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (*ModularStream, error) {
 	ms := &ModularStream{}
 	ms.streamIndex = streamIndex
 	ms.frame = frame
@@ -147,8 +149,8 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 		ms.transforms[i] = NewTransformInfo(reader)
 	}
 
-	w := int(frame.header.width)
-	h := int(frame.header.height)
+	w := int32(frame.header.width)
+	h := int32(frame.header.height)
 
 	if channelArray == nil || len(channelArray) == 0 {
 		for i := 0; i < channelCount; i++ {
@@ -158,7 +160,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			} else {
 				dimShift = frame.globalMetadata.extraChannelInfo[i-ecStart].dimShift
 			}
-			ms.channels = append(ms.channels, NewModularChannelInfo(w, h, dimShift, dimShift))
+			ms.channels = append(ms.channels, NewModularChannelWithAllParams(w, h, dimShift, dimShift, util.ZERO, false))
 		}
 	} else {
 		//ms.channels = append(ms.channels, channelArray...)
@@ -170,22 +172,23 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 	for i := 0; i < int(nbTransforms); i++ {
 
 		if ms.transforms[i].tr == PALETTE {
-			panic("TODO implement palette transform")
-			//if ms.transforms[i].beginC < ms.nbMetaChannels {
-			//	ms.nbMetaChannels += 2 - ms.transforms[i].numC
-			//} else {
-			//	ms.nbMetaChannels++
-			//}
-			//start := ms.transforms[i].beginC + 1
-			//for j := start; j < ms.transforms[i].beginC+ms.transforms[i].numC; j++ {
-			//	ms.channels = append(ms.channels[:start], ms.channels[start+1:]...)
-			//}
-			//if ms.transforms[i].nbDeltas > 0 && ms.transforms[i].dPred == 6 {
-			//	ms.channels[ms.transforms[i].beginC].setForceWP(true)
-			//}
-			//// I REALLY dont get why nbColours is being used for width etc...  just blindly following jxlatte for
-			//// now. TODO(kpfaulkner) come back and check this!
-			//ms.channels = append([]ModularChannelBase{&ModularChannelInfo{width: ms.transforms[i].nbColours, height: ms.transforms[i].numC, hshift: -1, vshift: -1}}, ms.channels...)
+
+			if ms.transforms[i].beginC < ms.nbMetaChannels {
+				ms.nbMetaChannels += 2 - ms.transforms[i].numC
+			} else {
+				ms.nbMetaChannels++
+			}
+			start := ms.transforms[i].beginC + 1
+			for j := start; j < ms.transforms[i].beginC+ms.transforms[i].numC; j++ {
+				ms.channels = append(ms.channels[:start], ms.channels[start+1:]...)
+			}
+			if ms.transforms[i].nbDeltas > 0 && ms.transforms[i].dPred == 6 {
+				mc := ms.channels[ms.transforms[i].beginC]
+				mc.forceWP = true
+				ms.channels[ms.transforms[i].beginC] = mc
+			}
+			mc := NewModularChannelWithAllParams(int32(ms.transforms[i].nbColours), int32(ms.transforms[i].numC), -1, -1, util.ZERO, false)
+			ms.channels = append([]*ModularChannel{mc}, ms.channels...)
 
 		} else if ms.transforms[i].tr == SQUEEZE {
 			panic("TODO implement squeeze transform")
@@ -235,39 +238,22 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 	ms.stream = entropy.NewEntropyStreamWithStream(ms.tree.stream)
 
 	// get max width from all channels.
-	maxWidth := 0
+	maxWidth := int32(0)
 	for _, c := range ms.channels {
-		cc, ok := c.(*ModularChannelInfo)
-		if !ok {
-			return nil, errors.New("trying to get ModularChannelInfo when one didn't exist")
-		}
-		if cc.width > maxWidth {
-			maxWidth = cc.width
+		if c.width > maxWidth {
+			maxWidth = c.width
 		}
 	}
-	ms.distMultiplier = maxWidth
+	ms.distMultiplier = int(maxWidth)
 	return ms, nil
 }
 
 func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) error {
 
-	// convert ModularChannelInfo to ModularChannel if required.
-	for i := 0; i < len(ms.channels); i++ {
-		mci, ok := ms.channels[i].(*ModularChannelInfo)
-		if ok {
-			mc := NewModularChannelFromInfo(*mci)
-			ms.channels[i] = mc
-		}
-	}
-
-	// FIXME(kpfaulkner) issue with reading too many bits somewhere in this for loop I think.
-	groupDim := int(ms.frame.header.groupDim)
+	groupDim := int32(ms.frame.header.groupDim)
 	for i := 0; i < len(ms.channels); i++ {
 		fmt.Printf("decodeChannels bitread %d\n", reader.BitsRead())
-		channel, ok := ms.channels[i].(*ModularChannel)
-		if !ok {
-			return errors.New("tryint to get ModularChannel when one didn't exist")
-		}
+		channel := ms.channels[i]
 		if partial && i >= ms.nbMetaChannels &&
 			(channel.width > groupDim || channel.height > groupDim) {
 			break
@@ -323,14 +309,14 @@ func (ms *ModularStream) applyTransforms() error {
 					}
 					var output *ModularChannel
 					if sp.horizontal {
-						outputInfo := NewModularChannelInfo(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift)
+						outputInfo := NewModularChannelWithAllParams(ch.width+residu.width, ch.height, ch.hshift-1, ch.vshift, util.ZERO, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
 						}
 					} else {
 
-						outputInfo := NewModularChannelInfo(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1)
+						outputInfo := NewModularChannelWithAllParams(ch.width, ch.height+residu.height, ch.hshift, ch.vshift-1, util.ZERO, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
@@ -414,8 +400,8 @@ func (ms *ModularStream) applyTransforms() error {
 				return errors.New("illegal RCT type")
 			}
 
-			for y := 0; y < v[0].height; y++ {
-				for x := 0; x < v[0].width; x++ {
+			for y := int32(0); y < v[0].height; y++ {
+				for x := int32(0); x < v[0].width; x++ {
 					err = rct(int32(x), int32(y))
 					if err != nil {
 						return err
@@ -433,43 +419,46 @@ func (ms *ModularStream) applyTransforms() error {
 	return nil
 }
 
-func inverseHorizontalSqueeze(info *ModularChannelInfo, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {
+func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {
 
-	if info.height != orig.height+res.height ||
+	if channel.height != orig.height+res.height ||
 		(orig.height != res.height && orig.height != 1+res.height) ||
-		info.width != orig.width || res.width != orig.width {
+		channel.width != orig.width || res.width != orig.width {
 		return nil, errors.New("Corrupted squeeze transform")
 	}
-	ch := NewModularChannelFromInfo(*info)
-	for y := 0; y < ch.height; y++ {
-		for x := 0; x < ch.width; x++ {
+
+	channel.allocate()
+
+	for y := int32(0); y < channel.size.height; y++ {
+		for x := int32(0); x < channel.size.width; x++ {
 			avg := orig.buffer[y][x]
 			residu := res.buffer[y][x]
 			var nextAvg int32
-			if y+1 < orig.height {
-				nextAvg = orig.buffer[y+1][x]
+			if x+1 < orig.width {
+				nextAvg = orig.buffer[y][x+1]
 			} else {
 				nextAvg = avg
 			}
-			var top int32
-			if y > 0 {
-				top = ch.buffer[2*y-1][x]
+			var left int32
+			if x > 0 {
+				left = orig.buffer[y][2*x-1]
 			} else {
-				top = avg
+				nextAvg = avg
 			}
-			diff := residu + tendancy(top, avg, nextAvg)
+			diff := residu + tendancy(left, avg, nextAvg)
 			first := avg + diff/2
-			ch.buffer[2*y][x] = first
-			ch.buffer[2*y+1][x] = first - diff
+			channel.buffer[y][2*x] = first
+			channel.buffer[y][2*x+1] = first - diff
 		}
 	}
-	if orig.height > res.height {
-		// FIXME(kpfaulkner) really check this!!!!
-		copy(ch.buffer[2*res.height:], orig.buffer[res.height:])
-		panic("UNSURE")
+	if orig.size.width > res.size.width {
+		xs := 2 * res.size.width
+		for y := int32(0); y < channel.size.height; y++ {
+			channel.buffer[y][xs] = orig.buffer[y][res.size.width]
+		}
 	}
 
-	return ch, nil
+	return channel, nil
 }
 
 func tendancy(a int32, b int32, c int32) int32 {

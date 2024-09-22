@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -9,14 +8,17 @@ import (
 
 type PassGroup struct {
 	modularPassGroupBuffer [][][]int32
-	modularPassGroupInfo   []ModularChannelInfo
+	modularStream          *ModularStream
 	frame                  *Frame
 	groupID                uint32
 	passID                 uint32
 	hfCoefficients         []HFCoefficients
+	lfg                    *LFGroup
 }
 
-func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, group uint32, replacedChannels []ModularChannelInfo) (*PassGroup, error) {
+func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, group uint32, replacedChannels []ModularChannel) (*PassGroup, error) {
+
+	fmt.Printf("PassGroup reader pos %d\n", reader.BitsRead())
 	pg := &PassGroup{}
 	pg.frame = frame
 	pg.groupID = group
@@ -36,20 +38,10 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 	if pass == 0 && group == 4 {
 		fmt.Printf("boom\n")
 	}
+	pg.modularStream = stream
 	err = stream.decodeChannels(reader, false)
 	if err != nil {
 		return nil, err
-	}
-
-	pg.modularPassGroupBuffer = stream.getDecodedBuffer()
-	pg.modularPassGroupInfo = make([]ModularChannelInfo, len(pg.modularPassGroupBuffer))
-	for c := 0; c < len(pg.modularPassGroupBuffer); c++ {
-		ci, ok := stream.channels[c].(*ModularChannel)
-		if !ok {
-			return nil, errors.New("ModularChannelInfo not found")
-		}
-
-		pg.modularPassGroupInfo[c] = *NewModularChannelInfoFromInfo(ci.ModularChannelInfo)
 	}
 
 	return pg, nil

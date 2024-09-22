@@ -14,8 +14,25 @@ var (
 	oneL24OverKP1 = make([]int64, 64)
 )
 
+type Dimension struct {
+	width  uint32
+	height uint32
+}
+
+type Rectangle struct {
+	origin Point
+	size   Dimension
+}
+
 type ModularChannel struct {
-	ModularChannelInfo
+	width   int32
+	height  int32
+	hshift  int32
+	vshift  int32
+	origin  util.IntPoint
+	forceWP bool
+	size    Dimension
+
 	buffer  [][]int32
 	decoded bool
 	err     [][][]int32
@@ -30,29 +47,57 @@ func init() {
 	}
 }
 
-func NewModularChannelFromInfo(info ModularChannelInfo) *ModularChannel {
+//func NewModularChannelFromInfo(info ModularChannelInfo) *ModularChannel {
+//
+//	return NewModularChannelWithAllParams(info.width, info.height, info.hshift, info.vshift, util.IntPoint{0, 0}, false)
+//}
 
-	return NewModularChannelWithAllParams(info.width, info.height, info.hshift, info.vshift, util.IntPoint{0, 0}, false)
+func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
+	mc := NewModularChannelWithAllParams(ch.width, ch.height, ch.hshift, ch.vshift, ch.origin, ch.forceWP)
+	mc.decoded = ch.decoded
+	if ch.buffer != nil {
+		if mc.height == 0 || mc.width == 0 {
+			mc.buffer = make([][]int32, 0)
+		} else {
+			mc.buffer = util.MakeMatrix2D[int32](int(mc.height), int(mc.width))
+		}
+	}
+	for y := int32(0); y < mc.size.height; y++ {
+		for x := int32(0); x < mc.size.width; x++ {
+			mc.buffer[y][x] = ch.buffer[y][x]
+		}
+	}
+	return mc
 }
 
-func NewModularChannelWithAllParams(width int, height int, hshift int32, vshift int32, origin util.IntPoint, forceWP bool) *ModularChannel {
+func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vshift int32, origin util.IntPoint, forceWP bool) *ModularChannel {
 	mc := &ModularChannel{
-		ModularChannelInfo: ModularChannelInfo{
-			width:   width,
-			height:  height,
-			hshift:  hshift,
-			vshift:  vshift,
-			origin:  origin,
-			forceWP: forceWP,
+		width:   width,
+		height:  height,
+		hshift:  hshift,
+		vshift:  vshift,
+		origin:  origin,
+		forceWP: forceWP,
+		size: Dimension{
+			width:  width,
+			height: height,
 		},
 	}
 
 	if width == 0 || height == 0 {
 		mc.buffer = make([][]int32, 0)
 	} else {
-		mc.buffer = util.MakeMatrix2D[int32](height, width)
+		mc.buffer = util.MakeMatrix2D[int32](int(height), int(width))
 	}
 	return mc
+}
+
+func (mc *ModularChannel) allocate() {
+	if mc.height == 0 || mc.width == 0 {
+		mc.buffer = make([][]int32, 0)
+	} else {
+		mc.buffer = util.MakeMatrix2D[int32](int(mc.height), int(mc.width))
+	}
 }
 
 func (mc *ModularChannel) prediction(x int32, y int32, k int32) (int32, error) {
@@ -283,7 +328,15 @@ func (mc *ModularChannel) walkerFunc(k int32) int32 {
 func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.EntropyStream,
 	wpParams *WPParams, tree *MATree, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int) error {
 
-	fmt.Printf("decode start : bits read %d\n", reader.BitsRead())
+	fmt.Printf("decode start : bits read %d : channelIndex %d : streamIndex %d\n", reader.BitsRead(), channelIndex, streamIndex)
+
+	if channelIndex == 1 && streamIndex == 40 {
+		fmt.Printf("snoop 20240921\n")
+	}
+
+	if channelIndex == 2 && streamIndex == 40 {
+		fmt.Printf("snoop 20240921\n")
+	}
 	if mc.decoded {
 		return nil
 	}
@@ -315,7 +368,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 
 		//fmt.Printf("refinedTree size %d\n", refinedTree.getSize())
 		for x0 := 0; x0 < mc.width; x0++ {
-			if y0 == 1 && x0 == 1 {
+			if y0 == 189 && x0 == 134 {
 
 				fmt.Printf("snoop\n")
 			}
@@ -480,7 +533,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
 				}
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
-				fmt.Printf("err reader %d : X=%d:Y=%d : %d : %d : %d : %d : %d\n", reader.BitsRead(), x, y, mc.err[0][y][x], mc.err[1][y][x], mc.err[2][y][x], mc.err[3][y][x], mc.err[4][y][x])
+				//fmt.Printf("err reader %d : X=%d:Y=%d : %d : %d : %d : %d : %d\n", reader.BitsRead(), x, y, mc.err[0][y][x], mc.err[1][y][x], mc.err[2][y][x], mc.err[3][y][x], mc.err[4][y][x])
 			}
 		}
 	}

@@ -29,26 +29,29 @@ const (
 )
 
 type FrameHeader struct {
-	frameType         uint32
-	width             uint32
-	height            uint32
-	upsampling        uint32
-	lfLevel           uint32
-	groupDim          uint32
-	passes            *PassesInfo
-	encoding          uint32
-	flags             uint64
-	doYCbCr           bool
-	jpegUpsampling    []util.IntPoint
-	ecUpsampling      []uint32
-	groupSizeShift    uint32
-	lfGroupDim        uint32
-	logGroupDim       uint32
-	logLFGroupDIM     uint32
-	xqmScale          uint32
-	bqmScale          uint32
-	haveCrop          bool
-	origin            util.IntPoint
+	frameType  uint32
+	width      uint32
+	height     uint32
+	upsampling uint32
+	lfLevel    uint32
+	groupDim   uint32
+	passes     *PassesInfo
+	encoding   uint32
+	flags      uint64
+	doYCbCr    bool
+	//jpegUpsampling  []util.IntPoint
+	jpegUpsamplingX []int32
+	jpegUpsamplingY []int32
+
+	ecUpsampling   []uint32
+	groupSizeShift uint32
+	lfGroupDim     uint32
+	logGroupDim    uint32
+	logLFGroupDIM  uint32
+	xqmScale       uint32
+	bqmScale       uint32
+	haveCrop       bool
+	//origin            util.IntPoint
 	ecBlendingInfo    []BlendingInfo
 	blendingInfo      *BlendingInfo
 	isLast            bool
@@ -59,6 +62,7 @@ type FrameHeader struct {
 	name              string
 	restorationFilter *RestorationFilter
 	extensions        *bundle.Extensions
+	bounds            Rectangle
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*FrameHeader, error) {
@@ -80,15 +84,30 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 	} else {
 		fh.doYCbCr = false
 	}
-	fh.jpegUpsampling = make([]util.IntPoint, 3)
+	//fh.jpegUpsampling = make([]util.IntPoint, 3)
+	fh.jpegUpsamplingX = make([]int32, 3)
+	fh.jpegUpsamplingY = make([]int32, 3)
 	if fh.doYCbCr && (fh.flags&USE_LF_FRAME) == 0 {
 		for i := 0; i < 3; i++ {
-			y := reader.MustReadBits(1)
-			x := reader.MustReadBits(1)
-			fh.jpegUpsampling[i] = util.NewIntPointWithXY(uint32(x^y), uint32(y))
+			mode := reader.MustReadBits(2)
+			//y := reader.MustReadBits(1)
+			//x := reader.MustReadBits(1)
+			//fh.jpegUpsampling[i] = util.NewIntPointWithXY(uint32(x^y), uint32(y))
+			switch mode {
+			case 1:
+				fh.jpegUpsamplingY[i] = 1
+				fh.jpegUpsamplingX[i] = 1
+				break
+			case 2:
+				fh.jpegUpsamplingY[i] = 0
+				fh.jpegUpsamplingX[i] = 1
+			case 3:
+				fh.jpegUpsamplingY[i] = 1
+				fh.jpegUpsamplingX[i] = 0
+			default:
+				break
+			}
 		}
-	} else {
-		fh.jpegUpsampling = []util.IntPoint{util.ZERO, util.ZERO, util.ZERO}
 	}
 
 	fh.ecUpsampling = make([]uint32, len(parent.extraChannelInfo))
@@ -144,21 +163,26 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 		y0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
 		x0Signed := jxlio.UnpackSigned(x0)
 		y0Signed := jxlio.UnpackSigned(y0)
-		fh.origin = util.NewIntPointWithXY(uint32(x0Signed), uint32(y0Signed))
-	} else {
-		fh.origin = util.ZERO
+		fh.bounds.origin.X = x0Signed
+		fh.bounds.origin.Y = y0Signed
 	}
 
 	if fh.haveCrop {
 		fh.width = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
 		fh.height = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
 	} else {
-		fh.width = parent.size.width
-		fh.height = parent.size.height
+		fh.bounds.size = *parent.size
 	}
 
 	normalFrame := !allDefault && (fh.frameType == REGULAR_FRAME || fh.frameType == SKIP_PROGRESSIVE)
-	fullFrame := fh.origin.X <= 0 && fh.origin.Y <= 0 && (fh.width+fh.origin.X) >= parent.size.width && (fh.height+fh.origin.Y) >= parent.size.height
+	fullFrame := fh.bounds.origin.X <= 0 && fh.bounds.origin.Y <= 0 &&
+		(fh.width+uint32(fh.bounds.origin.X) >= parent.size.width && (fh.height+uint32(fh.bounds.origin.Y) >= parent.size.height))
+
+	fh.bounds.size.height = util.CeilDiv(fh.bounds.size.height, fh.upsampling)
+	fh.bounds.size.width = util.CeilDiv(fh.bounds.size.width, fh.upsampling)
+	fh.bounds.size.height = util.CeilDiv(fh.bounds.size.height, 1<<(3*fh.lfLevel))
+	fh.bounds.size.width = util.CeilDiv(fh.bounds.size.width, 1<<(3*fh.lfLevel))
+
 	fh.ecBlendingInfo = make([]BlendingInfo, len(parent.extraChannelInfo))
 	if normalFrame {
 		fh.blendingInfo, err = NewBlendingInfoWithReader(reader, len(fh.ecBlendingInfo) > 0, fullFrame)
@@ -245,23 +269,14 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 		}
 	}
 
-	// jxlatte has int maxJPX = Stream.of(jpegUpsampling).mapToInt(p -> p.x).reduce(Math::max).getAsInt();
-	// which I take it means get the maximum X value from jpegUpsampling. Ditto for Y value.
-	maxJPX := 0
-	maxJPY := 0
-	for _, j := range fh.jpegUpsampling {
-		if int(j.X) > maxJPX {
-			maxJPX = int(j.X)
-		}
-		if int(j.Y) > maxJPY {
-			maxJPY = int(j.Y)
-		}
-	}
-	fh.width = util.CeilDiv(fh.width, 1<<maxJPX) << maxJPX
-	fh.height = util.CeilDiv(fh.height, 1<<maxJPY) << maxJPY
+	maxJPY := util.Max(fh.jpegUpsamplingY...)
+	maxJPX := util.Max(fh.jpegUpsamplingX...)
+	fh.bounds.size.height = util.CeilDiv(fh.bounds.size.height, 1<<maxJPY) << maxJPY
+	fh.bounds.size.width = util.CeilDiv(fh.bounds.size.width, 1<<maxJPX) << maxJPX
 
 	for i := 0; i < 3; i++ {
-		fh.jpegUpsampling[i] = util.NewIntPointWithXY(uint32(maxJPX), uint32(maxJPY)).Minus(fh.jpegUpsampling[i])
+		fh.jpegUpsamplingY[i] = maxJPY - fh.jpegUpsamplingY[i]
+		fh.jpegUpsamplingX[i] = maxJPX - fh.jpegUpsamplingX[i]
 	}
 
 	return fh, nil

@@ -79,9 +79,9 @@ var (
 
 type ImageHeader struct {
 	level           int32
-	size            *SizeHeader
+	size            *Dimension
 	orientation     uint32
-	intrinsicSize   *SizeHeader
+	intrinsicSize   *Dimension
 	previewHeader   *PreviewHeader
 	animationHeader *AnimationHeader
 	bitDepth        *BitDepthHeader
@@ -124,7 +124,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		return nil, err
 	}
 
-	header.size, err = NewSizeHeader(reader, level)
+	header.size, err = readSizeHeader(reader, level)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if extraFields {
 		header.orientation = 1 + uint32(reader.MustReadBits(3))
 		if reader.MustReadBool() {
-			header.intrinsicSize, err = NewSizeHeader(reader, level)
+			header.intrinsicSize, err = readSizeHeader(reader, level)
 			if err != nil {
 				return nil, err
 			}

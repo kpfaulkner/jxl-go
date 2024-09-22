@@ -3,7 +3,6 @@ package entropy
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -240,13 +239,7 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 	var state int32
 	var err error
 	count++
-	if count > 267063 {
-		os.Exit(1)
-	}
-	if count == 267062 {
-		fmt.Printf("snoop\n")
-	}
-
+	
 	if stateObj.HasState() {
 
 		state, err = stateObj.GetState()

@@ -8,7 +8,7 @@ import (
 type Pass struct {
 	minShift         uint32
 	maxShift         uint32
-	replacedChannels []ModularChannelInfo
+	replacedChannels []ModularChannel
 	hfPass           *HFPass
 }
 
@@ -37,7 +37,7 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 	}
 
 	globalModular := frame.lfGlobal.gModular
-	p.replacedChannels = make([]ModularChannelInfo, len(globalModular.stream.channels))
+	p.replacedChannels = make([]ModularChannel, len(globalModular.stream.channels))
 	for i := 0; i < len(globalModular.stream.channels); i++ {
 		ch, ok := globalModular.stream.channels[i].(*ModularChannel)
 		if !ok {
@@ -46,7 +46,7 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 		if !ch.decoded {
 			m := uint32(min(ch.hshift, ch.vshift))
 			if p.minShift <= m && m < p.maxShift {
-				p.replacedChannels[i] = *NewModularChannelInfoFromInfo((*ch).ModularChannelInfo)
+				p.replacedChannels[i] = *NewModularChannelFromChannel(*ch)
 			}
 		}
 	}

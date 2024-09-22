@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"image"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -332,13 +331,11 @@ func (f *Frame) getColorChannelCount() int {
 	return f.globalMetadata.getColourChannelCount()
 }
 
-func (f *Frame) getPaddedFrameSize() (util.IntPoint, error) {
+// FIXME(kpfaulkner) look at latest JXLatte.
+func (f *Frame) getPaddedFrameSize() (Dimension, error) {
 
-	if f.header.encoding == VARDCT {
-		return util.NewIntPointWithXY(f.width, f.height).CeilDiv(8).Times(8), nil
-	} else {
-		return util.NewIntPointWithXY(f.width, f.height), nil
-	}
+	factorY := 1 << util.Max(f.header.jpegUpsampling)
+
 }
 
 func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
@@ -372,50 +369,43 @@ func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 // then 23 onwards. So going to do the same just to make it easier to compare outputs.
 func (f *Frame) decodePassGroups() error {
 	numPasses := len(f.passes)
-	passGroups := make([][]PassGroup, numPasses)
+	numGroups := int(f.numGroups)
+	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
 
-	for pass := 0; pass < 1; pass++ {
-		//groupStartStop := []image.Point{{0, 22}, {23, int(f.numGroups)}}
-		//groupStartStop := []image.Point{{23, int(f.numGroups)}}
-		groupStartStop := []image.Point{{0, 1}}
-		for _, p := range groupStartStop {
-			for group := p.X; group < p.Y; group++ {
-				//for group := 22; group < int(f.numGroups); group++ {
-				br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
-				if err != nil {
-					return err
-				}
-				replaced := f.passes[pass].replacedChannels
-				for i := 0; i < len(replaced); i++ {
-					info := replaced[i]
-					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-					passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-					rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
-					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-					chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
-					info.origin = pos
-					size := passGroupSize.Min(chanSize.Minus(info.origin))
-					info.width = int(size.X)
-					info.height = int(size.Y)
-					replaced[i] = info
-				}
-
-				if pass == 0 && group == 0 {
-					fmt.Printf("snoop\n")
-				}
-
-				if group == 22 {
-					fmt.Printf("snoop\n")
-				}
-
-				pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
-				if err != nil {
-					return err
-				}
-				//f.passes[pass].replacedChannels = replaced
-				passGroups[pass][group] = *pg
-				fmt.Printf("%v\n", br)
+	for pass0 := 0; pass0 < numPasses; pass0++ {
+		pass := pass0
+		for group0 := 0; group0 < numGroups; group0++ {
+			fmt.Printf("DecodePassGroups pass %d : group %d\n", pass0, group0)
+			group := group0
+			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
+			if err != nil {
+				return err
 			}
+			replaced := f.passes[pass].replacedChannels
+			for i := 0; i < len(replaced); i++ {
+				info := replaced[i]
+				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+				rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
+				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
+				info.origin = pos
+				size := passGroupSize.Min(chanSize.Minus(info.origin))
+				info.width = int(size.X)
+				info.height = int(size.Y)
+				replaced[i] = info
+			}
+
+			if pass == 0 && group == 10 {
+				fmt.Printf("snoop\n")
+			}
+			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
+			if err != nil {
+				return err
+			}
+			//f.passes[pass].replacedChannels = replaced
+			passGroups[pass][group] = *pg
+			fmt.Printf("%v\n", br)
 		}
 	}
 
@@ -666,4 +656,14 @@ func (f *Frame) synthesizeNoise() error {
 	}
 
 	panic("synthesizeNoise not implemented")
+}
+
+func (f *Frame) getLFGroupSize(lfGroupID int32) Dimension {
+	pos := f.getLFGroupLocation(lfGroupID)
+	paddedSize = f.getPaddedFrameSize()
+
+}
+
+func (f *Frame) getLFGroupLocation(lfGroupID int32) *Point {
+	return NewPoint(lfGroupID/int32(f.lfGroupRowStride), lfGroupID%int32(f.lfGroupRowStride))
 }
