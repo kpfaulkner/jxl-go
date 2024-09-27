@@ -470,17 +470,17 @@ func (f *Frame) decodePassGroups() error {
 				info := replaced[i]
 				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
 				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-				rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
+				rowStride := util.CeilDiv(uint32(info.size.width), passGroupSize.X)
 				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-				chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
+				chanSize := util.NewIntPointWithXY(uint32(info.size.width), uint32(info.size.height))
 				info.origin = pos
 				size := passGroupSize.Min(chanSize.Minus(info.origin))
-				info.width = int32(size.X)
-				info.height = int32(size.Y)
+				info.size.width = size.X
+				info.size.height = size.Y
 				replaced[i] = info
 			}
 
-			if pass == 0 && group == 10 {
+			if pass == 0 && group == 12 {
 				fmt.Printf("snoop\n")
 			}
 			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
