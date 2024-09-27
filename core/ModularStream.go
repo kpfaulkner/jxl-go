@@ -6,6 +6,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
 )
 
 const (
@@ -18,6 +19,21 @@ var (
 	permutationLUT = [][]int{
 		{0, 1, 2}, {1, 2, 0}, {2, 0, 1},
 		{0, 2, 1}, {1, 0, 2}, {2, 1, 0}}
+
+	kDeltaPalette = [][]int32{
+		{0, 0, 0}, {4, 4, 4}, {11, 0, 0}, {0, 0, -13}, {0, -12, 0}, {-10, -10, -10},
+		{-18, -18, -18}, {-27, -27, -27}, {-18, -18, 0}, {0, 0, -32}, {-32, 0, 0}, {-37, -37, -37},
+		{0, -32, -32}, {24, 24, 45}, {50, 50, 50}, {-45, -24, -24}, {-24, -45, -45}, {0, -24, -24},
+		{-34, -34, 0}, {-24, 0, -24}, {-45, -45, -24}, {64, 64, 64}, {-32, 0, -32}, {0, -32, 0},
+		{-32, 0, 32}, {-24, -45, -24}, {45, 24, 45}, {24, -24, -45}, {-45, -24, 24}, {80, 80, 80},
+		{64, 0, 0}, {0, 0, -64}, {0, -64, -64}, {-24, -24, 45}, {96, 96, 96}, {64, 64, 0},
+		{45, -24, -24}, {34, -34, 0}, {112, 112, 112}, {24, -45, -45}, {45, 45, -24}, {0, -32, 32},
+		{24, -24, 45}, {0, 96, 96}, {45, -24, 24}, {24, -45, -24}, {-24, -45, 24}, {0, -64, 0},
+		{96, 0, 0}, {128, 128, 128}, {64, 0, 64}, {144, 144, 144}, {96, 96, 0}, {-36, -36, 36},
+		{45, -24, -45}, {45, -45, -24}, {0, 0, -96}, {0, 128, 128}, {0, 96, 0}, {45, 24, -45},
+		{-128, 0, 0}, {24, -45, 24}, {-45, 24, -45}, {64, 0, -64}, {64, -64, -64}, {96, 0, 96},
+		{45, -45, 24}, {24, 45, -45}, {64, 64, -64}, {128, 128, 0}, {0, 0, -128}, {-24, 45, -45},
+	}
 )
 
 type SqueezeParam struct {
@@ -148,18 +164,16 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 		ms.transforms[i] = NewTransformInfo(reader)
 	}
 
-	w := int32(frame.header.width)
-	h := int32(frame.header.height)
-
 	if channelArray == nil || len(channelArray) == 0 {
 		for i := 0; i < channelCount; i++ {
+			size := frame.bounds.size
 			var dimShift int32
 			if i < ecStart {
 				dimShift = 0
 			} else {
 				dimShift = frame.globalMetadata.extraChannelInfo[i-ecStart].dimShift
 			}
-			ms.channels = append(ms.channels, NewModularChannelWithAllParams(w, h, dimShift, dimShift, false))
+			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.width), int32(size.height), dimShift, dimShift, false))
 		}
 	} else {
 		//ms.channels = append(ms.channels, channelArray...)
@@ -404,7 +418,67 @@ func (ms *ModularStream) applyTransforms() error {
 				ms.channels[start+permutationLUT[permutation][j]] = v[j]
 			}
 		} else if ms.transforms[i].tr == PALETTE {
-			panic("ModularStream::applyTransforms PALETTE not implemented")
+
+			// HERE 20240927  need to implement this!!!
+			first := ms.transforms[i].beginC + 1
+			endC := ms.transforms[i].beginC + ms.transforms[i].numC - 1
+			last := endC + 1
+			bitDepth := ms.frame.globalMetadata.bitDepth.bitsPerSample
+			firstChannel := ms.channels[first]
+			c0 := ms.channels[0]
+			for j := first + 1; j <= last; j++ {
+				ms.channels = util.Add(ms.channels, j, NewModularChannelFromChannel(*firstChannel))
+			}
+			for c := 0; c < ms.transforms[i].numC; c++ {
+				ch := ms.channels[first+c]
+				for y := uint32(0); y < firstChannel.size.height; y++ {
+					for x := uint32(0); x < firstChannel.size.width; x++ {
+						index := ch.buffer[y][x]
+						isDelta := index < int32(ms.transforms[i].nbDeltas)
+						var value int32
+						if index >= 0 && index < int32(ms.transforms[i].nbColours) {
+							value = c0.buffer[c][index]
+						} else if index >= int32(ms.transforms[i].nbColours) {
+							index -= int32(ms.transforms[i].nbColours)
+							if index < 64 {
+								value = ((index>>(2*c)%4)*((1<<bitDepth)-1)/4 + (1 << util.Max(0, bitDepth-3)))
+							} else {
+								index -= 64
+								for k := 0; k < c; k++ {
+									index /= 5
+								}
+								value = (index % 5) * ((1 << bitDepth) - 1) / 4
+							}
+						} else if c < 3 {
+							index = (-index - 1) % 143
+							value = kDeltaPalette[(index+1)>>1][c]
+							if index&1 == 0 {
+								value = -value
+							}
+
+							if bitDepth > 8 {
+								value = value << (util.Min(bitDepth, 24) - 8)
+							}
+						} else {
+							value = 0
+						}
+						ch.buffer[y][x] = value
+						if isDelta {
+							pred, err := ch.prediction(int32(y), int32(x), int32(ms.transforms[i].dPred))
+							if err != nil {
+								return err
+							}
+							ch.buffer[y][x] += pred
+						}
+					}
+				}
+			}
+			ms.channels = ms.channels[1:]
+			if ms.transforms[i].beginC < ms.nbMetaChannels {
+				ms.nbMetaChannels -= 2 - ms.transforms[i].numC
+			} else {
+				ms.nbMetaChannels--
+			}
 		}
 	}
 	return nil

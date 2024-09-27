@@ -45,3 +45,9 @@ func FillFloat32(a []float32, fromIndex uint32, toIndex uint32, val float32) {
 		a[i] = val
 	}
 }
+
+func Add[T any](slice []T, index int, elem T) []T {
+	newSlice := append(slice[:index], elem)
+	newSlice = append(newSlice, slice[index:]...)
+	return newSlice
+}

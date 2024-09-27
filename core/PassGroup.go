@@ -44,5 +44,7 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 		return nil, err
 	}
 
+	pg.lfg = frame.getLFGroupForGroup(int32(group))
+
 	return pg, nil
 }

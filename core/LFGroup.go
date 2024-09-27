@@ -21,14 +21,22 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 		lfGroupID: index,
 	}
 
-	//pixelSize := lfg.frame.getLFGroupSize(lfg.lfGroupID)
-
-	lfg.size = Dimension{
-		height: parent.header.height >> 3,
-		width:  parent.header.width >> 3,
+	pixelSize, err := lfg.frame.getLFGroupSize(lfg.lfGroupID)
+	if err != nil {
+		return nil, err
 	}
 
-	stream, err := NewModularStreamWithStreamIndex(reader, parent, int(18+3*parent.numLFGroups+uint32(index)), replaced)
+	lfg.size = Dimension{
+		height: pixelSize.height >> 3,
+		width:  pixelSize.width >> 3,
+	}
+
+	if parent.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	} else {
+		lfg.lfCoeff = nil
+	}
+	stream, err := NewModularStreamWithStreamIndex(reader, parent, 1+int(parent.numLFGroups+uint32(lfg.lfGroupID)), replaced)
 	if err != nil {
 		return nil, err
 	}
@@ -39,6 +47,10 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 		return nil, err
 	}
 
-	panic("boom")
+	if parent.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	} else {
+		lfg.hfMetadata = nil
+	}
 	return lfg, nil
 }

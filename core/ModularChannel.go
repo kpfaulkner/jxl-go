@@ -505,7 +505,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				return err
 			}
 
-			if x0 == 106 && y0 == 192 {
+			if x0 == 198 && y0 == 46 {
 				fmt.Printf("snoop\n")
 			}
 

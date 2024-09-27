@@ -49,22 +49,30 @@ func (f *Frame) readFrameHeader() (FrameHeader, error) {
 	if err != nil {
 		return FrameHeader{}, err
 	}
-	f.width = f.header.width
-	f.height = f.header.height
-	f.width = util.CeilDiv(f.width, f.header.upsampling)
-	f.height = util.CeilDiv(f.height, f.header.upsampling)
-	f.width = util.CeilDiv(f.width, 1<<(f.header.lfLevel*3))
-	f.height = util.CeilDiv(f.height, 1<<(f.header.lfLevel*3))
-	f.groupRowStride = util.CeilDiv(f.width, f.header.groupDim)
-	f.lfGroupRowStride = util.CeilDiv(f.width, f.header.groupDim<<3)
-	f.numGroups = f.groupRowStride * util.CeilDiv(f.height, f.header.groupDim)
-	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.height, f.header.groupDim<<3)
+
+	f.bounds = Rectangle{
+		origin: f.header.bounds.origin,
+		size:   f.header.bounds.size,
+	}
+
+	//f.width = f.header.width
+	//f.height = f.header.height
+	//f.width = util.CeilDiv(f.width, f.header.upsampling)
+	//f.height = util.CeilDiv(f.height, f.header.upsampling)
+	//f.width = util.CeilDiv(f.width, 1<<(f.header.lfLevel*3))
+	//f.height = util.CeilDiv(f.height, 1<<(f.header.lfLevel*3))
+	f.groupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim)
+	f.lfGroupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim<<3)
+	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim)
+	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim<<3)
 	f.readTOC()
 	return *f.header, nil
 }
 
 func (f *Frame) readTOC() error {
 	var tocEntries uint32
+
+	// FIXME(kpfaulkner) f.numGroups should be 130 and f.numLFGroups should be 4
 	if f.numGroups == 1 && f.header.passes.numPasses == 1 {
 		tocEntries = 1
 	} else {
@@ -408,6 +416,18 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 			return err
 		}
 	}
+
+	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
+		for j := 0; j < len(lfReplacementChannelIndicies); j++ {
+			index := lfReplacementChannelIndicies[j]
+			channel := f.lfGlobal.gModular.stream.channels[index]
+			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
+			newChannel := newChannelInfo.buffer
+			for y := 0; y < len(newChannel); y++ {
+				copy(channel.buffer[uint32(y)+newChannelInfo.origin.Y], newChannel[y])
+			}
+		}
+	}
 	return nil
 }
 
@@ -732,4 +752,9 @@ func (f *Frame) getLFGroupSize(lfGroupID int32) (Dimension, error) {
 
 func (f *Frame) getLFGroupLocation(lfGroupID int32) *Point {
 	return NewPoint(lfGroupID/int32(f.lfGroupRowStride), lfGroupID%int32(f.lfGroupRowStride))
+}
+
+func (f *Frame) getLFGroupForGroup(groupID int32) *LFGroup {
+	pos := f.getLFGroupLocation(groupID)
+	return f.lfGroups[(pos.Y>>3)*int32(f.lfGroupRowStride)+(pos.X>>3)]
 }
