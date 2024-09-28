@@ -27,7 +27,7 @@ func NewPreviewHeader(reader *jxlio.Bitreader) (*PreviewHeader, error) {
 	if ratio != 0 {
 		ph.width, err = getWidthFromRatio(uint32(ratio), ph.height)
 		if err != nil {
-			log.Errorf("Error getting width from ratio: %v\n", err)
+			log.Errorf("Error getting Width from ratio: %v\n", err)
 			return nil, err
 		}
 	} else {
@@ -39,8 +39,8 @@ func NewPreviewHeader(reader *jxlio.Bitreader) (*PreviewHeader, error) {
 	}
 
 	if ph.width > 4096 || ph.height > 4096 {
-		log.Errorf("preview width or preview height too large: %d, %d", ph.width, ph.height)
-		return nil, errors.New("preview width or preview height too large")
+		log.Errorf("preview Width or preview Height too large: %d, %d", ph.width, ph.height)
+		return nil, errors.New("preview Width or preview Height too large")
 	}
 
 	return ph, nil

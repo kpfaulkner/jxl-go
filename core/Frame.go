@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"errors"
-	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -55,12 +54,12 @@ func (f *Frame) readFrameHeader() (FrameHeader, error) {
 		size:   f.header.bounds.size,
 	}
 
-	//f.width = f.header.width
-	//f.height = f.header.height
-	//f.width = util.CeilDiv(f.width, f.header.upsampling)
-	//f.height = util.CeilDiv(f.height, f.header.upsampling)
-	//f.width = util.CeilDiv(f.width, 1<<(f.header.lfLevel*3))
-	//f.height = util.CeilDiv(f.height, 1<<(f.header.lfLevel*3))
+	//f.Width = f.header.Width
+	//f.Height = f.header.Height
+	//f.Width = util.CeilDiv(f.Width, f.header.upsampling)
+	//f.Height = util.CeilDiv(f.Height, f.header.upsampling)
+	//f.Width = util.CeilDiv(f.Width, 1<<(f.header.lfLevel*3))
+	//f.Height = util.CeilDiv(f.Height, 1<<(f.header.lfLevel*3))
 	f.groupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim)
 	f.lfGroupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim<<3)
 	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim)
@@ -201,13 +200,10 @@ func (f *Frame) skipFrameData() error {
 
 // gets a bit reader for each TOC entry???
 func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
-
-	fmt.Printf("getBitreader %d\n", index)
 	if len(f.tocLengths) == 1 {
 		panic("getBitreader panic... unsure what to do")
 	}
 	permutedIndex := f.tocPermutation[index]
-	fmt.Printf("XXXX getBitreader index %d : perm %d : bufLen %d\n", index, permutedIndex, len(f.buffers[permutedIndex]))
 	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), true, index), nil
 }
 
@@ -460,18 +456,12 @@ func (f *Frame) decodePassGroups() error {
 	for pass0 := 0; pass0 < numPasses; pass0++ {
 		pass := pass0
 		for group0 := 0; group0 < numGroups; group0++ {
-			fmt.Printf("DecodePassGroups pass %d : group %d\n", pass0, group0)
 			group := group0
-			if pass == 0 && group == 64 {
-				fmt.Printf("snoop\n")
-			}
 			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
 			if err != nil {
 				return err
 			}
 
-			// FIXME 20240928 copy replacedChannels... dont just reference them!!
-			//replaced := f.passes[pass].replacedChannels
 			replaced := []ModularChannel{}
 			for _, r := range f.passes[pass].replacedChannels {
 				mc := NewModularChannelFromChannel(r)
@@ -497,13 +487,11 @@ func (f *Frame) decodePassGroups() error {
 			}
 			//f.passes[pass].replacedChannels = replaced
 			passGroups[pass][group] = *pg
-			fmt.Printf("%v\n", br)
 		}
 	}
 
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
-		fmt.Printf("%v\n", j)
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
 			channel := f.lfGlobal.gModular.stream.channels[i]
 			channel.allocate()
@@ -511,9 +499,9 @@ func (f *Frame) decodePassGroups() error {
 				newChannelInfo := passGroups[pass][group].modularStream.channels[j]
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
-					//channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
+					//channel.Buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
 					idx := y + int(newChannelInfo.origin.Y)
-					//copy(channel.buffer[idx], buff[y])
+					//copy(channel.Buffer[idx], buff[y])
 					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 				}
 			}
@@ -524,74 +512,6 @@ func (f *Frame) decodePassGroups() error {
 	if f.header.encoding == VARDCT {
 		panic("VARDCT not implemented")
 	}
-
-	return nil
-}
-
-func (f *Frame) decodePassGroupsORIG() error {
-	//numPasses := len(f.passes)
-	//passGroups := make([][]PassGroup, numPasses)
-	//
-	//for pass := 0; pass < numPasses; pass++ {
-	//	for group := 0; group < int(f.numGroups); group++ {
-	//		br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		replaced := f.passes[pass].replacedChannels
-	//		for i := 0; i < len(replaced); i++ {
-	//			info := replaced[i]
-	//			shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-	//			passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-	//			rowStride := util.CeilDiv(uint32(info.width), passGroupSize.X)
-	//			pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-	//			chanSize := util.NewIntPointWithXY(uint32(info.width), uint32(info.height))
-	//			info.origin = pos
-	//			size := passGroupSize.Min(chanSize.Minus(info.origin))
-	//			info.width = int32(size.X)
-	//			info.height = int32(size.Y)
-	//			replaced[i] = info
-	//		}
-	//		pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		//f.passes[pass].replacedChannels = replaced
-	//		passGroups[pass][group] = *pg
-	//		fmt.Printf("%v\n", br)
-	//	}
-	//}
-	//
-	//for pass := 0; pass < numPasses; pass++ {
-	//	j := 0
-	//	fmt.Printf("%v\n", j)
-	//	for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-	//		//if f.passes[pass].replacedChannels[i] == nil {
-	//		//	continue
-	//		//}
-	//		channel, ok := f.lfGlobal.gModular.stream.channels[i].(*ModularChannel)
-	//		if !ok {
-	//			return errors.New("trying to get ModularChannel when one didn't exist")
-	//		}
-	//
-	//		//public static native void arraycopy(Object src,  int  srcPos,
-	//		//	Object dest, int destPos,
-	//		//	int length);
-	//		//
-	//		for group := 0; group < int(f.numGroups); group++ {
-	//			newChannelInfo := passGroups[pass][group].modularPassGroupInfo[j]
-	//			buff := passGroups[pass][group].modularPassGroupBuffer[j]
-	//			for y := 0; y < newChannelInfo.height; y++ {
-	//				channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
-	//			}
-	//		}
-	//		f.lfGlobal.gModular.stream.channels[i] = channel
-	//		j++
-	//	}
-	//}
-	//if f.header.encoding == VARDCT {
-	//	panic("VARDCT not implemented")
-	//}
 
 	return nil
 }
@@ -670,9 +590,9 @@ func (f *Frame) initializeNoise(seed0 int64) error {
 	// FIXME(kpfaulkner) yet to do.
 	panic("not implemented")
 
-	//rowStride := util.CeilDiv(f.header.width, f.header.groupDim)
-	//localNoiseBuffer := util.MakeMatrix3D[float32](3, int(f.header.height), int(f.header.width))
-	//numGroups := rowStride * util.CeilDiv(f.header.height, f.header.groupDim)
+	//rowStride := util.CeilDiv(f.header.Width, f.header.groupDim)
+	//localNoiseBuffer := util.MakeMatrix3D[float32](3, int(f.header.Height), int(f.header.Width))
+	//numGroups := rowStride * util.CeilDiv(f.header.Height, f.header.groupDim)
 	//for group := uint32(0); group < numGroups; group++ {
 	//	groupXYUp := util.Coordinates(group, rowStride).Times(f.header.upsampling)
 	//	for iy := uint32(0); iy < f.header.upsampling; iy++ {

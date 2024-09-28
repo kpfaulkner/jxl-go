@@ -250,7 +250,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 
 	ms.stream = entropy.NewEntropyStreamWithStream(ms.tree.stream)
 
-	// get max width from all channels.
+	// get max Width from all channels.
 	maxWidth := uint32(0)
 	for _, c := range ms.channels {
 		if c.size.width > maxWidth {
@@ -265,7 +265,6 @@ func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) e
 
 	groupDim := uint32(ms.frame.header.groupDim)
 	for i := 0; i < len(ms.channels); i++ {
-		fmt.Printf("decodeChannels bitread %d\n", reader.BitsRead())
 		channel := ms.channels[i]
 		if partial && i >= ms.nbMetaChannels &&
 			(channel.size.width > groupDim || channel.size.height > groupDim) {

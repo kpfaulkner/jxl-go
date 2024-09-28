@@ -311,6 +311,16 @@ func (h *ImageHeader) hasAlpha() bool {
 	return len(h.alphaIndices) > 0
 }
 
+func (h *ImageHeader) getTotalChannelCount() int {
+	return len(h.extraChannelInfo) + h.getColourChannelCount()
+}
+
+func (h *ImageHeader) getDecodedICC() []byte {
+	return nil
+
+	// TODO(kpfaulkner) NOT IMPLEMENTED YET... but test images do not have ICC component... so skipping for now.
+}
+
 func GetICCContext(buffer []byte, index int) int {
 	if index <= 128 {
 		return 0

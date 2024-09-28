@@ -49,7 +49,13 @@ func NewJXLDecoder(opts ...JXLDecoderOption) *JXLDecoder {
 	return jxl
 }
 
-func (jxl *JXLDecoder) Decode() error {
+func (jxl *JXLDecoder) Decode() (*JXLImage, error) {
 
-	return jxl.decoder.decode()
+	jxlImage, err := jxl.decoder.decode()
+	if err != nil {
+		return nil, err
+	}
+
+	return jxlImage, nil
+
 }

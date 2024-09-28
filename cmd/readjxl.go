@@ -2,19 +2,33 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/kpfaulkner/jxl-go/core"
+	"github.com/kpfaulkner/jxl-go/imageformats"
 )
 
 func main() {
 	fmt.Printf("So it begins...\n")
 
-	jxl := core.NewJXLDecoder(core.WithInputFilename(`c:\temp\lossless.jxl`))
+	jxl := core.NewJXLDecoder(core.WithInputFilename(`../testdata/lossless.jxl`))
 
-	if err := jxl.Decode(); err != nil {
+	var img *core.JXLImage
+	var err error
+	start := time.Now()
+	if img, err = jxl.Decode(); err != nil {
 		fmt.Printf("Error decoding: %v\n", err)
-	} else {
-		fmt.Printf("Decoded successfully\n")
+		return
 	}
+	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
 
+	// now convert to PNG for moment.
+	pfmFile, err := os.Create(`c:\temp\lossless-jxl-go.pfm`)
+	if err != nil {
+		fmt.Printf("Error opening output file: %v\n", err)
+		return
+	}
+	defer pfmFile.Close()
+	imageformats.WritePFM(img, pfmFile)
 }

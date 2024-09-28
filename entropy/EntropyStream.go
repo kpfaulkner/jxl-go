@@ -2,7 +2,6 @@ package entropy
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -49,10 +48,6 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	if numDists <= 0 {
 		return nil, errors.New("Num Dists must be positive")
 	}
-
-	x := reader.MustShowBits(32)
-	fmt.Printf("XXXXX BEGIN %d\n", int32(x))
-
 	es := &EntropyStream{}
 	es.state = NewANSState()
 	es.usesLZ77 = reader.MustReadBool()
@@ -106,22 +101,12 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 			es.dists[i] = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
 		}
 	} else {
-		if es.logAlphabetSize == 35 {
-			fmt.Printf("snoop\n")
-		}
-		x := reader.MustShowBits(32)
-		fmt.Printf("XXXXX PRIOR %d\n", int32(x))
 		for i := 0; i < len(es.dists); i++ {
 			d, err := NewANSSymbolDistribution(reader, es.logAlphabetSize)
 			if err != nil {
 				return nil, err
 			}
 			es.dists[i] = d
-		}
-		x = reader.MustShowBits(32)
-		//fmt.Printf("XXXXX %d\n", int32(x))
-		if x == 172542 {
-			fmt.Printf("snoop\n")
 		}
 	}
 
@@ -204,7 +189,6 @@ func (es *EntropyStream) TryReadSymbol(reader *jxlio.Bitreader, context int) int
 }
 
 func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, context int, distanceMultiplier int) (int32, error) {
-	//fmt.Printf("ReadSymbolWithMultiplier current pos %d\n", reader.BitsRead())
 	if es.numToCopy77 > 0 {
 		es.copyPos77++
 		hybridInt := es.window[es.copyPos77&0xFFFFF]

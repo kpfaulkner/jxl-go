@@ -23,27 +23,9 @@ type ANSSymbolDistribution struct {
 func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*ANSSymbolDistribution, error) {
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
-
-	fmt.Printf("ANSSymbolDistribution bitsread %d\n", reader.BitsRead())
-	trigger := false
-	if logAlphabetSize == 6 {
-		fmt.Printf("boomage\n")
-		trigger = true
-
-	}
-	x := reader.MustShowBits(32)
-	fmt.Printf("XXXXX2 %d\n", int32(x))
-
-	if x == 204998060 {
-		fmt.Printf("snoop\n")
-	}
 	uniqPos := -1
 	if reader.MustReadBool() {
-		if trigger {
-			fmt.Printf("boomage\n")
-		}
-		//asd.asd = 1 << logAlphabetSize
-		//asd.frequencies = make([]int, alphabetSize)
+
 		if reader.MustReadBool() {
 			v1 := reader.ReadU8()
 			v2 := reader.ReadU8()
@@ -126,10 +108,6 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 			}
 		}
 
-		fmt.Printf("AlphabetSize %d\n", asd.alphabetSize)
-		if asd.alphabetSize == 3 {
-			fmt.Printf("snoop\n")
-		}
 		if omitPos < 0 || omitPos+1 < asd.alphabetSize && logCounts[omitPos+1] == 13 {
 			return nil, errors.New("Invalid OmitPos")
 		}
@@ -137,10 +115,6 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		numSame := 0
 		prev := 0
 		for i := 0; i < asd.alphabetSize; i++ {
-			//fmt.Printf("ANSSymbolDistribution step 1 bitsread %d\n", reader.BitsRead())
-			if x == 204998060 && i == 3 {
-				fmt.Printf("snoop\n")
-			}
 			if same[i] != 0 {
 				numSame = same[i] - 1
 				if i > 0 {
@@ -166,11 +140,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 					if bitcount > int32(logCounts[i])-1 {
 						bitcount = int32(logCounts[i] - 1)
 					}
-					//fmt.Printf("XXX bitcount %d : i is %d\n", bitcount, i)
-					//a := 1 << (logCounts[i] - 1)
-					//b := reader.MustReadBits(bitcount) << (logCounts[i] - 1 - int(bitcount))
 					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-int(bitcount)))
-					//asd.frequencies[i] = int(a + b)
 				}
 			}
 			totalCount += asd.frequencies[i]
@@ -239,26 +209,15 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 	var state int32
 	var err error
 	count++
-	
+
 	if stateObj.HasState() {
 
 		state, err = stateObj.GetState()
 		if err != nil {
 			return 0, err
 		}
-		//fmt.Printf("hasState %d\n", state)
-		if state == 956007366 {
-			fmt.Printf("COUNT for target state is %d\n", count)
-		}
 	} else {
 		state = int32(reader.MustReadBits(32))
-		//fmt.Printf("NOT hasState %d\n", state)
-	}
-	//fmt.Printf("state is now %d\n", state)
-	origState := state
-
-	if origState == 98963606 {
-		fmt.Printf("snoop\n")
 	}
 
 	index := state & 0xFFF
@@ -275,30 +234,9 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 		offset = int(pos)
 	}
 
-	if symbol == 0 && pos == 6 && offset == 488 {
-		fmt.Printf("snoop %d\n", origState)
-	}
-
 	state = int32(asd.frequencies[symbol])*int32(uint32(state)>>12) + int32(offset)
 	if uint32(state)&0xFFFF0000 == 0 {
-		if state == 6634 {
-			fmt.Printf("snoop\n")
-		}
-		//x := reader.MustShowBits(16)
-		//fmt.Printf("XXX show bits %x\n", x)
 		state = (state << 16) | int32(reader.MustReadBits(16))
-
-	}
-
-	if state == 496208888 {
-		fmt.Printf("snoop\n")
-	}
-	if state == 10437574 {
-		fmt.Printf("snoop\n")
-	}
-
-	if state == 98963606 {
-		fmt.Printf("snoop\n")
 	}
 
 	stateObj.SetState(int32(state))

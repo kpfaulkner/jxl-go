@@ -57,42 +57,6 @@ func (br *BoxReader) ReadBoxHeader() ([]ContainerBoxHeader, error) {
 	return containerBoxHeaders, nil
 }
 
-// readAllBoxes read all boxes and gets offset/size details so we can read them later.
-func (br *BoxReader) readAllBoxesOrig() ([]ContainerBoxHeader, error) {
-
-	//var boxHeaders []ContainerBoxHeader
-	//var bSize uint32
-	//var bType uint64
-	//var offset uint64
-	//for {
-	//	boxSize, tag, skip, err := br.readSizeAndType()
-	//	if err != nil {
-	//		// end of file... return
-	//		if err == io.EOF {
-	//			return boxHeaders, nil
-	//		}
-	//		return nil, err
-	//	}
-	//
-	//	// seek ahead to the next box.
-	//	newPos, err := br.reader.Seek(int64(bSize), io.SeekCurrent)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//
-	//	fmt.Printf("new pos %d\n", newPos)
-	//
-	//	boxHeaders = append(boxHeaders,
-	//		ContainerBoxHeader{
-	//			Size:    bSize,
-	//			BoxType: bType,
-	//			IsLast:  false, // not sure we need this yet.
-	//			Offset:  offset,
-	//		})
-	//}
-	return nil, nil
-}
-
 func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 
 	var boxHeaders []ContainerBoxHeader
@@ -185,12 +149,12 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 				Processed: false,
 			}
 			boxHeaders = append(boxHeaders, bh)
+
 			// skip past this box.
-			s, err := br.SkipFully(int64(boxSize))
+			_, err = br.SkipFully(int64(boxSize))
 			if err != nil {
 				return nil, err
 			}
-			fmt.Printf("S is %d\n", s)
 
 		default:
 			// skip over the bytes
@@ -214,81 +178,6 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 func (br *BoxReader) readBox() error {
 
 	return nil
-}
-
-func (br *BoxReader) readSizeAndType() (offset uint64, boxSize uint64, tag uint64, skip bool, err error) {
-	//
-	//boxSizeArray, err := br.reader.ReadByteArray(4)
-	//if err != nil {
-	//	return 0, 0, 0, false, err
-	//}
-	//
-	//boxSize = makeTag(boxSizeArray, 0, 4)
-	//if boxSize == 1 {
-	//	boxSizeArray, err = br.reader.ReadByteArray(8)
-	//	if err != nil {
-	//		return 0, 0, 0, false, err
-	//	}
-	//	boxSize = makeTag(boxSizeArray, 0, 8)
-	//	if boxSize > 0 {
-	//		boxSize -= 8
-	//	}
-	//}
-	//if boxSize > 0 {
-	//	boxSize -= 8
-	//}
-	//if boxSize < 0 {
-	//	return 0, 0, 0, false, fmt.Errorf("invalid box size: %d", boxSize)
-	//}
-	//
-	//boxTag, err := br.reader.ReadByteArray(4)
-	//if err != nil {
-	//	return 0, 0, 0, false, err
-	//}
-	//tag = makeTag(boxTag, 0, 4)
-	//if tag == JXLL {
-	//	if boxSize != 1 {
-	//		return 0, 0, 0, false, fmt.Errorf("JXLL box size should be 1")
-	//	}
-	//	l, err := br.reader.ReadByte()
-	//	if err != nil {
-	//		return 0, 0, 0, false, err
-	//	}
-	//	if l != 5 && l != 10 {
-	//		return 0, 0, 0, false, fmt.Errorf("invalid level %d", l)
-	//	}
-	//	br.level = int(l)
-	//	return boxSize, tag, true, nil
-	//}
-	//if tag == JXLP {
-	//	boxTag, err = br.reader.ReadByteArray(4)
-	//	if err != nil {
-	//		return 0, 0, 0, false, errors.New("truncated sequence number")
-	//	}
-	//	boxSize -= 4
-	//}
-	//
-	//// if JXLP or JXLC then read contents immediately
-	//if tag == JXLP || tag == JXLC {
-	//	return boxSize, tag, false, nil
-	//} else {
-	//
-	//	// otherwise skip the box?
-	//	if boxSize > 0 {
-	//		s, err := br.SkipFully(int64(boxSize))
-	//		if err != nil {
-	//			return 0, 0, 0, false, err
-	//		}
-	//		if s != 0 {
-	//			return 0, 0, 0, false, errors.New("truncated extra box")
-	//		}
-	//	} else {
-	//		panic("java read supplyExceptionally... unsure why?")
-	//	}
-	//}
-	//
-	//return boxSize, tag, false, nil
-	return 0, 0, 0, false, nil
 }
 
 // returns number of bytes that were NOT skipped.

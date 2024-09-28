@@ -23,7 +23,7 @@ func readSizeHeader(reader *jxlio.Bitreader, level int32) (*Dimension, error) {
 		dim.width, err = getWidthFromRatio(uint32(ratio), dim.height)
 		if err != nil {
 
-			log.Errorf("Error getting width from ratio: %v\n", err)
+			log.Errorf("Error getting Width from ratio: %v\n", err)
 			return nil, err
 		}
 	} else {
@@ -41,8 +41,8 @@ func readSizeHeader(reader *jxlio.Bitreader, level int32) (*Dimension, error) {
 		return nil, fmt.Errorf("Invalid size header: %d x %d", dim.width, dim.height)
 	}
 	if uint64(dim.width*dim.height) > maxTimes {
-		log.Errorf("Width times height too large: %d %d", dim.width, dim.height)
-		return nil, fmt.Errorf("Width times height too large: %d %d", dim.width, dim.height)
+		log.Errorf("Width times Height too large: %d %d", dim.width, dim.height)
+		return nil, fmt.Errorf("Width times Height too large: %d %d", dim.width, dim.height)
 	}
 
 	return dim, nil

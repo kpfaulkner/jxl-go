@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
@@ -73,12 +72,12 @@ func (jxl *JXLCodestreamDecoder) atEnd() bool {
 	return false
 }
 
-func (jxl *JXLCodestreamDecoder) decode() error {
+func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 
 	// read header to get signature
 	_, err := jxl.readSignatureAndBoxes()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// loop through each box.
@@ -87,37 +86,23 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 	for _, box := range jxl.boxHeaders {
 		_, err := jxl.bitReader.Seek(box.Offset, io.SeekStart)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if jxl.atEnd() {
-			return nil
+			return nil, nil
 		}
 
-		// Read the actual data to process.
-
-		//b, _ := jxl.bitReader.ReadByteArray(10)
-		//fmt.Printf("b is %x\n", b)
-
-		sb, err := jxl.bitReader.ShowBits(16)
+		_, err = jxl.bitReader.ShowBits(16)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		fmt.Printf("show bits is %d\n", sb)
-
 		level := int32(jxl.level)
 		imageHeader, err := ParseImageHeader(jxl.bitReader, level)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
 		jxl.imageHeader = imageHeader
-		fmt.Printf("imageheader %+v\n", *imageHeader)
-		//gray := imageHeader.getColourChannelCount() < 3
-		//alpha := imageHeader.hasAlpha()
-		//ce := imageHeader.colorEncoding
-
 		if imageHeader.animationHeader != nil {
 			panic("dont care about animation for now")
 		}
@@ -140,7 +125,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			bundle := imageHeader.colorEncoding
 			matrix, err = imageHeader.opsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
@@ -156,17 +141,17 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			frame := NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
 			header, err = frame.readFrameHeader()
 			if err != nil {
-				return err
+				return nil, err
 			}
 			frameCount++
 
 			if lfBuffer[header.lfLevel] == nil && header.flags&USE_LF_FRAME != 0 {
-				return errors.New("LF level too large")
+				return nil, errors.New("LF level too large")
 			}
 
 			err := frame.readTOC()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if jxl.options.parseOnly {
@@ -175,7 +160,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			}
 			err = frame.decodeFrame(lfBuffer[header.lfLevel])
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if header.lfLevel > 0 {
@@ -191,11 +176,11 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 
 			err = frame.initializeNoise(int64(visibleFrames<<32) | invisibleFrames)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			err = frame.upsample()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if save && header.saveBeforeCT {
@@ -204,22 +189,22 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 
 			err = jxl.computePatches(reference, frame)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			err = frame.renderSplines()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			err = frame.synthesizeNoise()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			err = jxl.performColourTransforms(matrix, frame)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if header.encoding == VARDCT && jxl.options.renderVarblocks {
@@ -239,7 +224,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 				}
 				err = jxl.blendFrame(canvas, reference, frame)
 				if err != nil {
-					return err
+					return nil, err
 				}
 			}
 
@@ -254,13 +239,13 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 
 		err = jxl.bitReader.ZeroPadToByte()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// TOOD(kpfaulkner) unsure if need to perform similar drain cache functionality here. Don't think we do.
 
 		if jxl.options.parseOnly {
-			return nil
+			return nil, nil
 		}
 
 		orientation := imageHeader.orientation
@@ -268,20 +253,20 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 		for i := 0; i < len(orientedCanvas); i++ {
 			orientedCanvas[i], err = jxl.transposeBuffer(canvas[i], orientation)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
-		if len(orientedCanvas) != 0 {
-			fmt.Printf("might have final data?\n")
-		}
-
 		// generate image and return.
-
+		jxlImage, err := NewJXLImageWithBuffer(orientedCanvas, *imageHeader)
+		if err != nil {
+			return nil, err
+		}
+		return jxlImage, nil
 	}
 
 	panic("make JXL image here?")
-	return nil
+	return nil, nil
 }
 
 // Read signature
@@ -522,7 +507,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 	height := jxl.imageHeader.size.height
 	header := frame.header
 	//frameStart := header.origin.Max(util.ZERO)
-	//frameSize := util.NewIntPointWithXY(width, height).Min(header.origin.Plus(util.NewIntPointWithXY(header.width, header.height))).Minus(frameStart)
+	//frameSize := util.NewIntPointWithXY(Width, Height).Min(header.origin.Plus(util.NewIntPointWithXY(header.Width, header.Height))).Minus(frameStart)
 	frameStartY := int32(0)
 	if header.bounds.origin.X >= 0 {
 		frameStartY = header.bounds.origin.Y

@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -32,8 +31,8 @@ func (r Rectangle) computeLowerCorner() Point {
 }
 
 type ModularChannel struct {
-	//width   int32
-	//height  int32
+	//Width   int32
+	//Height  int32
 	hshift  int32
 	vshift  int32
 	origin  util.IntPoint
@@ -56,7 +55,7 @@ func init() {
 
 //func NewModularChannelFromInfo(info ModularChannelInfo) *ModularChannel {
 //
-//	return NewModularChannelWithAllParams(info.width, info.height, info.hshift, info.vshift, util.IntPoint{0, 0}, false)
+//	return NewModularChannelWithAllParams(info.Width, info.Height, info.hshift, info.vshift, util.IntPoint{0, 0}, false)
 //}
 
 func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
@@ -82,10 +81,10 @@ func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vsh
 		},
 	}
 
-	//if width == 0 || height == 0 {
-	//	mc.buffer = make([][]int32, 0)
+	//if Width == 0 || Height == 0 {
+	//	mc.Buffer = make([][]int32, 0)
 	//} else {
-	//	mc.buffer = util.MakeMatrix2D[int32](int(height), int(width))
+	//	mc.Buffer = util.MakeMatrix2D[int32](int(Height), int(Width))
 	//}
 	return mc
 }
@@ -326,15 +325,6 @@ func (mc *ModularChannel) walkerFunc(k int32) int32 {
 func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.EntropyStream,
 	wpParams *WPParams, tree *MATree, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int) error {
 
-	fmt.Printf("decode start : bits read %d : channelIndex %d : streamIndex %d\n", reader.BitsRead(), channelIndex, streamIndex)
-
-	if channelIndex == 1 && streamIndex == 40 {
-		fmt.Printf("snoop 20240921\n")
-	}
-
-	if channelIndex == 2 && streamIndex == 40 {
-		fmt.Printf("snoop 20240921\n")
-	}
 	if mc.decoded {
 		return nil
 	}
@@ -358,29 +348,10 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	///////////////////////////////////////////////////////////
 	var err error
 	for y0 := uint32(0); y0 < mc.size.height; y0++ {
-		//fmt.Printf("decode start : y : %d bits read %d\n", y0, reader.BitsRead())
-		if y0 == 0 {
-			fmt.Printf("snoop\n")
-		}
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
 
-		//fmt.Printf("refinedTree size %d\n", refinedTree.getSize())
 		for x0 := uint32(0); x0 < mc.size.width; x0++ {
-			if y0 == 189 && x0 == 134 {
-
-				fmt.Printf("snoop\n")
-			}
-			if y0 == 0 && x0 == 2 {
-				// weight goes wrong.
-				fmt.Printf("snoop\n")
-			}
-			if y0 == 0 && x0 == 20 {
-				fmt.Printf("snoop\n")
-			}
-			if y0 == 0 && x0 == 103 && reader.BitsRead() == 476 {
-				fmt.Printf("snoop\n")
-			}
 			x := int32(x0)
 			var maxError int32
 			if useWP {
@@ -393,7 +364,6 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			}
 
 			leafNode, err := refinedTree.walk(func(k int32) (int32, error) {
-				//fmt.Printf("walk %d\n", k)
 				switch k {
 				case 0:
 					return channelIndex, nil
@@ -498,22 +468,11 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				return err
 			}
 
-			if x0 == 198 && y0 == 46 {
-				//fmt.Printf("snoop\n")
-			}
-
-			if y0 == 192 {
-				//fmt.Printf("coord %d:%d context %d : bits reads %d\n", x0, y0, leafNode.context, reader.BitsRead())
-			}
 			diff, err := stream.ReadSymbolWithMultiplier(reader, int(leafNode.context), distMultiplier)
 			if err != nil {
 				return err
 			}
-			//fmt.Printf("decode bits read %d\n", reader.BitsRead())
 
-			if reader.BitsRead() == 800 {
-				//fmt.Printf("snoop\n")
-			}
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
 			p, err := mc.prediction(x, y, leafNode.predictor)
 			if err != nil {
@@ -523,13 +482,9 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			mc.buffer[y][x] = trueValue
 			if useWP {
 				for e := 0; e < 4; e++ {
-					if e == 1 && y == 0 && x == 1 {
-						fmt.Printf("snoop\n")
-					}
 					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
 				}
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
-				//fmt.Printf("err reader %d : X=%d:Y=%d : %d : %d : %d : %d : %d\n", reader.BitsRead(), x, y, mc.err[0][y][x], mc.err[1][y][x], mc.err[2][y][x], mc.err[3][y][x], mc.err[4][y][x])
 			}
 		}
 	}
