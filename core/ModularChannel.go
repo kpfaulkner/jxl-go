@@ -82,11 +82,11 @@ func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vsh
 		},
 	}
 
-	if width == 0 || height == 0 {
-		mc.buffer = make([][]int32, 0)
-	} else {
-		mc.buffer = util.MakeMatrix2D[int32](int(height), int(width))
-	}
+	//if width == 0 || height == 0 {
+	//	mc.buffer = make([][]int32, 0)
+	//} else {
+	//	mc.buffer = util.MakeMatrix2D[int32](int(height), int(width))
+	//}
 	return mc
 }
 
@@ -338,7 +338,8 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	if mc.decoded {
 		return nil
 	}
-
+	mc.decoded = true
+	mc.allocate()
 	tree = tree.compactify(channelIndex, streamIndex)
 	useWP := mc.forceWP || tree.useWeightedPredictor()
 	if useWP {

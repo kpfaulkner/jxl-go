@@ -461,11 +461,21 @@ func (f *Frame) decodePassGroups() error {
 		for group0 := 0; group0 < numGroups; group0++ {
 			fmt.Printf("DecodePassGroups pass %d : group %d\n", pass0, group0)
 			group := group0
+			if pass == 0 && group == 64 {
+				fmt.Printf("snoop\n")
+			}
 			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
 			if err != nil {
 				return err
 			}
-			replaced := f.passes[pass].replacedChannels
+
+			// FIXME 20240928 copy replacedChannels... dont just reference them!!
+			//replaced := f.passes[pass].replacedChannels
+			replaced := []ModularChannel{}
+			for _, r := range f.passes[pass].replacedChannels {
+				mc := NewModularChannelFromChannel(r)
+				replaced = append(replaced, *mc)
+			}
 			for i := 0; i < len(replaced); i++ {
 				info := replaced[i]
 				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
@@ -480,9 +490,6 @@ func (f *Frame) decodePassGroups() error {
 				replaced[i] = info
 			}
 
-			if pass == 0 && group == 12 {
-				fmt.Printf("snoop\n")
-			}
 			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
 			if err != nil {
 				return err
@@ -754,7 +761,16 @@ func (f *Frame) getLFGroupLocation(lfGroupID int32) *Point {
 	return NewPoint(lfGroupID/int32(f.lfGroupRowStride), lfGroupID%int32(f.lfGroupRowStride))
 }
 
+func (f *Frame) getGroupLocation(groupID int32) *Point {
+	return NewPoint(groupID/int32(f.groupRowStride), groupID%int32(f.groupRowStride))
+}
+
 func (f *Frame) getLFGroupForGroup(groupID int32) *LFGroup {
-	pos := f.getLFGroupLocation(groupID)
-	return f.lfGroups[(pos.Y>>3)*int32(f.lfGroupRowStride)+(pos.X>>3)]
+	pos := f.getGroupLocation(groupID)
+	idx := (pos.Y>>3)*int32(f.lfGroupRowStride) + (pos.X >> 3)
+	//idx1 := uint32(pos.Y) >> 3
+	//idx2 := uint32(f.lfGroupRowStride)
+	//idx3 := uint32(pos.X >> 3)
+	//idx := idx1*idx2 + idx3
+	return f.lfGroups[idx]
 }

@@ -5,7 +5,7 @@ type Point struct {
 	Y int32
 }
 
-func NewPoint(x int32, y int32) *Point {
+func NewPoint(y int32, x int32) *Point {
 	return &Point{
 		X: x,
 		Y: y,
