@@ -26,9 +26,10 @@ func NewLFGlobal() *LFGlobal {
 }
 
 func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, error) {
-	lf := &LFGlobal{
-		frame: parent,
-	}
+
+	lf := NewLFGlobal()
+	lf.frame = parent
+
 	if lf.frame.header.flags&PATCHES != 0 {
 
 		// TODO(kpfaulkner) not used yet with the lossless images I'm trying.

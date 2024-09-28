@@ -204,7 +204,7 @@ func (es *EntropyStream) TryReadSymbol(reader *jxlio.Bitreader, context int) int
 }
 
 func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, context int, distanceMultiplier int) (int32, error) {
-	fmt.Printf("ReadSymbolWithMultiplier current pos %d\n", reader.BitsRead())
+	//fmt.Printf("ReadSymbolWithMultiplier current pos %d\n", reader.BitsRead())
 	if es.numToCopy77 > 0 {
 		es.copyPos77++
 		hybridInt := es.window[es.copyPos77&0xFFFFF]

@@ -175,8 +175,11 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *ImageHeader) (*Fr
 	}
 
 	normalFrame := !allDefault && (fh.frameType == REGULAR_FRAME || fh.frameType == SKIP_PROGRESSIVE)
-	fullFrame := fh.bounds.origin.X <= 0 && fh.bounds.origin.Y <= 0 &&
-		(fh.width+uint32(fh.bounds.origin.X) >= parent.size.width && (fh.height+uint32(fh.bounds.origin.Y) >= parent.size.height))
+	lowerCorner := fh.bounds.computeLowerCorner()
+	//fullFrame := fh.bounds.origin.X <= 0 && fh.bounds.origin.Y <= 0 &&
+	//	(fh.width+uint32(fh.bounds.origin.X) >= parent.size.width && (fh.height+uint32(fh.bounds.origin.Y) >= parent.size.height))
+	fullFrame := fh.bounds.origin.Y <= 0 && fh.bounds.origin.X <= 0 &&
+		lowerCorner.Y >= int32(parent.size.height) && lowerCorner.X >= int32(parent.size.width)
 
 	fh.bounds.size.height = util.CeilDiv(fh.bounds.size.height, fh.upsampling)
 	fh.bounds.size.width = util.CeilDiv(fh.bounds.size.width, fh.upsampling)

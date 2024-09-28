@@ -65,7 +65,7 @@ func (f *Frame) readFrameHeader() (FrameHeader, error) {
 	f.lfGroupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim<<3)
 	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim)
 	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim<<3)
-	f.readTOC()
+	//f.readTOC()
 	return *f.header, nil
 }
 
@@ -298,7 +298,11 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			scaleFactor = 1.0
 		} else if isModularColour {
 			// FIXME(kpfaulkner) need to check this.
-			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.bitDepth.bitsPerSample))
+			//scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.bitDepth.bitsPerSample))
+			step1 := f.globalMetadata.bitDepth.bitsPerSample
+			step2 := ^int32(0) << step1
+			step3 := ^step2
+			scaleFactor = 1.0 / float32(step3)
 		} else {
 			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.extraChannelInfo[ecIndex].bitDepth.bitsPerSample))
 		}
@@ -309,8 +313,8 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 				}
 			}
 		} else {
-			for y := uint32(0); y < f.height; y++ {
-				for x := uint32(0); x < f.width; x++ {
+			for y := uint32(0); y < f.bounds.size.height; y++ {
+				for x := uint32(0); x < f.bounds.size.width; x++ {
 					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
 				}
 			}
@@ -326,9 +330,6 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 	if f.header.restorationFilter.epfIterations > 0 {
 		f.performEdgePreservingFilter()
 	}
-
-	panic("boom")
-	// TODO(kpfaulkner)
 	return nil
 }
 
@@ -511,10 +512,12 @@ func (f *Frame) decodePassGroups() error {
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
 					//channel.buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
-					copy(channel.buffer[y+int(newChannelInfo.origin.Y)], buff[y])
+					idx := y + int(newChannelInfo.origin.Y)
+					//copy(channel.buffer[idx], buff[y])
+					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 				}
 			}
-			f.lfGlobal.gModular.stream.channels[i] = channel
+			//f.lfGlobal.gModular.stream.channels[i] = channel
 			j++
 		}
 	}

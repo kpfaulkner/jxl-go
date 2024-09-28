@@ -499,11 +499,11 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			}
 
 			if x0 == 198 && y0 == 46 {
-				fmt.Printf("snoop\n")
+				//fmt.Printf("snoop\n")
 			}
 
 			if y0 == 192 {
-				fmt.Printf("coord %d:%d context %d : bits reads %d\n", x0, y0, leafNode.context, reader.BitsRead())
+				//fmt.Printf("coord %d:%d context %d : bits reads %d\n", x0, y0, leafNode.context, reader.BitsRead())
 			}
 			diff, err := stream.ReadSymbolWithMultiplier(reader, int(leafNode.context), distMultiplier)
 			if err != nil {
@@ -512,7 +512,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			//fmt.Printf("decode bits read %d\n", reader.BitsRead())
 
 			if reader.BitsRead() == 800 {
-				fmt.Printf("snoop\n")
+				//fmt.Printf("snoop\n")
 			}
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
 			p, err := mc.prediction(x, y, leafNode.predictor)

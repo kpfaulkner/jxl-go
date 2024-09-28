@@ -83,6 +83,7 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 
 	// loop through each box.
 	// first thing is to set the BitReader to the beginning of the data for that box.
+	// FIXME(kpfaulkner) need to figure out how to handle multiple boxes.
 	for _, box := range jxl.boxHeaders {
 		_, err := jxl.bitReader.Seek(box.Offset, io.SeekStart)
 		if err != nil {
@@ -162,11 +163,17 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 			if lfBuffer[header.lfLevel] == nil && header.flags&USE_LF_FRAME != 0 {
 				return errors.New("LF level too large")
 			}
+
+			err := frame.readTOC()
+			if err != nil {
+				return err
+			}
+
 			if jxl.options.parseOnly {
 				frame.skipFrameData()
 				continue
 			}
-			err := frame.decodeFrame(lfBuffer[header.lfLevel])
+			err = frame.decodeFrame(lfBuffer[header.lfLevel])
 			if err != nil {
 				return err
 			}
@@ -264,6 +271,13 @@ func (jxl *JXLCodestreamDecoder) decode() error {
 				return err
 			}
 		}
+
+		if len(orientedCanvas) != 0 {
+			fmt.Printf("might have final data?\n")
+		}
+
+		// generate image and return.
+
 	}
 
 	panic("make JXL image here?")
@@ -543,12 +557,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 			info = &frame.header.ecBlendingInfo[frameC-int32(frameColours)]
 		}
 		isAlpha := c >= int32(imageColours) && jxl.imageHeader.extraChannelInfo[c-int32(imageColours)].ecType == bundle.ALPHA
-		var premult bool
-		if jxl.imageHeader.hasAlpha() {
-			premult = jxl.imageHeader.extraChannelInfo[info.alphaChannel].alphaAssociated
-		} else {
-			premult = true
-		}
+		premult := hasAlpha && jxl.imageHeader.extraChannelInfo[info.alphaChannel].alphaAssociated
+
 		refBuffer := reference[info.source]
 		if info.mode == BLEND_REPLACE || refBuffer == nil && info.mode == BLEND_ADD {
 			offY := frameStartY - header.bounds.origin.Y
