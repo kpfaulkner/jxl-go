@@ -302,6 +302,9 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 				}
 			}
 		} else {
+
+			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
+			// and modify so below can use pool of goroutines?
 			for y := uint32(0); y < f.bounds.size.height; y++ {
 				for x := uint32(0); x < f.bounds.size.width; x++ {
 					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
