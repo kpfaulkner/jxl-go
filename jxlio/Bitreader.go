@@ -30,7 +30,6 @@ func NewBitreader(in io.ReadSeeker, le bool) *Bitreader {
 
 	br := &Bitreader{}
 	br.stream = in
-	//br.origStream = in
 	br.littleEndian = le
 	return br
 }
@@ -343,31 +342,6 @@ func (br *Bitreader) MustShowBits(bits int) int {
 	}
 	br.bitsRead -= uint64(bits)
 	return b
-}
-
-// utter hack... read and reset ReadSeeker.
-func (br *Bitreader) ShowBitsOrig(bits int) (int, error) {
-
-	curPos, err := br.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-	oldCur := br.currentByte
-	oldIndex := br.index
-
-	b, err := br.ReadBits(uint32(bits))
-	if err != nil {
-		return 0, err
-	}
-
-	_, err = br.Seek(curPos, io.SeekStart)
-	if err != nil {
-		return 0, err
-	}
-	br.currentByte = oldCur
-	br.index = oldIndex
-
-	return int(b), nil
 }
 
 // WRONG WRONG WRONG

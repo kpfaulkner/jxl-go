@@ -216,103 +216,88 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 // Could try and use IfThenElse but that gets messy quickly. Prefer some simple 'if' statements.
 func (mc *ModularChannel) west(x int32, y int32) int32 {
 	if x > 0 {
-		a := mc.buffer[y][x-1]
-		return a
+		return mc.buffer[y][x-1]
 	}
 	if y > 0 {
-		a := mc.buffer[y-1][x]
-		return a
+		return mc.buffer[y-1][x]
 	}
 	return 0
 }
 
 func (mc *ModularChannel) north(x int32, y int32) int32 {
 	if y > 0 {
-		a := mc.buffer[y-1][x]
-		return a
+		return mc.buffer[y-1][x]
 	}
 	if x > 0 {
-		a := mc.buffer[y][x-1]
-		return a
+		return mc.buffer[y][x-1]
 	}
 	return 0
 }
 
 func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 	if x > 0 && y > 0 {
-
-		a := mc.buffer[y-1][x-1]
-		return a
+		return mc.buffer[y-1][x-1]
 	}
 	return mc.west(x, y)
 }
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
 	if x+1 < int32(mc.size.width) && y > 0 {
-		a := mc.buffer[y-1][x+1]
-		return a
+		return mc.buffer[y-1][x+1]
 	}
 	return mc.north(x, y)
 }
 
 func (mc *ModularChannel) northNorth(x int32, y int32) int32 {
 	if y > 1 {
-		a := mc.buffer[y-2][x]
-		return a
+		return mc.buffer[y-2][x]
 	}
 	return mc.north(x, y)
 }
 
 func (mc *ModularChannel) northEastEast(x int32, y int32) int32 {
 	if x+2 < int32(mc.size.width) && y > 0 {
-		a := mc.buffer[y-1][x+2]
-		return a
+		return mc.buffer[y-1][x+2]
 	}
 	return mc.northEast(x, y)
 }
 
 func (mc *ModularChannel) westWest(x int32, y int32) int32 {
 	if x > 1 {
-		a := mc.buffer[y][x-2]
-		return a
+		return mc.buffer[y][x-2]
 	}
 	return mc.west(x, y)
 }
 
 func (mc *ModularChannel) errorNorth(x int32, y int32, e int32) int32 {
 	if y > 0 {
-		a := mc.err[e][y-1][x]
-		return a
+		return mc.err[e][y-1][x]
 	}
 	return 0
 }
 func (mc *ModularChannel) errorWest(x int32, y int32, e int32) int32 {
 	if x > 0 {
-		a := mc.err[e][y][x-1]
-		return a
+		return mc.err[e][y][x-1]
 	}
 	return 0
 }
 func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
 	if x > 1 {
-		a := mc.err[e][y][x-2]
-		return a
+		return mc.err[e][y][x-2]
 	}
 	return 0
 }
 
 func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 	if x > 0 && y > 0 {
-		a := mc.err[e][y-1][x-1]
-		return a
+		return mc.err[e][y-1][x-1]
 	}
 	return mc.errorNorth(x, y, e)
 }
 
 func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
 	if x+1 < int32(mc.size.width) && y > 0 {
-		a := mc.err[e][y-1][x+1]
-		return a
+		return mc.err[e][y-1][x+1]
 	}
 
 	return mc.errorNorth(x, y, e)
@@ -322,6 +307,117 @@ func (mc *ModularChannel) walkerFunc(k int32) int32 {
 	return 0
 }
 
+func (mc *ModularChannel) getLeafNode(refinedTree *MATree, channelIndex int32, streamIndex int32, x int32, y int32, maxError int32, parent *ModularStream) (*MATree, error) {
+
+	walkerFunc := func(k int32) (int32, error) {
+		switch k {
+		case 0:
+			return channelIndex, nil
+		case 1:
+			return streamIndex, nil
+		case 2:
+			return y, nil
+		case 3:
+			return x, nil
+		case 4:
+			return util.Abs(mc.north(x, y)), nil
+		case 5:
+			return util.Abs(mc.west(x, y)), nil
+		case 6:
+			return mc.north(x, y), nil
+		case 7:
+			return mc.west(x, y), nil
+		case 8:
+			if x > 0 {
+				return mc.west(x, y) - (mc.west(x-1, y) + mc.north(x-1, y) - mc.northWest(x-1, y)), nil
+			}
+			return mc.west(x, y), nil
+		case 9:
+			return mc.west(x, y) + mc.north(x, y) - mc.northWest(x, y), nil
+		case 10:
+			return mc.west(x, y) - mc.northWest(x, y), nil
+		case 11:
+			return mc.northWest(x, y) - mc.north(x, y), nil
+		case 12:
+			return mc.north(x, y) - mc.northEast(x, y), nil
+		case 13:
+			return mc.north(x, y) - mc.northNorth(x, y), nil
+		case 14:
+			return mc.west(x, y) - mc.westWest(x, y), nil
+		case 15:
+			return maxError, nil
+		default:
+			if k-16 >= 4*channelIndex {
+				return 0, nil
+			}
+			k2 := int32(16)
+			for j := channelIndex - 1; j >= 0; j-- {
+				channel := parent.channels[j]
+				if channel.size.width != mc.size.width || channel.size.height != mc.size.height ||
+					channel.hshift != mc.hshift || channel.vshift != mc.vshift {
+					continue
+				}
+				if k2+4 <= k {
+					k2 += 4
+					continue
+				}
+				rC := channel.buffer[y][x]
+				if k2 == k {
+
+					k2++
+					return util.Abs(rC), nil
+				}
+				k2++
+				if k2 == k {
+					k2++
+					return rC, nil
+				}
+				k2++
+				var rW int32
+				var rN int32
+				var rNW int32
+				var rG int32
+				if x > 0 {
+					rW = channel.buffer[y][x-1]
+				} else {
+					rW = 0
+				}
+
+				if y > 0 {
+					rN = channel.buffer[y-1][x]
+				} else {
+					rN = rW
+				}
+				if x > 0 && y > 0 {
+					rNW = channel.buffer[y-1][x-1]
+				} else {
+					rNW = rW
+				}
+				rG = rC - util.Clamp3(rW+rN-rNW, rN, rW)
+				if k2 == k {
+
+					k2++
+					return util.Abs(rG), nil
+				}
+				k2++
+				if k2 == k {
+					k2++
+					return rG, nil
+				}
+				k2++
+
+			}
+			return 0, nil
+		}
+	}
+
+	leafNode, err := refinedTree.walk(walkerFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	return leafNode, nil
+}
 func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.EntropyStream,
 	wpParams *WPParams, tree *MATree, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int) error {
 
@@ -339,13 +435,6 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		mc.weight = make([]int32, 4)
 	}
 
-	////////////////////////////////////////////////////////////////
-	// WARNING:
-	// below when y0=0, the values being read are incorrect. This is causing
-	// Java goes from bits read from 15x476 entries to 4x493
-	// where as this cgoes does 5x476 then 5x492... and gets worse from there.
-	// FIXME(kpfaulkner)
-	///////////////////////////////////////////////////////////
 	var err error
 	for y0 := uint32(0); y0 < mc.size.height; y0++ {
 		y := int32(y0)
@@ -363,107 +452,108 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				maxError = 0
 			}
 
-			leafNode, err := refinedTree.walk(func(k int32) (int32, error) {
-				switch k {
-				case 0:
-					return channelIndex, nil
-				case 1:
-					return streamIndex, nil
-				case 2:
-					return y, nil
-				case 3:
-					return x, nil
-				case 4:
-					return util.Abs(mc.north(x, y)), nil
-				case 5:
-					return util.Abs(mc.west(x, y)), nil
-				case 6:
-					return mc.north(x, y), nil
-				case 7:
-					return mc.west(x, y), nil
-				case 8:
-					if x > 0 {
-						return mc.west(x, y) - (mc.west(x-1, y) + mc.north(x-1, y) - mc.northWest(x-1, y)), nil
-					}
-					return mc.west(x, y), nil
-				case 9:
-					return mc.west(x, y) + mc.north(x, y) - mc.northWest(x, y), nil
-				case 10:
-					return mc.west(x, y) - mc.northWest(x, y), nil
-				case 11:
-					return mc.northWest(x, y) - mc.north(x, y), nil
-				case 12:
-					return mc.north(x, y) - mc.northEast(x, y), nil
-				case 13:
-					return mc.north(x, y) - mc.northNorth(x, y), nil
-				case 14:
-					return mc.west(x, y) - mc.westWest(x, y), nil
-				case 15:
-					return maxError, nil
-				default:
-					if k-16 >= 4*channelIndex {
-						return 0, nil
-					}
-					k2 := int32(16)
-					for j := channelIndex - 1; j >= 0; j-- {
-						channel := parent.channels[j]
-						if channel.size.width != mc.size.width || channel.size.height != mc.size.height ||
-							channel.hshift != mc.hshift || channel.vshift != mc.vshift {
-							continue
-						}
-						if k2+4 <= k {
-							k2 += 4
-							continue
-						}
-						rC := channel.buffer[y][x]
-						if k2 == k {
-
-							k2++
-							return util.Abs(rC), nil
-						}
-						k2++
-						if k2 == k {
-							k2++
-							return rC, nil
-						}
-						k2++
-						var rW int32
-						var rN int32
-						var rNW int32
-						var rG int32
-						if x > 0 {
-							rW = channel.buffer[y][x-1]
-						} else {
-							rW = 0
-						}
-
-						if y > 0 {
-							rN = channel.buffer[y-1][x]
-						} else {
-							rN = rW
-						}
-						if x > 0 && y > 0 {
-							rNW = channel.buffer[y-1][x-1]
-						} else {
-							rNW = rW
-						}
-						rG = rC - util.Clamp3(rW+rN-rNW, rN, rW)
-						if k2 == k {
-
-							k2++
-							return util.Abs(rG), nil
-						}
-						k2++
-						if k2 == k {
-							k2++
-							return rG, nil
-						}
-						k2++
-
-					}
-					return 0, nil
-				}
-			})
+			leafNode, err := mc.getLeafNode(refinedTree, channelIndex, streamIndex, x, y, maxError, parent)
+			//leafNode, err := refinedTree.walk(func(k int32) (int32, error) {
+			//	switch k {
+			//	case 0:
+			//		return channelIndex, nil
+			//	case 1:
+			//		return streamIndex, nil
+			//	case 2:
+			//		return y, nil
+			//	case 3:
+			//		return x, nil
+			//	case 4:
+			//		return util.Abs(mc.north(x, y)), nil
+			//	case 5:
+			//		return util.Abs(mc.west(x, y)), nil
+			//	case 6:
+			//		return mc.north(x, y), nil
+			//	case 7:
+			//		return mc.west(x, y), nil
+			//	case 8:
+			//		if x > 0 {
+			//			return mc.west(x, y) - (mc.west(x-1, y) + mc.north(x-1, y) - mc.northWest(x-1, y)), nil
+			//		}
+			//		return mc.west(x, y), nil
+			//	case 9:
+			//		return mc.west(x, y) + mc.north(x, y) - mc.northWest(x, y), nil
+			//	case 10:
+			//		return mc.west(x, y) - mc.northWest(x, y), nil
+			//	case 11:
+			//		return mc.northWest(x, y) - mc.north(x, y), nil
+			//	case 12:
+			//		return mc.north(x, y) - mc.northEast(x, y), nil
+			//	case 13:
+			//		return mc.north(x, y) - mc.northNorth(x, y), nil
+			//	case 14:
+			//		return mc.west(x, y) - mc.westWest(x, y), nil
+			//	case 15:
+			//		return maxError, nil
+			//	default:
+			//		if k-16 >= 4*channelIndex {
+			//			return 0, nil
+			//		}
+			//		k2 := int32(16)
+			//		for j := channelIndex - 1; j >= 0; j-- {
+			//			channel := parent.channels[j]
+			//			if channel.size.width != mc.size.width || channel.size.height != mc.size.height ||
+			//				channel.hshift != mc.hshift || channel.vshift != mc.vshift {
+			//				continue
+			//			}
+			//			if k2+4 <= k {
+			//				k2 += 4
+			//				continue
+			//			}
+			//			rC := channel.buffer[y][x]
+			//			if k2 == k {
+			//
+			//				k2++
+			//				return util.Abs(rC), nil
+			//			}
+			//			k2++
+			//			if k2 == k {
+			//				k2++
+			//				return rC, nil
+			//			}
+			//			k2++
+			//			var rW int32
+			//			var rN int32
+			//			var rNW int32
+			//			var rG int32
+			//			if x > 0 {
+			//				rW = channel.buffer[y][x-1]
+			//			} else {
+			//				rW = 0
+			//			}
+			//
+			//			if y > 0 {
+			//				rN = channel.buffer[y-1][x]
+			//			} else {
+			//				rN = rW
+			//			}
+			//			if x > 0 && y > 0 {
+			//				rNW = channel.buffer[y-1][x-1]
+			//			} else {
+			//				rNW = rW
+			//			}
+			//			rG = rC - util.Clamp3(rW+rN-rNW, rN, rW)
+			//			if k2 == k {
+			//
+			//				k2++
+			//				return util.Abs(rG), nil
+			//			}
+			//			k2++
+			//			if k2 == k {
+			//				k2++
+			//				return rG, nil
+			//			}
+			//			k2++
+			//
+			//		}
+			//		return 0, nil
+			//	}
+			//})
 			if err != nil {
 				return err
 			}

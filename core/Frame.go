@@ -54,24 +54,17 @@ func (f *Frame) readFrameHeader() (FrameHeader, error) {
 		size:   f.header.bounds.size,
 	}
 
-	//f.Width = f.header.Width
-	//f.Height = f.header.Height
-	//f.Width = util.CeilDiv(f.Width, f.header.upsampling)
-	//f.Height = util.CeilDiv(f.Height, f.header.upsampling)
-	//f.Width = util.CeilDiv(f.Width, 1<<(f.header.lfLevel*3))
-	//f.Height = util.CeilDiv(f.Height, 1<<(f.header.lfLevel*3))
 	f.groupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim)
 	f.lfGroupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim<<3)
 	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim)
 	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim<<3)
-	//f.readTOC()
+
 	return *f.header, nil
 }
 
 func (f *Frame) readTOC() error {
 	var tocEntries uint32
 
-	// FIXME(kpfaulkner) f.numGroups should be 130 and f.numLFGroups should be 4
 	if f.numGroups == 1 && f.header.passes.numPasses == 1 {
 		tocEntries = 1
 	} else {

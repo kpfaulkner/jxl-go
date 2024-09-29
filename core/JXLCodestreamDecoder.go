@@ -136,7 +136,6 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		invisibleFrames := int64(0)
 		visibleFrames := 0
 
-		// XXXXXXXXXXX JXLCodestreamDecoder line 337
 		for {
 			frame := NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
 			header, err = frame.readFrameHeader()

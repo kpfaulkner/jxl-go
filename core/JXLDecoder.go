@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"io"
 	"os"
 
@@ -16,11 +17,21 @@ func WithInputFilename(fn string) JXLDecoderOption {
 	}
 }
 
+func ReadFileIntoMemory() JXLDecoderOption {
+	return func(jxl *JXLDecoder) error {
+		jxl.readFileIntoMemory = true
+		return nil
+	}
+}
+
 // JXLDecoder decodes the JXL image
 type JXLDecoder struct {
 
 	// input filename to read from.
 	filename string
+
+	// read entire JXL file into memory before processing
+	readFileIntoMemory bool
 
 	// input stream
 	in io.ReadSeeker
@@ -44,7 +55,16 @@ func NewJXLDecoder(opts ...JXLDecoderOption) *JXLDecoder {
 		return nil
 	}
 
-	jxl.in = f
+	if jxl.readFileIntoMemory {
+		f, err := os.ReadFile(jxl.filename)
+		if err != nil {
+			log.Errorf("Error opening file: %v\n", err)
+			return nil
+		}
+		jxl.in = bytes.NewReader(f)
+	} else {
+		jxl.in = f
+	}
 	jxl.decoder = NewJXLCodestreamDecoder(jxl.in, nil)
 	return jxl
 }
