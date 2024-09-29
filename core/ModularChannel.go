@@ -165,8 +165,6 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 
 	wSum := int32(0)
 	for e := int32(0); e < 4; e++ {
-		//eSum := mc.errorNorth(x, y, e) + mc.errorWest(x, y, e) + mc.errorNorthWest(x, y, e) +
-		//	mc.errorWestWest(x, y, e) + mc.errorNorthEast(x, y, e)
 		en := mc.errorNorth(x, y, e)
 		ew := mc.errorWest(x, y, e)
 		enw := mc.errorNorthWest(x, y, e)
@@ -180,7 +178,13 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		if shift < 0 {
 			shift = 0
 		}
-		mc.weight[e] = int32(4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift))
+		a := wpParams.weight[e]
+		b := eSum >> shift
+		c := oneL24OverKP1[b]
+		d := a * c
+		ee := int32(4 + d>>shift)
+		//mc.weight[e] = int32(4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift))
+		mc.weight[e] = ee
 		wSum += mc.weight[e]
 	}
 

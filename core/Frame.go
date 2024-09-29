@@ -446,9 +446,10 @@ func (f *Frame) decodePassGroups() error {
 	numGroups := int(f.numGroups)
 	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
 
+	var eg errgroup.Group
 	for pass0 := 0; pass0 < numPasses; pass0++ {
 		pass := pass0
-		var eg errgroup.Group
+
 		for group0 := 0; group0 < numGroups; group0++ {
 
 			iPass := pass0
@@ -495,20 +496,25 @@ func (f *Frame) decodePassGroups() error {
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-			channel := f.lfGlobal.gModular.stream.channels[i]
-			channel.allocate()
-			for group := 0; group < int(f.numGroups); group++ {
-				newChannelInfo := passGroups[pass][group].modularStream.channels[j]
-				buff := newChannelInfo.buffer
-				for y := 0; y < len(buff); y++ {
-					//channel.Buffer[y+int(newChannelInfo.origin.Y)] = buff[y]
-					idx := y + int(newChannelInfo.origin.Y)
-					//copy(channel.Buffer[idx], buff[y])
-					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+			ii := i
+			jj := j
+			eg.Go(func() error {
+				channel := f.lfGlobal.gModular.stream.channels[ii]
+				channel.allocate()
+				for group := 0; group < int(f.numGroups); group++ {
+					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
+					buff := newChannelInfo.buffer
+					for y := 0; y < len(buff); y++ {
+						idx := y + int(newChannelInfo.origin.Y)
+						copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+					}
 				}
-			}
-			//f.lfGlobal.gModular.stream.channels[i] = channel
+				return nil
+			})
 			j++
+		}
+		if err := eg.Wait(); err != nil {
+			return err
 		}
 	}
 	if f.header.encoding == VARDCT {
