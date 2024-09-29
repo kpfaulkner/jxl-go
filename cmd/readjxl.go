@@ -7,13 +7,12 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/core"
 	"github.com/kpfaulkner/jxl-go/imageformats"
-	"github.com/pkg/profile"
 )
 
 func main() {
 	fmt.Printf("So it begins...\n")
 
-	defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
+	//defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
@@ -28,7 +27,7 @@ func main() {
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
 
-	return
+	//return
 
 	// now convert to PNG for moment.
 	pfmFile, err := os.Create(`c:\temp\lossless-jxl-go.pfm`)

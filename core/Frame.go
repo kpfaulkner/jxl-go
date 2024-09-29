@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -448,38 +450,47 @@ func (f *Frame) decodePassGroups() error {
 
 	for pass0 := 0; pass0 < numPasses; pass0++ {
 		pass := pass0
+		var eg errgroup.Group
 		for group0 := 0; group0 < numGroups; group0++ {
-			group := group0
-			br, err := f.getBitreader(2 + int(f.numLFGroups) + pass*int(f.numGroups) + group)
-			if err != nil {
-				return err
-			}
 
-			replaced := []ModularChannel{}
-			for _, r := range f.passes[pass].replacedChannels {
-				mc := NewModularChannelFromChannel(r)
-				replaced = append(replaced, *mc)
-			}
-			for i := 0; i < len(replaced); i++ {
-				info := replaced[i]
-				shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-				passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-				rowStride := util.CeilDiv(uint32(info.size.width), passGroupSize.X)
-				pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-				chanSize := util.NewIntPointWithXY(uint32(info.size.width), uint32(info.size.height))
-				info.origin = pos
-				size := passGroupSize.Min(chanSize.Minus(info.origin))
-				info.size.width = size.X
-				info.size.height = size.Y
-				replaced[i] = info
-			}
+			iPass := pass0
+			iGroup := group0
+			eg.Go(func() error {
+				group := iGroup
+				br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + group)
+				if err != nil {
+					return err
+				}
 
-			pg, err := NewPassGroupWithReader(br, f, uint32(pass), uint32(group), replaced)
-			if err != nil {
-				return err
-			}
-			//f.passes[pass].replacedChannels = replaced
-			passGroups[pass][group] = *pg
+				replaced := []ModularChannel{}
+				for _, r := range f.passes[pass].replacedChannels {
+					mc := NewModularChannelFromChannel(r)
+					replaced = append(replaced, *mc)
+				}
+				for i := 0; i < len(replaced); i++ {
+					info := replaced[i]
+					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+					passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+					rowStride := util.CeilDiv(uint32(info.size.width), passGroupSize.X)
+					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+					chanSize := util.NewIntPointWithXY(uint32(info.size.width), uint32(info.size.height))
+					info.origin = pos
+					size := passGroupSize.Min(chanSize.Minus(info.origin))
+					info.size.width = size.X
+					info.size.height = size.Y
+					replaced[i] = info
+				}
+
+				pg, err := NewPassGroupWithReader(br, f, uint32(iPass), uint32(group), replaced)
+				if err != nil {
+					return err
+				}
+				passGroups[pass][group] = *pg
+				return nil
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return err
 		}
 	}
 
