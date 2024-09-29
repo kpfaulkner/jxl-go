@@ -16,7 +16,8 @@ Currently JXLatte takes about 397ms to decode test image where as JXL-Go is curr
 - [ ] Refactor into appropriate modules/packages
 - [ ] Add tests
 - [ ] Remove unnecessary type casting (have lots for int conversions)
-
+- [ ] Remove all panics (currently using them to indicate sections not implemented)
+- 
 ## Performance
 
 The focus is currently on being able to read the JXL image and generating a Go Image struct for applications to use.

@@ -210,7 +210,7 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 	var err error
 	count++
 
-	if stateObj.HasState() {
+	if stateObj.hasState {
 
 		state, err = stateObj.GetState()
 		if err != nil {
@@ -236,7 +236,10 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 
 	state = int32(asd.frequencies[symbol])*int32(uint32(state)>>12) + int32(offset)
 	if uint32(state)&0xFFFF0000 == 0 {
-		state = (state << 16) | int32(reader.MustReadBits(16))
+		//state = (state << 16) | int32(reader.MustReadBits(16))
+		state = (state << 16)
+		data := reader.MustReadBits(16)
+		state = state | int32(data)
 	}
 
 	stateObj.SetState(int32(state))

@@ -288,8 +288,6 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		} else if isModularColour && f.globalMetadata.bitDepth.expBits != 0 {
 			scaleFactor = 1.0
 		} else if isModularColour {
-			// FIXME(kpfaulkner) need to check this.
-			//scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.bitDepth.bitsPerSample))
 			step1 := f.globalMetadata.bitDepth.bitsPerSample
 			step2 := ^int32(0) << step1
 			step3 := ^step2

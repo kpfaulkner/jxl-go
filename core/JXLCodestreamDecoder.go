@@ -148,10 +148,12 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				return nil, errors.New("LF level too large")
 			}
 
+			//s := profile.Start(profile.CPUProfile, profile.ProfilePath(`.`))
 			err := frame.readTOC()
 			if err != nil {
 				return nil, err
 			}
+			//s.Stop()
 
 			if jxl.options.parseOnly {
 				frame.skipFrameData()

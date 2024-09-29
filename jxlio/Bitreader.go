@@ -67,13 +67,32 @@ func (br *Bitreader) Close() {
 // loop one byte at a time and read.... not efficient but will rework later FIXME(kpfaulkner)
 // Most of the time we probably just want to fill the buffer... but have seen that in some cases
 // we might just want to partially populate the buffer. Hence the numBytes parameter.
-func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
+func (br *Bitreader) ReadBytesToBufferOrig(buffer []uint8, numBytes uint32) error {
 	for i := uint32(0); i < numBytes; i++ {
 		b, err := br.ReadBits(8)
 		if err != nil {
 			return err
 		}
 		buffer[i] = uint8(b)
+	}
+	return nil
+}
+
+// ReadBytesToBuffer
+// If part way through a byte then fail. Need to be aligned for this to work.
+func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
+
+	if br.index != 0 {
+		return errors.New("Bitreader cache not aligned")
+	}
+
+	n, err := br.stream.Read(buffer[:numBytes])
+	if err != nil {
+		return err
+	}
+
+	if n != int(numBytes) {
+		return errors.New("unable to read all bytes")
 	}
 	return nil
 }
