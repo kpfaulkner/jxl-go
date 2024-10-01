@@ -36,7 +36,7 @@ type Frame struct {
 	buffers    [][]uint8
 	decoded    bool
 	lfGlobal   *LFGlobal
-	buffer     [][][]float32
+	buffer     *util.ChannelMatrix[float32]
 	globalTree *MATree
 	hfGlobal   *HFGlobal
 	passes     []Pass
@@ -223,17 +223,25 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	f.buffer = make([][][]float32, f.getColorChannelCount()+len(f.globalMetadata.extraChannelInfo))
-	for c := 0; c < len(f.buffer); c++ {
-		if c < 3 && c < f.getColorChannelCount() {
-			//shiftedSize := paddedSize.ShiftRightWithIntPoint(f.header.jpegUpsampling[c])
-			shiftedHeight := paddedSize.height >> f.header.jpegUpsamplingY[c]
-			shiftedWidth := paddedSize.width >> f.header.jpegUpsamplingX[c]
-			f.buffer[c] = util.MakeMatrix2D[float32](int(shiftedHeight), int(shiftedWidth))
-		} else {
-			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.height), int(paddedSize.width))
-		}
+	if f.getColorChannelCount()+len(f.globalMetadata.extraChannelInfo) > 3 {
+		panic("Need to handle situation where different channels have different sizes. This means we're not dealing with regular sizes")
 	}
+
+	height := paddedSize.height >> f.header.jpegUpsamplingY[0]
+	width := paddedSize.width >> f.header.jpegUpsamplingX[0]
+	f.buffer = util.NewChannelMatrix3D[float32](f.getColorChannelCount()+len(f.globalMetadata.extraChannelInfo), height, width)
+
+	//for c := 0; c < f.buffer.NumberOfChannels(); c++ {
+	//	if c < 3 && c < f.getColorChannelCount() {
+	//		shiftedHeight := paddedSize.height >> f.header.jpegUpsamplingY[c]
+	//		shiftedWidth := paddedSize.width >> f.header.jpegUpsamplingX[c]
+	//		chanData := f.buffer.CreateChannelOfSize(shiftedHeight * shiftedWidth)
+	//		f.buffer.SetChannel(c, chanData)
+	//	} else {
+	//		chanData := f.buffer.CreateChannelOfSize(int(paddedSize.height * paddedSize.width))
+	//		f.buffer.SetChannel(c, chanData)
+	//	}
+	//}
 
 	err = f.decodeLFGroups(lfBuffer)
 	if err != nil {
@@ -278,7 +286,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		} else {
 			cOut = c
 		}
-		cOut += len(f.buffer) - len(modularBuffer)
+		cOut += f.buffer.NumberOfChannels() - len(modularBuffer)
 		ecIndex := c
 		if f.header.encoding == MODULAR {
 			ecIndex -= f.globalMetadata.getColourChannelCount()
@@ -296,18 +304,18 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.extraChannelInfo[ecIndex].bitDepth.bitsPerSample))
 		}
 		if isModularXYB && cIn == 2 {
-			for y := uint32(0); y < f.height; y++ {
-				for x := uint32(0); x < f.width; x++ {
-					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+			for y := 0; y < int(f.height); y++ {
+				for x := 0; x < int(f.width); x++ {
+					f.buffer.Set(cOut, y, x, scaleFactor*float32(modularBuffer[0][y][x]+modularBuffer[2][y][x]))
 				}
 			}
 		} else {
 
 			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
 			// and modify so below can use pool of goroutines?
-			for y := uint32(0); y < f.bounds.size.height; y++ {
-				for x := uint32(0); x < f.bounds.size.width; x++ {
-					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
+			for y := 0; y < int(f.bounds.size.height); y++ {
+				for x := 0; x < int(f.bounds.size.width); x++ {
+					f.buffer.Set(cOut, y, x, scaleFactor*float32(modularBuffer[cIn][y][x]))
 				}
 			}
 		}
@@ -527,17 +535,19 @@ func (f *Frame) decodePassGroups() error {
 	return nil
 }
 
+// make channelMatrix twice in size in both dimensions?
 func (f *Frame) invertSubsampling() {
 	for c := 0; c < 3; c++ {
 		xShift := f.header.jpegUpsamplingX[c]
 		yShift := f.header.jpegUpsamplingY[c]
 		for xShift > 0 {
 			xShift--
-			oldChannel := f.buffer[c]
-			newChannel := util.MakeMatrix2D[float32](len(oldChannel), 0)
+			oldChannel := f.buffer.GetDataForChannel(c)
+			newChannel := f.buffer.CreateChannelOfSize(f.buffer.Dim2() * f.buffer.Dim3() * 2)
 			for y := 0; y < len(oldChannel); y++ {
-				oldRow := oldChannel[y]
-				newRow := make([]float32, len(oldRow)*2)
+				//oldRow := oldChannel[y]
+				oldRow := f.buffer.GetDimension2(c, y)
+				//newRow := make([]float32, len(oldRow)*2)
 				for x := 0; x < len(oldRow); x++ {
 					b75 := 0.075 * oldRow[x]
 					xx := 0
@@ -553,7 +563,7 @@ func (f *Frame) invertSubsampling() {
 				}
 				newChannel[y] = newRow
 			}
-			f.buffer[c] = newChannel
+			f.buffer.SetChannel(c, newChannel)
 		}
 		for yShift > 0 {
 			yShift--
@@ -624,17 +634,19 @@ func (f *Frame) getImageSample(c int32, x int32, y int32) float32 {
 	if frameY < 0 || frameX < 0 || frameY >= int32(f.bounds.size.height) || frameX >= int32(f.bounds.size.width) {
 		return 0
 	}
-	return f.buffer[c][frameY][frameX]
+	return f.buffer.Get(int(c), int(frameY), int(frameX))
 }
 
 func (f *Frame) upsample() error {
-	var err error
-	for c := 0; c < len(f.buffer); c++ {
-		f.buffer[c], err = f.performUpsampling(f.buffer[c], c)
-		if err != nil {
-			return err
-		}
-	}
+
+	// FIXME(kpfaulkner) check... but dont think this is used for lossless
+	//var err error
+	//for c := 0; c < f.buffer.Len(); c++ {
+	//	f.buffer[c], err = f.performUpsampling(f.buffer[c], c)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 	f.bounds.size.height *= f.header.upsampling
 	f.bounds.size.width *= f.header.upsampling
 

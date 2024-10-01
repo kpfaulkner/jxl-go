@@ -1,5 +1,46 @@
 package util
 
+type Matrix[T any] struct {
+	data []T
+	a    int
+	b    int
+	c    int
+}
+
+func NewMatrix3D[T any](a int, b int, c int) *Matrix[T] {
+	m := &Matrix[T]{
+		data: make([]T, a*b*c),
+		a:    a,
+		b:    b,
+		c:    c,
+	}
+	return m
+}
+
+func (m *Matrix[T]) Get(i int, j int, k int) T {
+	return m.data[i*m.b*m.c+j*m.c+k]
+}
+
+func (m *Matrix[T]) GetDimension1(i int) []T {
+
+	first := 0
+	if i > 0 {
+		first = (i - 1) * m.b * m.c
+	}
+
+	last := i * m.b * m.c
+	return m.data[first:last]
+}
+
+func (m *Matrix[T]) Set(i int, j int, k int, val T) {
+	m.data[i*m.b*m.c+j*m.c+k] = val
+}
+
+// single dimension len
+func (m *Matrix[T]) Len() int {
+	return m.a
+}
+
 func IfThenElse[T any](condition bool, a T, b T) T {
 	if condition {
 		return a
