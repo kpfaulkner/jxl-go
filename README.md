@@ -7,7 +7,7 @@ Currently the focus is on reading lossless images but will expand to lossy image
 
 This is based off the JXL specs, JXL reference implementation (https://github.com/libjxl/libjxl) and the JXLatte ( https://github.com/Traneptora/jxlatte ) project
 
-Currently JXLatte takes about 397ms to decode test image where as JXL-Go is currently taking 1164ms.
+Currently JXLatte takes about 397ms to decode test image where as JXL-Go is currently taking 650ms.
 
 
 ## TODO:
