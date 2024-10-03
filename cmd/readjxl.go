@@ -14,6 +14,7 @@ func main() {
 
 	//defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
+	//defer profile.Start(profile.BlockProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
 	jxl := core.NewJXLDecoder(core.WithInputFilename(`../testdata/lossless.jxl`), core.ReadFileIntoMemory())
@@ -26,7 +27,6 @@ func main() {
 		return
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
-
 	return
 
 	// now convert to PNG for moment.
