@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"errors"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 
@@ -256,7 +257,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	err = f.decodePassGroups()
+	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
 	}
@@ -295,23 +296,37 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		} else {
 			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.extraChannelInfo[ecIndex].bitDepth.bitsPerSample))
 		}
+
+		cOutSection := f.buffer[cOut]
 		if isModularXYB && cIn == 2 {
+			modularSection0 := modularBuffer[0]
+			modularSection2 := modularBuffer[2]
 			for y := uint32(0); y < f.height; y++ {
+
+				// get reference to sub slices to do not have to repeat lookups.
+				row := cOutSection[y]
+				modularSection0Row := modularSection0[y]
+				modularSection2Row := modularSection2[y]
 				for x := uint32(0); x < f.width; x++ {
-					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+					//f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+					row[x] = scaleFactor * float32(modularSection0Row[x]+modularSection2Row[x])
 				}
 			}
 		} else {
 
+			modularBufferCin := modularBuffer[cIn]
 			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
 			// and modify so below can use pool of goroutines?
 			for y := uint32(0); y < f.bounds.size.height; y++ {
+				// get reference to sub slices to do not have to repeat lookups.
+				row := cOutSection[y]
+				modularBufferCinRow := modularBufferCin[cIn]
 				for x := uint32(0); x < f.bounds.size.width; x++ {
-					f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
+					//f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
+					row[x] = scaleFactor * float32(modularBufferCinRow[x])
 				}
 			}
 		}
-
 	}
 	f.invertSubsampling()
 
@@ -442,9 +457,7 @@ func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 	return nil
 }
 
-// JXLatte seems to break the processing (somehow?  thread race condition?) into group 0->22
-// then 23 onwards. So going to do the same just to make it easier to compare outputs.
-func (f *Frame) decodePassGroups() error {
+func (f *Frame) decodePassGroupsSerial() error {
 	numPasses := len(f.passes)
 	numGroups := int(f.numGroups)
 	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
@@ -495,6 +508,109 @@ func (f *Frame) decodePassGroups() error {
 			return err
 		}
 	}
+
+	for pass := 0; pass < numPasses; pass++ {
+		j := 0
+		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+			ii := i
+			jj := j
+			eg.Go(func() error {
+				channel := f.lfGlobal.gModular.stream.channels[ii]
+				channel.allocate()
+				for group := 0; group < int(f.numGroups); group++ {
+					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
+					buff := newChannelInfo.buffer
+					for y := 0; y < len(buff); y++ {
+						idx := y + int(newChannelInfo.origin.Y)
+						copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+					}
+				}
+				return nil
+			})
+			j++
+		}
+		if err := eg.Wait(); err != nil {
+			return err
+		}
+	}
+	if f.header.encoding == VARDCT {
+		panic("VARDCT not implemented")
+	}
+
+	return nil
+}
+
+func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) error {
+
+	br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + iGroup)
+	if err != nil {
+		return err
+	}
+
+	replaced := []ModularChannel{}
+	for _, r := range f.passes[iPass].replacedChannels {
+		mc := NewModularChannelFromChannel(r)
+		replaced = append(replaced, *mc)
+	}
+	for i := 0; i < len(replaced); i++ {
+		info := replaced[i]
+		shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+		passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
+		rowStride := util.CeilDiv(uint32(info.size.width), passGroupSize.X)
+		pos := util.Coordinates(uint32(iGroup), rowStride).TimesWithIntPoint(passGroupSize)
+		chanSize := util.NewIntPointWithXY(uint32(info.size.width), uint32(info.size.height))
+		info.origin = pos
+		size := passGroupSize.Min(chanSize.Minus(info.origin))
+		info.size.width = size.X
+		info.size.height = size.Y
+		replaced[i] = info
+	}
+
+	pg, err := NewPassGroupWithReader(br, f, uint32(iPass), uint32(iGroup), replaced)
+	if err != nil {
+		return err
+	}
+	passGroups[iPass][iGroup] = *pg
+	return nil
+
+}
+
+func (f *Frame) decodePassGroupsConcurrent() error {
+	numPasses := len(f.passes)
+	numGroups := int(f.numGroups)
+	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
+
+	type Inp struct {
+		iPass  int
+		iGroup int
+	}
+	inputChan := make(chan Inp, numPasses*numGroups)
+	var wg sync.WaitGroup
+
+	numberOfWorkers := 40
+	for i := 0; i < numberOfWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			for inp := range inputChan {
+				f.doProcessing(inp.iPass, inp.iGroup, passGroups)
+			}
+			defer wg.Done()
+		}()
+	}
+	for pass0 := 0; pass0 < numPasses; pass0++ {
+		pass := pass0
+
+		for group0 := 0; group0 < numGroups; group0++ {
+			inputChan <- Inp{
+				iPass:  pass,
+				iGroup: group0,
+			}
+		}
+	}
+	close(inputChan)
+	wg.Wait()
+
+	var eg errgroup.Group
 
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0

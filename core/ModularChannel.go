@@ -186,8 +186,8 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		//mc.weight[e] = int32(4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift))
 		mc.weight[e] = ee
 		wSum += mc.weight[e]
-	}
 
+	}
 	logWeight := util.FloorLog1p(int64(wSum)-1) - 4
 	wSum = 0
 	for e := 0; e < 4; e++ {
@@ -242,7 +242,8 @@ func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 	if x > 0 && y > 0 {
 		return mc.buffer[y-1][x-1]
 	}
-	return mc.west(x, y)
+	resp := mc.west(x, y)
+	return resp
 }
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
