@@ -298,32 +298,28 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		}
 
 		cOutSection := f.buffer[cOut]
+		// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
+		// but had negative performance... unsure why.
 		if isModularXYB && cIn == 2 {
-			modularSection0 := modularBuffer[0]
-			modularSection2 := modularBuffer[2]
 			for y := uint32(0); y < f.height; y++ {
 
 				// get reference to sub slices to do not have to repeat lookups.
 				row := cOutSection[y]
-				modularSection0Row := modularSection0[y]
-				modularSection2Row := modularSection2[y]
 				for x := uint32(0); x < f.width; x++ {
-					//f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
-					row[x] = scaleFactor * float32(modularSection0Row[x]+modularSection2Row[x])
+					row[x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
 				}
 			}
 		} else {
-
-			modularBufferCin := modularBuffer[cIn]
+			
 			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
 			// and modify so below can use pool of goroutines?
+			// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
+			// but had negative performance... unsure why.
 			for y := uint32(0); y < f.bounds.size.height; y++ {
 				// get reference to sub slices to do not have to repeat lookups.
 				row := cOutSection[y]
-				modularBufferCinRow := modularBufferCin[cIn]
 				for x := uint32(0); x < f.bounds.size.width; x++ {
-					//f.buffer[cOut][y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
-					row[x] = scaleFactor * float32(modularBufferCinRow[x])
+					row[x] = scaleFactor * float32(modularBuffer[cIn][y][x])
 				}
 			}
 		}
