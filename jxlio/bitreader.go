@@ -10,8 +10,7 @@ import (
 
 type Bitreader struct {
 	// stream/reader we're using most of the time
-	stream       io.ReadSeeker
-	littleEndian bool
+	stream io.ReadSeeker
 
 	index       uint8
 	currentByte uint8
@@ -19,32 +18,26 @@ type Bitreader struct {
 	bitsRead    uint64
 }
 
-func NewBitreaderWithIndex(in io.ReadSeeker, le bool, index int) *Bitreader {
+func NewBitreaderWithIndex(in io.ReadSeeker, index int) *Bitreader {
 
-	br := NewBitreader(in, le)
+	br := NewBitreader(in)
 	br.tempIndex = index
 	return br
 }
 
-func NewBitreader(in io.ReadSeeker, le bool) *Bitreader {
+func NewBitreader(in io.ReadSeeker) *Bitreader {
 
 	br := &Bitreader{}
 	br.stream = in
-	br.littleEndian = le
 	return br
 }
 
-// utter hack to seek about the place
+// utter hack to seek about the place. TODO(kpfaulkner) confirm this really works.
 func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
-
 	n, err := br.stream.Seek(offset, whence)
 	if err != nil {
 		return 0, err
 	}
-
-	// reset tracking
-	//br.index = uint8(offset)
-	//br.currentByte = 0
 	return n, err
 }
 
@@ -122,13 +115,7 @@ func (br *Bitreader) readBit() (uint8, error) {
 		br.currentByte = buffer[0]
 	}
 
-	var v bool
-	// determine if we're little endian or big endian.
-	if br.littleEndian {
-		v = (br.currentByte & (1 << br.index)) != 0
-	} else {
-		v = (br.currentByte & (1 << (7 - br.index))) != 0
-	}
+	v := (br.currentByte & (1 << br.index)) != 0
 	br.index = (br.index + 1) % 8
 
 	br.bitsRead++
@@ -155,11 +142,8 @@ func (br *Bitreader) ReadBits(bits uint32) (uint64, error) {
 		if err != nil {
 			return 0, err
 		}
-		if br.littleEndian {
-			v |= uint64(bit) << i
-		} else {
-			v |= uint64(bit) << (bits - 1 - i)
-		}
+		v |= uint64(bit) << i
+
 	}
 	return v, nil
 }
@@ -449,12 +433,7 @@ func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	if br.littleEndian {
-		return binary.LittleEndian.Uint64(ba), nil
-	} else {
-		return binary.BigEndian.Uint64(ba), nil
-	}
+	return binary.LittleEndian.Uint64(ba), nil
 }
 
 func (br *Bitreader) ZeroPadToByte() error {

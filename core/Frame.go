@@ -199,7 +199,7 @@ func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
 		panic("getBitreader panic... unsure what to do")
 	}
 	permutedIndex := f.tocPermutation[index]
-	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), true, index), nil
+	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), index), nil
 }
 
 func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {

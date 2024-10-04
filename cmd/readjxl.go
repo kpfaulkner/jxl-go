@@ -42,7 +42,7 @@ func main() {
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
 	fmt.Printf("img %+v\n", img.Bounds())
 
-	return
+	//return
 
 	buf := new(bytes.Buffer)
 	if err := png.Encode(buf, img); err != nil {
