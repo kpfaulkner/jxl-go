@@ -74,15 +74,12 @@ func NewImage(buffer [][][]float32, header ImageHeader) (image.Image, error) {
 	dx := jxl.Bounds().Dx()
 	dy := jxl.Bounds().Dy()
 	pos := 0
-	//for c := 0; c < channels; c++ {
 	for y := 0; y < dy; y++ {
 		for x := 0; x < dx; x++ {
-			//pixPos := 4*(y*jxl.Stride+x) + c
 			pix[pos] = uint8(buffer[0][y][x] * 255)
 			pos++
 			pix[pos] = uint8(buffer[1][y][x] * 255)
 			pos++
-
 			pix[pos] = uint8(buffer[2][y][x] * 255)
 			pos++
 
