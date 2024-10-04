@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -266,6 +267,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
+	count := 0
 	modularBuffer := f.lfGlobal.gModular.stream.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
@@ -314,15 +316,22 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			// and modify so below can use pool of goroutines?
 			// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
 			// but had negative performance... unsure why.
-			for y := uint32(0); y < f.bounds.size.height; y++ {
+			height := f.bounds.size.height
+			for y := uint32(0); y < height; y++ {
+
+				modularBufferY := modularBuffer[cIn][y]
+				width := f.bounds.size.width
 				// get reference to sub slices to do not have to repeat lookups.
 				row := cOutSection[y]
-				for x := uint32(0); x < f.bounds.size.width; x++ {
-					row[x] = scaleFactor * float32(modularBuffer[cIn][y][x])
+				for x := uint32(0); x < width; x++ {
+					row[x] = scaleFactor * float32(modularBufferY[x])
+					count++
 				}
 			}
 		}
 	}
+
+	fmt.Printf("count %d\n", count)
 	f.invertSubsampling()
 
 	if f.header.restorationFilter.gab {

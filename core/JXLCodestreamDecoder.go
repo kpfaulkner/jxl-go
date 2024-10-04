@@ -276,7 +276,6 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		// TOOD(kpfaulkner) unsure if need to perform similar drain cache functionality here. Don't think we do.
-
 		if jxl.options.parseOnly {
 			return nil, nil
 		}
@@ -295,6 +294,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return img, nil
 	}
 
@@ -613,45 +613,6 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 				}
 			}
 			break
-		//case BLEND_MULADD:
-		//	for cy := frameStartY; cy < frameHeight+frameStartY; cy++ {
-		//		for cx := frameStartX; cx < frameWidth+frameStartX; cx++ {
-		//			var oldAlpha float32
-		//			if !jxl.imageHeader.hasAlpha() {
-		//				oldAlpha = 1.0
-		//			} else {
-		//				if ref != nil {
-		//					oldAlpha = refBuffer[imageColours+int(info.alphaChannel)][cy][cx]
-		//				} else {
-		//					oldAlpha = 0.0
-		//				}
-		//			}
-		//			var newAlpha float32
-		//			if !jxl.imageHeader.hasAlpha() {
-		//				newAlpha = 1.0
-		//			} else {
-		//				newAlpha = frame.getImageSample(int32(uint32(frameColours)+info.alphaChannel), cx, cy)
-		//			}
-		//
-		//			if info.clamp {
-		//				newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
-		//			}
-		//			var oldSample float32
-		//			if ref != nil {
-		//				oldSample = ref[cy][cx]
-		//			} else {
-		//				oldSample = 0.0
-		//			}
-		//			newSample := frame.getImageSample(frameC, cx, cy)
-		//			if isAlpha {
-		//				canvas[c][cy][cx] = oldAlpha
-		//			} else {
-		//				canvas[c][cy][cx] = oldSample + newSample*newAlpha
-		//			}
-		//
-		//		}
-		//	}
-		//	break
 		default:
 			return errors.New("Illegal blend mode")
 		}
