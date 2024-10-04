@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"image"
 	"io"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
@@ -72,7 +73,7 @@ func (jxl *JXLCodestreamDecoder) atEnd() bool {
 	return false
 }
 
-func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
+func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 
 	// read header to get signature
 	_, err := jxl.readSignatureAndBoxes()
@@ -259,11 +260,11 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		}
 
 		// generate image and return.
-		jxlImage, err := NewJXLImageWithBuffer(orientedCanvas, *imageHeader)
+		img, err := NewImage(orientedCanvas, *imageHeader)
 		if err != nil {
 			return nil, err
 		}
-		return jxlImage, nil
+		return img, nil
 	}
 
 	panic("make JXL image here?")

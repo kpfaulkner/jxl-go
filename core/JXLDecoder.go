@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"image"
 	"io"
 	"os"
 
@@ -69,7 +70,7 @@ func NewJXLDecoder(opts ...JXLDecoderOption) *JXLDecoder {
 	return jxl
 }
 
-func (jxl *JXLDecoder) Decode() (*JXLImage, error) {
+func (jxl *JXLDecoder) Decode() (image.Image, error) {
 
 	jxlImage, err := jxl.decoder.decode()
 	if err != nil {
