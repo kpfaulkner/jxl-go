@@ -73,6 +73,37 @@ func (jxl *JXLCodestreamDecoder) atEnd() bool {
 	return false
 }
 
+// GetImageHeader just duplicates the first chunk of code from decode. This is so we can get the image size
+// and colour model.
+func (jxl *JXLCodestreamDecoder) GetImageHeader() (*ImageHeader, error) {
+
+	// read header to get signature
+	_, err := jxl.readSignatureAndBoxes()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, box := range jxl.boxHeaders {
+		_, err := jxl.bitReader.Seek(box.Offset, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+
+		if jxl.atEnd() {
+			return nil, nil
+		}
+
+		level := int32(jxl.level)
+		imageHeader, err := ParseImageHeader(jxl.bitReader, level)
+		if err != nil {
+			return nil, err
+		}
+
+		return imageHeader, nil
+	}
+	return nil, errors.New("unable to find image header")
+}
+
 func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 
 	// read header to get signature
@@ -283,51 +314,6 @@ func (jxl *JXLCodestreamDecoder) readSignatureAndBoxes() ([]byte, error) {
 
 	jxl.boxHeaders = boxHeaders
 	jxl.level = br.level
-	//if !jxl.foundSignature {
-	//	signature := make([]byte, 12)
-	//	remaining, err := jxlio.ReadFully(jxl.in, signature)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//
-	//	// if not equall... just return the dodgy signature
-	//	if bytes.Compare(signature, CONTAINER_SIGNATURE) != 0 {
-	//		if remaining != 0 {
-	//			signature = signature[:len(signature)-remaining]
-	//		}
-	//		jxl.boxInfo.boxSize = 0
-	//		jxl.boxInfo.posInBox = len(signature)
-	//		jxl.boxInfo.container = false
-	//		return signature, err
-	//	} else {
-	//		jxl.boxInfo.boxSize = 12
-	//		jxl.boxInfo.posInBox = 12
-	//		jxl.boxInfo.container = true
-	//	}
-	//}
-
-	//if !jxl.boxInfo.container || jxl.boxInfo.boxSize > 0 && jxl.boxInfo.posInBox < jxl.boxInfo.boxSize || jxl.boxInfo.boxSize == 0 {
-	//	l := uint32(4096)
-	//
-	//	if jxl.boxInfo.boxSize > 0 && jxl.boxInfo.boxSize-jxl.boxInfo.posInBox < l {
-	//		l = min(math.MaxUint32, uint32(jxl.boxInfo.boxSize-jxl.boxInfo.posInBox))
-	//	}
-	//	buf := make([]byte, l)
-	//	remaining, err := jxlio.ReadFully(jxl.in, buf)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	jxl.boxInfo.posInBox += l - uint32(remaining)
-	//	if remaining > 0 {
-	//		if uint32(remaining) == l {
-	//			return []byte{}, nil
-	//		}
-	//
-	//	}
-	//
-	//	return nil, nil
-	//}
-
 	return nil, nil
 }
 

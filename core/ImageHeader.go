@@ -299,6 +299,14 @@ func (h *ImageHeader) getColourChannelCount() int {
 	return 3
 }
 
+func (h *ImageHeader) GetSize() (uint32, uint32) {
+	return h.size.width, h.size.height
+}
+
+func (h *ImageHeader) GetColourModel() int32 {
+	return h.colorEncoding.ColorEncoding
+}
+
 func (h *ImageHeader) setLevel(level int32) error {
 	if level != 5 && level != 10 {
 		return errors.New("invalid bitstream")

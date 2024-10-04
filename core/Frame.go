@@ -118,7 +118,6 @@ func (f *Frame) readTOC() error {
 	return nil
 }
 
-// TODO(kpfaulkner) really need to check this.
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
 	length := f.tocLengths[index]
 	buffer := make([]uint8, length+4)
@@ -310,7 +309,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 				}
 			}
 		} else {
-			
+
 			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
 			// and modify so below can use pool of goroutines?
 			// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
