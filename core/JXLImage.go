@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"image"
 
 	"github.com/kpfaulkner/jxl-go/color"
@@ -71,24 +70,12 @@ func NewImage(buffer [][][]float32, header ImageHeader) (image.Image, error) {
 	// TODO(kpfaulkner) get right image type
 	jxl := image.NewRGBA(image.Rect(0, 0, len(buffer[0][0]), len(buffer[0])))
 
-	//channels := header.getTotalChannelCount()
-	//jxl.Buffer = util.MakeMatrix2D[float32](channels, jxl.Width*jxl.Height)
-	//for c := 0; c < channels; c++ {
-	//	for y := 0; y < jxl.Height; y++ {
-	//		copy(jxl.Buffer[c][y*jxl.Width:], buffer[c][y])
-	//	}
-	//}
-
 	pix := jxl.Pix
 	dx := jxl.Bounds().Dx()
 	dy := jxl.Bounds().Dy()
 	pos := 0
 	//for c := 0; c < channels; c++ {
 	for y := 0; y < dy; y++ {
-
-		if y == 612 {
-			fmt.Printf("snoop\n")
-		}
 		for x := 0; x < dx; x++ {
 			//pixPos := 4*(y*jxl.Stride+x) + c
 			pix[pos] = uint8(buffer[0][y][x] * 255)
@@ -98,39 +85,12 @@ func NewImage(buffer [][][]float32, header ImageHeader) (image.Image, error) {
 
 			pix[pos] = uint8(buffer[2][y][x] * 255)
 			pos++
+
+			// FIXME(kpfaulkner) deal with alpha channels properly
 			pix[pos] = 255
 			pos++
-			//pos++
-			//val := uint8(buffer[c][y][x] * 255)
-			//pix[pixPos] = val
-			//jxl.Set(x, y, buffer[c][y][x])
 		}
 	}
-	//}
-
-	//bundle := header.colorEncoding
-	//jxl.ColorEncoding = bundle.ColorEncoding
-	//if header.hasAlpha() {
-	//	jxl.alphaIndex = header.alphaIndices[0]
-	//} else {
-	//	jxl.alphaIndex = -1
-	//}
-	//jxl.imageHeader = header
-	//jxl.primaries = bundle.Primaries
-	//jxl.whitePoint = bundle.WhitePoint
-	//jxl.primariesXY = bundle.Prim
-	//jxl.whiteXY = bundle.White
-	//
-	//if jxl.imageHeader.xybEncoded {
-	//	jxl.transfer = color.TF_LINEAR
-	//	jxl.iccProfile = nil
-	//} else {
-	//	jxl.transfer = bundle.Tf
-	//	jxl.iccProfile = header.getDecodedICC()
-	//}
-	//jxl.taggedTransfer = bundle.Tf
-	//jxl.alphaIsPremultiplied = jxl.imageHeader.hasAlpha() && jxl.imageHeader.extraChannelInfo[jxl.alphaIndex].alphaAssociated
-	//return jxl, nil
 
 	return jxl, nil
 }
