@@ -350,9 +350,15 @@ func TestReadU8(t *testing.T) {
 		expectErr bool
 	}{
 		{
-			name:      "ReadU8 ",
-			data:      []uint8{0x0, 0x01, 0x02, 0x03, 0x04},
+			name:      "ReadU8 initial bit is 0, result 0",
+			data:      []uint8{0x00},
 			expected:  0,
+			expectErr: false,
+		},
+		{
+			name:      "ReadU8 initial bit is 1, next 3 are 7 then following 7 bits are 1010101",
+			data:      []uint8{0xF0, 0x55},
+			expected:  213,
 			expectErr: false,
 		},
 	} {
@@ -360,13 +366,16 @@ func TestReadU8(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
 			br := NewBitreader(data)
-			err := br.SkipBits(6)
-			if err != nil {
-				t.Errorf("error skipping bits : %v", err)
+			err := br.SkipBits(4)
+
+			resp, err := br.ReadU8()
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
 			}
 
-			resp := br.ReadU8()
-
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
 			if resp != tc.expected {
 				t.Errorf("expected %v but got %v", tc.expected, resp)
 			}

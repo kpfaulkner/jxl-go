@@ -340,15 +340,29 @@ func (br *Bitreader) ReadU64() (uint64, error) {
 	return value, nil
 }
 
-func (br *Bitreader) ReadU8() int {
-	if !br.MustReadBool() {
-		return 0
+func (br *Bitreader) ReadU8() (int, error) {
+
+	b, err := br.ReadBool()
+	if err != nil {
+		return 0, err
 	}
-	n := br.MustReadBits(3)
+
+	if !b {
+		return 0, nil
+	}
+	n, err := br.ReadBits(3)
+	if err != nil {
+		return 0, err
+	}
 	if n == 0 {
-		return 1
+		return 1, nil
 	}
-	return int(br.MustReadBits(uint32(n)) + 1<<n)
+
+	nn, err := br.ReadBits(uint32(n))
+	if err != nil {
+		return 0, err
+	}
+	return int(nn + 1<<n), nil
 }
 
 func (br *Bitreader) MustShowBits(bits int) int {

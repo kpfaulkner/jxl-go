@@ -27,8 +27,14 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 	if reader.MustReadBool() {
 
 		if reader.MustReadBool() {
-			v1 := reader.ReadU8()
-			v2 := reader.ReadU8()
+			v1, err := reader.ReadU8()
+			if err != nil {
+				return nil, err
+			}
+			v2, err := reader.ReadU8()
+			if err != nil {
+				return nil, err
+			}
 			if v1 == v2 {
 				return nil, errors.New("Overlapping dual peak distribution")
 			}
@@ -43,7 +49,10 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 				uniqPos = v2
 			}
 		} else {
-			x := reader.ReadU8()
+			x, err := reader.ReadU8()
+			if err != nil {
+				return nil, err
+			}
 			asd.alphabetSize = 1 + x
 			asd.frequencies = make([]int, asd.alphabetSize)
 
@@ -54,7 +63,11 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 			uniqPos = x
 		}
 	} else if reader.MustReadBool() {
-		asd.alphabetSize = 1 + reader.ReadU8()
+		r, err := reader.ReadU8()
+		if err != nil {
+			return nil, err
+		}
+		asd.alphabetSize = 1 + r
 		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
 			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 		}
@@ -80,7 +93,11 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		if shift > 13 {
 			return nil, errors.New("Shift > 13")
 		}
-		asd.alphabetSize = 3 + reader.ReadU8()
+		r, err := reader.ReadU8()
+		if err != nil {
+			return nil, err
+		}
+		asd.alphabetSize = 3 + r
 		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
 			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 		}
@@ -90,14 +107,16 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		same := make([]int, asd.alphabetSize)
 		omitLog := -1
 		omitPos := -1
-		var err error
 		for i := 0; i < asd.alphabetSize; i++ {
 			logCounts[i], err = distPrefixTable.GetVLC(reader)
 			if err != nil {
 				return nil, err
 			}
 			if logCounts[i] == 13 {
-				rle := reader.ReadU8()
+				rle, err := reader.ReadU8()
+				if err != nil {
+					return nil, err
+				}
 				same[i] = rle + 5
 				i += rle + 3
 				continue
