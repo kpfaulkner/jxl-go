@@ -203,3 +203,95 @@ func TestReadByteArrayWithOffsetAndLength(t *testing.T) {
 		})
 	}
 }
+
+// TestReadByte tests reading a single byte...
+func TestReadByte(t *testing.T) {
+
+	for _, tc := range []struct {
+		name      string
+		data      []uint8
+		expected  uint8
+		expectErr bool
+	}{
+		{
+			name:      "Read byte",
+			data:      []uint8{0x01, 0x02, 0x03, 0x04, 0x05},
+			expected:  0x01,
+			expectErr: false,
+		},
+		{
+			name:      "Read byte no data",
+			data:      []uint8{},
+			expected:  0x00,
+			expectErr: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+
+			resp, err := br.ReadByte()
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			if resp != tc.expected {
+				t.Errorf("expected %v but got %v", tc.expected, resp)
+			}
+		})
+	}
+}
+
+// TestReadU32 tests reading of U32 type
+// First byte of the test data will be used for choice response.
+// Choice response should only be 2 bits long, so will need to read the first 6 bits and discard.
+func TestReadU32(t *testing.T) {
+
+	for _, tc := range []struct {
+		name      string
+		data      []uint8
+		expected  uint32
+		expectErr bool
+	}{
+		{
+			// First byte will be used for choiceResponse. Given choice response is 2 bits, we need to skip the first 6 bits
+			// This is why its set to 0x40. First 6 bits are 0, but then the 7th is 1... which is wanted for this test.
+			name:      "ReadU32 success",
+			data:      []uint8{0x40, 0x01, 0x02, 0x03, 0x04},
+			expected:  514,
+			expectErr: false,
+		},
+		{
+			name:      "ReadU32 not enough data",
+			data:      []uint8{0x40, 0x01},
+			expected:  0,
+			expectErr: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+			br.SkipBits(6)
+
+			resp, err := br.ReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			if resp != tc.expected {
+				t.Errorf("expected %v but got %v", tc.expected, resp)
+			}
+
+		})
+	}
+}
