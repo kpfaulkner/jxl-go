@@ -114,3 +114,92 @@ func TestReadbits(t *testing.T) {
 		})
 	}
 }
+
+// ReadByteArrayWithOffsetAndLength tests reading set of bytes with offset and length.
+func TestReadByteArrayWithOffsetAndLength(t *testing.T) {
+
+	for _, tc := range []struct {
+		name       string
+		data       []uint8
+		offset     int64
+		length     uint32
+		bufferSize int
+		expected   []uint8
+		expectErr  bool
+	}{
+		{
+			name:       "Read offset 0, length 1",
+			data:       []uint8{0x01, 0x02, 0x03, 0x04, 0x05},
+			offset:     0,
+			length:     1,
+			bufferSize: 1,
+			expected:   []uint8{0x01},
+			expectErr:  false,
+		},
+		{
+			name:       "Read offset 0, length 2",
+			data:       []uint8{0x01, 0x02, 0x03, 0x04, 0x05},
+			offset:     0,
+			length:     2,
+			bufferSize: 2,
+			expected:   []uint8{0x01, 0x02},
+			expectErr:  false,
+		},
+		{
+			name:       "Read offset 1, length 2",
+			data:       []uint8{0x01, 0x02, 0x03, 0x04, 0x05},
+			offset:     1,
+			length:     2,
+			bufferSize: 2,
+			expected:   []uint8{0x02, 0x03},
+			expectErr:  false,
+		},
+		{
+			name:       "Read offset 0, length too large, 0's at end",
+			data:       []uint8{0x01, 0x02},
+			offset:     0,
+			length:     3,
+			bufferSize: 3,
+			expected:   []uint8{0x01, 0x02, 0x00},
+			expectErr:  true,
+		},
+		{
+			name:       "Read offset 0, length 1, no data",
+			data:       []uint8{},
+			offset:     0,
+			length:     1,
+			bufferSize: 1,
+			expected:   []uint8{0x00},
+			expectErr:  true,
+		},
+		{
+			name:       "Read offset too large",
+			data:       []uint8{0x01, 0x02},
+			offset:     3,
+			length:     1,
+			bufferSize: 1,
+			expected:   []uint8{0x00},
+			expectErr:  true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+
+			buffer := make([]uint8, tc.bufferSize)
+			err := br.ReadByteArrayWithOffsetAndLength(buffer, tc.offset, tc.length)
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			if !bytes.Equal(tc.expected, buffer) {
+				t.Errorf("expected %v but got %v", tc.expected, buffer)
+			}
+		})
+	}
+}
