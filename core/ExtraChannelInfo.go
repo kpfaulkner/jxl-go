@@ -21,7 +21,7 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 	eci := &ExtraChannelInfo{}
 
 	dAlpha := reader.MustReadBool()
-	if dAlpha {
+	if !dAlpha {
 		eci.ecType = reader.MustReadEnum()
 		if !bundle.ValidateExtraChannel(eci.ecType) {
 			return nil, errors.New("Illegal extra channel type")

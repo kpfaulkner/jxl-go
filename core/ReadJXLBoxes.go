@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -45,11 +46,24 @@ func (br *BoxReader) ReadBoxHeader() ([]ContainerBoxHeader, error) {
 		return nil, err
 	}
 
+	var containerBoxHeaders []ContainerBoxHeader
+
 	if !bytes.Equal(buffer, JPEGXLHEADERALT[:]) {
-		return nil, fmt.Errorf("invalid magic number: %+v", buffer)
+		log.Errorf("invalid magic number: %+v", buffer)
+		// setup fake box header (if we dont have a container...?)
+		bh := ContainerBoxHeader{
+			BoxType: JXLC,
+			BoxSize: 0,
+			IsLast:  true,
+			Offset:  0,
+		}
+		containerBoxHeaders = append(containerBoxHeaders, bh)
+
+		// reset reader to beginning of data...  as we've read the first 12 bytes.
+		//br.reader.Reset()
+		return containerBoxHeaders, nil
 	}
 
-	var containerBoxHeaders []ContainerBoxHeader
 	if containerBoxHeaders, err = br.readAllBoxes(); err != nil {
 		return nil, err
 	}

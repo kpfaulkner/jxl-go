@@ -48,6 +48,19 @@ func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
 	return n, err
 }
 
+func (br *Bitreader) Reset() error {
+
+	_, err := br.stream.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	// reset tracking
+	br.index = 0
+	br.currentByte = 0
+	return nil
+}
+
 func (br *Bitreader) AtEnd() bool {
 
 	_, err := br.ShowBits(1)
@@ -374,6 +387,7 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	}
 	oldCur := br.currentByte
 	oldIndex := br.index
+	oldBitsRead := br.bitsRead
 
 	b, err := br.ReadBits(uint32(bits))
 	if err != nil {
@@ -386,6 +400,7 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	}
 	br.currentByte = oldCur
 	br.index = oldIndex
+	br.bitsRead = oldBitsRead
 
 	return int(b), nil
 }

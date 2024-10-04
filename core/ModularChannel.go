@@ -53,11 +53,6 @@ func init() {
 	}
 }
 
-//func NewModularChannelFromInfo(info ModularChannelInfo) *ModularChannel {
-//
-//	return NewModularChannelWithAllParams(info.Width, info.Height, info.hshift, info.vshift, util.IntPoint{0, 0}, false)
-//}
-
 func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
 	mc := NewModularChannelWithAllParams(int32(ch.size.width), int32(ch.size.height), ch.hshift, ch.vshift, ch.forceWP)
 	mc.decoded = ch.decoded

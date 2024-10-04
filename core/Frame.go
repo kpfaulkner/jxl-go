@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -267,7 +266,6 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	count := 0
 	modularBuffer := f.lfGlobal.gModular.stream.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
@@ -299,6 +297,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		}
 
 		cOutSection := f.buffer[cOut]
+
 		// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
 		// but had negative performance... unsure why.
 		if isModularXYB && cIn == 2 {
@@ -311,27 +310,22 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 				}
 			}
 		} else {
-
 			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
-			// and modify so below can use pool of goroutines?
-			// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
-			// but had negative performance... unsure why.
+			// NOTE: have tried using goroutine pool to process each row concurrently, didn't really make a
+			// noticeable difference, so have reverted back to simple embedded loops.
 			height := f.bounds.size.height
 			for y := uint32(0); y < height; y++ {
-
 				modularBufferY := modularBuffer[cIn][y]
 				width := f.bounds.size.width
 				// get reference to sub slices to do not have to repeat lookups.
 				row := cOutSection[y]
 				for x := uint32(0); x < width; x++ {
 					row[x] = scaleFactor * float32(modularBufferY[x])
-					count++
 				}
 			}
 		}
 	}
 
-	fmt.Printf("count %d\n", count)
 	f.invertSubsampling()
 
 	if f.header.restorationFilter.gab {

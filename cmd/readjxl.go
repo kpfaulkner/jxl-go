@@ -21,7 +21,10 @@ func main() {
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
-	f, err := os.ReadFile(`../testdata/lossless.jxl`)
+	file := `../testdata/lossless.jxl`
+	//file := `c:\temp\work.jxl`
+	//file := `c:\temp\input.jxl`
+	f, err := os.ReadFile(file)
 	if err != nil {
 		log.Errorf("Error opening file: %v\n", err)
 		return
@@ -39,7 +42,7 @@ func main() {
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
 	fmt.Printf("img %+v\n", img.Bounds())
 
-	//return
+	return
 
 	buf := new(bytes.Buffer)
 	if err := png.Encode(buf, img); err != nil {

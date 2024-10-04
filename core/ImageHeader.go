@@ -107,7 +107,9 @@ type ImageHeader struct {
 }
 
 func NewImageHeader() *ImageHeader {
-	ih := &ImageHeader{}
+	ih := &ImageHeader{
+		xybEncoded: true,
+	}
 	return ih
 }
 
