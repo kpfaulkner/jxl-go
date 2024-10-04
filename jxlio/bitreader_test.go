@@ -295,3 +295,82 @@ func TestReadU32(t *testing.T) {
 		})
 	}
 }
+
+// TestReadU64 tests reading of U64 type
+// NOT COMPLETE... (unused in library yet, except for response of 0).
+func TestReadU64(t *testing.T) {
+
+	for _, tc := range []struct {
+		name      string
+		data      []uint8
+		expected  uint64
+		expectErr bool
+	}{
+		{
+			// First byte will be used for choiceResponse. Given choice response is 2 bits, we need to skip the first 6 bits
+			// This is why its set to 0x40. First 6 bits are 0, but then the 7th is 1... which is wanted for this test.
+			name:      "ReadU64 read 0",
+			data:      []uint8{0x0, 0x01, 0x02, 0x03, 0x04},
+			expected:  0,
+			expectErr: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+			err := br.SkipBits(6)
+			if err != nil {
+				t.Errorf("error skipping bits : %v", err)
+			}
+
+			resp, err := br.ReadU64()
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			if resp != tc.expected {
+				t.Errorf("expected %v but got %v", tc.expected, resp)
+			}
+
+		})
+	}
+}
+
+func TestReadU8(t *testing.T) {
+
+	for _, tc := range []struct {
+		name      string
+		data      []uint8
+		expected  int
+		expectErr bool
+	}{
+		{
+			name:      "ReadU8 ",
+			data:      []uint8{0x0, 0x01, 0x02, 0x03, 0x04},
+			expected:  0,
+			expectErr: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+			err := br.SkipBits(6)
+			if err != nil {
+				t.Errorf("error skipping bits : %v", err)
+			}
+
+			resp := br.ReadU8()
+
+			if resp != tc.expected {
+				t.Errorf("expected %v but got %v", tc.expected, resp)
+			}
+
+		})
+	}
+}
