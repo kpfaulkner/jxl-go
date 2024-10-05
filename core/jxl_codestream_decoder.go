@@ -608,7 +608,6 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 	return nil
 }
 
-// FIXME(kpfaulkner) really unsure about this
 func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start Point, off Point, size Dimension, frameBuffer [][]float32) {
 	for y := uint32(0); y < size.height; y++ {
 		copy(canvas[y+uint32(start.X)][off.X:], frameBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.width])
