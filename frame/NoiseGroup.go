@@ -14,8 +14,8 @@ func NewNoiseGroupWithHeader(header *FrameHeader, seed0 int64, noiseBuffer [][][
 	ng := &NoiseGroup{}
 
 	seed1 := (int64(x0) << 32) | int64(y0)
-	xSize := util.Min(header.groupDim, header.width-uint32(x0))
-	ySize := util.Min(header.groupDim, header.height-uint32(y0))
+	xSize := util.Min(header.groupDim, header.Width-uint32(x0))
+	ySize := util.Min(header.groupDim, header.Height-uint32(y0))
 	ng.rng = NewXorShiroWith2Seeds(seed0, seed1)
 	bits := make([]int64, 16)
 	for c := 0; c < 3; c++ {

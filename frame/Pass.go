@@ -22,7 +22,7 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 	}
 
 	n := -1
-	passes := frame.header.passes
+	passes := frame.Header.passes
 	for i := 0; i < len(passes.lastPass); i++ {
 		if passes.lastPass[i] == passIndex {
 			n = i
@@ -36,10 +36,10 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 		p.minShift = p.maxShift
 	}
 
-	globalModular := frame.lfGlobal.gModular
-	p.replacedChannels = make([]ModularChannel, len(globalModular.stream.channels))
-	for i := 0; i < len(globalModular.stream.channels); i++ {
-		ch := globalModular.stream.channels[i]
+	globalModular := frame.LfGlobal.gModular
+	p.replacedChannels = make([]ModularChannel, len(globalModular.Stream.channels))
+	for i := 0; i < len(globalModular.Stream.channels); i++ {
+		ch := globalModular.Stream.channels[i]
 		if !ch.decoded {
 			m := uint32(min(ch.hshift, ch.vshift))
 			if p.minShift <= m && m < p.maxShift {
@@ -48,7 +48,7 @@ func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, 
 		}
 	}
 	var err error
-	if frame.header.encoding == VARDCT {
+	if frame.Header.Encoding == VARDCT {
 		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex)
 		if err != nil {
 			return Pass{}, err

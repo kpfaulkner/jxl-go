@@ -37,11 +37,11 @@ func init() {
 }
 
 func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
-	mc := NewModularChannelWithAllParams(int32(ch.size.width), int32(ch.size.height), ch.hshift, ch.vshift, ch.forceWP)
+	mc := NewModularChannelWithAllParams(int32(ch.size.Width), int32(ch.size.Height), ch.hshift, ch.vshift, ch.forceWP)
 	mc.decoded = ch.decoded
 	if ch.buffer != nil {
 		mc.allocate()
-		for y := uint32(0); y < mc.size.height; y++ {
+		for y := uint32(0); y < mc.size.Height; y++ {
 			copy(mc.buffer[y], ch.buffer[y])
 		}
 	}
@@ -53,25 +53,20 @@ func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vsh
 		hshift:  hshift,
 		vshift:  vshift,
 		forceWP: forceWP,
-		size: Dimension{
-			width:  uint32(width),
-			height: uint32(height),
+		size: util.Dimension{
+			Width:  uint32(width),
+			Height: uint32(height),
 		},
 	}
 
-	//if Width == 0 || Height == 0 {
-	//	mc.Buffer = make([][]int32, 0)
-	//} else {
-	//	mc.Buffer = util.MakeMatrix2D[int32](int(Height), int(Width))
-	//}
 	return mc
 }
 
 func (mc *ModularChannel) allocate() {
-	if mc.size.height == 0 || mc.size.width == 0 {
+	if mc.size.Height == 0 || mc.size.Width == 0 {
 		mc.buffer = make([][]int32, 0)
 	} else {
-		mc.buffer = util.MakeMatrix2D[int32](int(mc.size.height), int(mc.size.width))
+		mc.buffer = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
 	}
 }
 
@@ -149,7 +144,7 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		eww := mc.errorWestWest(x, y, e)
 		ene := mc.errorNorthEast(x, y, e)
 		eSum := en + ew + enw + eww + ene
-		if x+1 == int32(mc.size.width) {
+		if x+1 == int32(mc.size.Width) {
 			eSum += mc.errorWest(x, y, e)
 		}
 		shift := util.FloorLog1p(int64(eSum)) - 5
@@ -225,7 +220,7 @@ func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 }
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
-	if x+1 < int32(mc.size.width) && y > 0 {
+	if x+1 < int32(mc.size.Width) && y > 0 {
 		return mc.buffer[y-1][x+1]
 	}
 	return mc.north(x, y)
@@ -239,7 +234,7 @@ func (mc *ModularChannel) northNorth(x int32, y int32) int32 {
 }
 
 func (mc *ModularChannel) northEastEast(x int32, y int32) int32 {
-	if x+2 < int32(mc.size.width) && y > 0 {
+	if x+2 < int32(mc.size.Width) && y > 0 {
 		return mc.buffer[y-1][x+2]
 	}
 	return mc.northEast(x, y)
@@ -279,7 +274,7 @@ func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 }
 
 func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
-	if x+1 < int32(mc.size.width) && y > 0 {
+	if x+1 < int32(mc.size.Width) && y > 0 {
 		return mc.err[e][y-1][x+1]
 	}
 
@@ -336,7 +331,7 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 			k2 := int32(16)
 			for j := channelIndex - 1; j >= 0; j-- {
 				channel := parent.channels[j]
-				if channel.size.width != mc.size.width || channel.size.height != mc.size.height ||
+				if channel.size.Width != mc.size.Width || channel.size.Height != mc.size.Height ||
 					channel.hshift != mc.hshift || channel.vshift != mc.vshift {
 					continue
 				}
@@ -416,18 +411,18 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	tree = tree.compactify(channelIndex, streamIndex)
 	useWP := mc.forceWP || tree.useWeightedPredictor()
 	if useWP {
-		mc.err = util.MakeMatrix3D[int32](5, int(mc.size.height), int(mc.size.width))
-		mc.pred = util.MakeMatrix2D[int32](int(mc.size.height), int(mc.size.width))
+		mc.err = util.MakeMatrix3D[int32](5, int(mc.size.Height), int(mc.size.Width))
+		mc.pred = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
 		mc.subpred = make([]int32, 4)
 		mc.weight = make([]int32, 4)
 	}
 
 	var err error
-	for y0 := uint32(0); y0 < mc.size.height; y0++ {
+	for y0 := uint32(0); y0 < mc.size.Height; y0++ {
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
 
-		for x0 := uint32(0); x0 < mc.size.width; x0++ {
+		for x0 := uint32(0); x0 < mc.size.Width; x0++ {
 			x := int32(x0)
 			var maxError int32
 			if useWP {

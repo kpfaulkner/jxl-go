@@ -30,11 +30,11 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 	}
 
 	lfg.size = util.Dimension{
-		height: pixelSize.height >> 3,
-		width:  pixelSize.width >> 3,
+		Height: pixelSize.Height >> 3,
+		Width:  pixelSize.Width >> 3,
 	}
 
-	if parent.header.encoding == VARDCT {
+	if parent.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		lfg.lfCoeff = nil
@@ -50,7 +50,7 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 		return nil, err
 	}
 
-	if parent.header.encoding == VARDCT {
+	if parent.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		lfg.hfMetadata = nil

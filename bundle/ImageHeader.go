@@ -82,9 +82,9 @@ var (
 type ImageHeader struct {
 	level           int32
 	Size            util.Dimension
-	orientation     uint32
+	Orientation     uint32
 	intrinsicSize   util.Dimension
-	previewSize     util.Dimension
+	PreviewSize     *util.Dimension
 	AnimationHeader *AnimationHeader
 	BitDepth        *BitDepthHeader
 
@@ -94,12 +94,12 @@ type ImageHeader struct {
 
 	ExtraChannelInfo []ExtraChannelInfo
 	XybEncoded       bool
-	colorEncoding    *color.ColorEncodingBundle
-	alphaIndices     []int32
+	ColorEncoding    *color.ColorEncodingBundle
+	AlphaIndices     []int32
 
-	toneMapping        *color.ToneMapping
+	ToneMapping        *color.ToneMapping
 	extensions         *Extensions
-	opsinInverseMatrix *color.OpsinInverseMatrix
+	OpsinInverseMatrix *color.OpsinInverseMatrix
 
 	up2Weights []float32
 	up4Weights []float32
@@ -140,7 +140,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if extraFields {
-		header.orientation = 1 + uint32(reader.MustReadBits(3))
+		header.Orientation = 1 + uint32(reader.MustReadBits(3))
 		if reader.MustReadBool() {
 			header.intrinsicSize, err = readSizeHeader(reader, level)
 			if err != nil {
@@ -148,7 +148,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			}
 		}
 		if reader.MustReadBool() {
-			header.previewSize, err = readPreviewHeader(reader)
+			header.PreviewSize, err = readPreviewHeader(reader)
 			if err != nil {
 				return nil, err
 			}
@@ -160,10 +160,10 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			}
 		}
 	} else {
-		header.orientation = 1
+		header.Orientation = 1
 	}
 
-	if header.orientation > 4 {
+	if header.Orientation > 4 {
 		header.orientedWidth = header.Size.Height
 		header.orientedHeight = header.Size.Width
 	} else {
@@ -176,7 +176,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		header.modular16BitBuffers = true
 		header.ExtraChannelInfo = []ExtraChannelInfo{}
 		header.XybEncoded = true
-		header.colorEncoding, err = color.NewColorEncodingBundle()
+		header.ColorEncoding, err = color.NewColorEncodingBundle()
 		if err != nil {
 			return nil, err
 		}
@@ -200,22 +200,22 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 				numAlphaChannels++
 			}
 		}
-		header.alphaIndices = make([]int32, numAlphaChannels)
-		copy(header.alphaIndices, alphaIndicies[:numAlphaChannels])
+		header.AlphaIndices = make([]int32, numAlphaChannels)
+		copy(header.AlphaIndices, alphaIndicies[:numAlphaChannels])
 		header.XybEncoded = reader.MustReadBool()
-		header.colorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
+		header.ColorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if extraFields {
-		header.toneMapping, err = color.NewToneMappingWithReader(reader)
+		header.ToneMapping, err = color.NewToneMappingWithReader(reader)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		header.toneMapping = color.NewToneMapping()
+		header.ToneMapping = color.NewToneMapping()
 	}
 
 	if allDefault {
@@ -229,9 +229,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 
 	defaultMatrix := reader.MustReadBool()
 	if !defaultMatrix && header.XybEncoded {
-		header.opsinInverseMatrix = color.NewOpsinInverseMatrixWithReader(reader)
+		header.OpsinInverseMatrix = color.NewOpsinInverseMatrixWithReader(reader)
 	} else {
-		header.opsinInverseMatrix = color.NewOpsinInverseMatrix()
+		header.OpsinInverseMatrix = color.NewOpsinInverseMatrix()
 	}
 
 	var cwMask int32
@@ -268,7 +268,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		header.up8Weights = DEFAULT_UP8
 	}
 
-	if header.colorEncoding.UseIccProfile {
+	if header.ColorEncoding.UseIccProfile {
 		encodedSize := reader.MustReadU64()
 
 		// check MaxUint32 or MaxInt32
@@ -296,7 +296,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	return header, nil
 }
 func (h *ImageHeader) GetColourChannelCount() int {
-	if h.colorEncoding.ColorEncoding == color.CE_GRAY {
+	if h.ColorEncoding.ColorEncoding == color.CE_GRAY {
 		return 1
 	}
 
@@ -308,7 +308,7 @@ func (h *ImageHeader) GetSize() (uint32, uint32) {
 }
 
 func (h *ImageHeader) GetColourModel() int32 {
-	return h.colorEncoding.ColorEncoding
+	return h.ColorEncoding.ColorEncoding
 }
 
 func (h *ImageHeader) setLevel(level int32) error {
@@ -319,15 +319,15 @@ func (h *ImageHeader) setLevel(level int32) error {
 	return nil
 }
 
-func (h *ImageHeader) hasAlpha() bool {
-	return len(h.alphaIndices) > 0
+func (h *ImageHeader) HasAlpha() bool {
+	return len(h.AlphaIndices) > 0
 }
 
-func (h *ImageHeader) getTotalChannelCount() int {
+func (h *ImageHeader) GetTotalChannelCount() int {
 	return len(h.ExtraChannelInfo) + h.GetColourChannelCount()
 }
 
-func (h *ImageHeader) getDecodedICC() []byte {
+func (h *ImageHeader) GetDecodedICC() []byte {
 	return nil
 
 	// TODO(kpfaulkner) NOT IMPLEMENTED YET... but test images do not have ICC component... so skipping for now.
@@ -370,7 +370,7 @@ func GetICCContext(buffer []byte, index int) int {
 	return 1 + p1 + 8*p2
 }
 
-func readPreviewHeader(reader *jxlio.Bitreader) (util.Dimension, error) {
+func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 
 	var dim util.Dimension
 	var err error
@@ -386,7 +386,7 @@ func readPreviewHeader(reader *jxlio.Bitreader) (util.Dimension, error) {
 		dim.Width, err = getWidthFromRatio(uint32(ratio), dim.Height)
 		if err != nil {
 			log.Errorf("Error getting Width from ratio: %v\n", err)
-			return util.Dimension{}, err
+			return nil, err
 		}
 	} else {
 		if div8 {
@@ -398,10 +398,10 @@ func readPreviewHeader(reader *jxlio.Bitreader) (util.Dimension, error) {
 
 	if dim.Width > 4096 || dim.Height > 4096 {
 		log.Errorf("preview Width or preview Height too large: %d, %d", dim.Width, dim.Height)
-		return util.Dimension{}, errors.New("preview Width or preview Height too large")
+		return nil, errors.New("preview Width or preview Height too large")
 	}
 
-	return dim, nil
+	return &dim, nil
 }
 
 func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error) {

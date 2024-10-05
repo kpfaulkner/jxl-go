@@ -7,12 +7,12 @@ import (
 )
 
 type Patch struct {
-	width         int32
-	height        int32
-	ref           int32
-	origin        util.IntPoint
-	positions     []util.IntPoint
-	blendingInfos [][]BlendingInfo
+	Width         int32
+	Height        int32
+	Ref           int32
+	Origin        util.IntPoint
+	Positions     []util.IntPoint
+	BlendingInfos [][]BlendingInfo
 }
 
 func NewPatchWithStreamAndReader(stream *entropy.EntropyStream, reader *jxlio.Bitreader, extraChannelCount int, alphaChannelCount int) (Patch, error) {

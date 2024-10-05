@@ -22,7 +22,7 @@ type Frame struct {
 	globalMetadata   *bundle.ImageHeader
 	options          *options.JXLOptions
 	reader           *jxlio.Bitreader
-	header           *FrameHeader
+	Header           *FrameHeader
 	width            uint32
 	height           uint32
 	bounds           util.Rectangle
@@ -38,42 +38,42 @@ type Frame struct {
 	// unsure about this
 	buffers    [][]uint8
 	decoded    bool
-	lfGlobal   *LFGlobal
-	buffer     [][][]float32
+	LfGlobal   *LFGlobal
+	Buffer     [][][]float32
 	globalTree *MATree
 	hfGlobal   *HFGlobal
 	passes     []Pass
 }
 
-func (f *Frame) readFrameHeader() (FrameHeader, error) {
+func (f *Frame) ReadFrameHeader() (FrameHeader, error) {
 
 	f.reader.ZeroPadToByte()
 	var err error
-	f.header, err = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
+	f.Header, err = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
 	if err != nil {
 		return FrameHeader{}, err
 	}
 
 	f.bounds = util.Rectangle{
-		Origin: f.header.bounds.Origin,
-		Size:   f.header.bounds.Size,
+		Origin: f.Header.Bounds.Origin,
+		Size:   f.Header.Bounds.Size,
 	}
 
-	f.groupRowStride = util.CeilDiv(f.bounds.Size.Width, f.header.groupDim)
-	f.lfGroupRowStride = util.CeilDiv(f.bounds.Size.Width, f.header.groupDim<<3)
-	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.Size.Height, f.header.groupDim)
-	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.Size.Height, f.header.groupDim<<3)
+	f.groupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim)
+	f.lfGroupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim<<3)
+	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim)
+	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim<<3)
 
-	return *f.header, nil
+	return *f.Header, nil
 }
 
-func (f *Frame) readTOC() error {
+func (f *Frame) ReadTOC() error {
 	var tocEntries uint32
 
-	if f.numGroups == 1 && f.header.passes.numPasses == 1 {
+	if f.numGroups == 1 && f.Header.passes.numPasses == 1 {
 		tocEntries = 1
 	} else {
-		tocEntries = 1 + f.numLFGroups + 1 + f.numGroups*f.header.passes.numPasses
+		tocEntries = 1 + f.numLFGroups + 1 + f.numGroups*f.Header.passes.numPasses
 	}
 
 	f.permutatedTOC = f.reader.MustReadBool()
@@ -108,7 +108,7 @@ func (f *Frame) readTOC() error {
 	f.buffers = make([][]uint8, tocEntries)
 
 	// TODO(kpfaulkner) potentially make this more concurrent?
-	if tocEntries != 1 && !f.options.parseOnly {
+	if tocEntries != 1 && !f.options.ParseOnly {
 		for i := 0; i < int(tocEntries); i++ {
 			b, err := f.readBuffer(i)
 			if err != nil {
@@ -184,7 +184,7 @@ func NewFrameWithReader(reader *jxlio.Bitreader, imageHeader *bundle.ImageHeader
 	return frame
 }
 
-func (f *Frame) skipFrameData() error {
+func (f *Frame) SkipFrameData() error {
 	for i := 0; i < len(f.tocLengths); i++ {
 		buffer := make([]byte, f.tocLengths[i])
 		err := f.reader.ReadBytesToBuffer(buffer, f.tocLengths[i])
@@ -204,7 +204,7 @@ func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
 	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), index), nil
 }
 
-func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
+func (f *Frame) DecodeFrame(lfBuffer [][][]float32) error {
 
 	if f.decoded {
 		return nil
@@ -215,25 +215,25 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 	if err != nil {
 		return err
 	}
-	f.lfGlobal, err = NewLFGlobalWithReader(lfGlobalBitReader, f)
+	f.LfGlobal, err = NewLFGlobalWithReader(lfGlobalBitReader, f)
 	if err != nil {
 		return err
 	}
 
-	paddedSize, err := f.getPaddedFrameSize()
+	paddedSize, err := f.GetPaddedFrameSize()
 	if err != nil {
 		return err
 	}
 
-	f.buffer = make([][][]float32, f.getColorChannelCount()+len(f.globalMetadata.ExtraChannelInfo))
-	for c := 0; c < len(f.buffer); c++ {
-		if c < 3 && c < f.getColorChannelCount() {
-			//shiftedSize := paddedSize.ShiftRightWithIntPoint(f.header.jpegUpsampling[c])
-			shiftedHeight := paddedSize.Height >> f.header.jpegUpsamplingY[c]
-			shiftedWidth := paddedSize.Width >> f.header.jpegUpsamplingX[c]
-			f.buffer[c] = util.MakeMatrix2D[float32](int(shiftedHeight), int(shiftedWidth))
+	f.Buffer = make([][][]float32, f.GetColorChannelCount()+len(f.globalMetadata.ExtraChannelInfo))
+	for c := 0; c < len(f.Buffer); c++ {
+		if c < 3 && c < f.GetColorChannelCount() {
+			//shiftedSize := paddedSize.ShiftRightWithIntPoint(f.Header.jpegUpsampling[c])
+			shiftedHeight := paddedSize.Height >> f.Header.jpegUpsamplingY[c]
+			shiftedWidth := paddedSize.Width >> f.Header.jpegUpsamplingX[c]
+			f.Buffer[c] = util.MakeMatrix2D[float32](int(shiftedHeight), int(shiftedWidth))
 		} else {
-			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.Height), int(paddedSize.Width))
+			f.Buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.Height), int(paddedSize.Width))
 		}
 	}
 
@@ -247,7 +247,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	if f.header.encoding == VARDCT {
+	if f.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		f.hfGlobal = nil
@@ -263,16 +263,16 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	err = f.lfGlobal.gModular.Stream.applyTransforms()
+	err = f.LfGlobal.gModular.Stream.applyTransforms()
 	if err != nil {
 		return err
 	}
 
-	modularBuffer := f.lfGlobal.gModular.Stream.getDecodedBuffer()
+	modularBuffer := f.LfGlobal.gModular.Stream.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
 		var scaleFactor float32
-		isModularColour := f.header.encoding == MODULAR && c < f.getColorChannelCount()
+		isModularColour := f.Header.Encoding == MODULAR && c < f.GetColorChannelCount()
 		isModularXYB := f.globalMetadata.XybEncoded && isModularColour
 		var cOut int
 		if isModularXYB {
@@ -280,13 +280,13 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		} else {
 			cOut = c
 		}
-		cOut += len(f.buffer) - len(modularBuffer)
+		cOut += len(f.Buffer) - len(modularBuffer)
 		ecIndex := c
-		if f.header.encoding == MODULAR {
+		if f.Header.Encoding == MODULAR {
 			ecIndex -= f.globalMetadata.GetColourChannelCount()
 		}
 		if isModularXYB {
-			scaleFactor = f.lfGlobal.lfDequant[cOut]
+			scaleFactor = f.LfGlobal.lfDequant[cOut]
 		} else if isModularColour && f.globalMetadata.BitDepth.ExpBits != 0 {
 			scaleFactor = 1.0
 		} else if isModularColour {
@@ -298,7 +298,7 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.ExtraChannelInfo[ecIndex].BitDepth.BitsPerSample))
 		}
 
-		cOutSection := f.buffer[cOut]
+		cOutSection := f.Buffer[cOut]
 
 		// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
 		// but had negative performance... unsure why.
@@ -315,10 +315,10 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
 			// NOTE: have tried using goroutine pool to process each row concurrently, didn't really make a
 			// noticeable difference, so have reverted back to simple embedded loops.
-			height := f.bounds.size.height
+			height := f.bounds.Size.Height
 			for y := uint32(0); y < height; y++ {
 				modularBufferY := modularBuffer[cIn][y]
-				width := f.bounds.size.width
+				width := f.bounds.Size.Width
 				// get reference to sub slices to do not have to repeat lookups.
 				row := cOutSection[y]
 				for x := uint32(0); x < width; x++ {
@@ -330,48 +330,48 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 
 	f.invertSubsampling()
 
-	if f.header.restorationFilter.gab {
+	if f.Header.restorationFilter.gab {
 		f.performGabConvolution()
 	}
 
-	if f.header.restorationFilter.epfIterations > 0 {
+	if f.Header.restorationFilter.epfIterations > 0 {
 		f.performEdgePreservingFilter()
 	}
 	return nil
 }
 
-func (f *Frame) isVisible() bool {
-	return f.header.frameType == REGULAR_FRAME || f.header.frameType == SKIP_PROGRESSIVE && (f.header.duration != 0 || f.header.isLast)
+func (f *Frame) IsVisible() bool {
+	return f.Header.FrameType == REGULAR_FRAME || f.Header.FrameType == SKIP_PROGRESSIVE && (f.Header.Duration != 0 || f.Header.IsLast)
 }
 
-func (f *Frame) getColorChannelCount() int {
-	if f.globalMetadata.xybEncoded || f.header.encoding == VARDCT {
+func (f *Frame) GetColorChannelCount() int {
+	if f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
 		return 3
 	}
-	return f.globalMetadata.getColourChannelCount()
+	return f.globalMetadata.GetColourChannelCount()
 }
 
-func (f *Frame) getPaddedFrameSize() (util.Dimension, error) {
+func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
 
-	factorY := 1 << util.Max(f.header.jpegUpsamplingY...)
-	factorX := 1 << util.Max(f.header.jpegUpsamplingX...)
+	factorY := 1 << util.Max(f.Header.jpegUpsamplingY...)
+	factorX := 1 << util.Max(f.Header.jpegUpsamplingX...)
 	var width uint32
 	var height uint32
-	if f.header.encoding == VARDCT {
+	if f.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
-		width = f.bounds.size.width
-		height = f.bounds.size.height
+		width = f.bounds.Size.Width
+		height = f.bounds.Size.Height
 	}
 
 	height = util.CeilDiv(height, uint32(factorY))
 	width = util.CeilDiv(width, uint32(factorX))
-	if f.header.encoding == VARDCT {
+	if f.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		return util.Dimension{
-			width:  width * uint32(factorX),
-			height: height * uint32(factorY),
+			Width:  width * uint32(factorX),
+			Height: height * uint32(factorY),
 		}, nil
 	}
 }
@@ -381,13 +381,13 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 	lfReplacementChannels := []*ModularChannel{}
 	lfReplacementChannelIndicies := []int{}
 
-	for i := 0; i < len(f.lfGlobal.gModular.stream.channels); i++ {
-		ch := f.lfGlobal.gModular.stream.channels[i]
+	for i := 0; i < len(f.LfGlobal.gModular.Stream.channels); i++ {
+		ch := f.LfGlobal.gModular.Stream.channels[i]
 		if !ch.decoded {
 			if ch.hshift >= 3 && ch.vshift >= 3 {
 				lfReplacementChannelIndicies = append(lfReplacementChannelIndicies, i)
-				height := f.header.lfGroupDim >> ch.vshift
-				width := f.header.lfGroupDim >> ch.hshift
+				height := f.Header.lfGroupDim >> ch.vshift
+				width := f.Header.lfGroupDim >> ch.hshift
 				lfReplacementChannels = append(lfReplacementChannels, NewModularChannelWithAllParams(int32(height), int32(width), ch.hshift, ch.vshift, false))
 			}
 		}
@@ -406,17 +406,17 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 		for _, r := range lfReplacementChannels {
 			replaced = append(replaced, *NewModularChannelFromChannel(*r))
 		}
-		frameSize, err := f.getPaddedFrameSize()
+		frameSize, err := f.GetPaddedFrameSize()
 		if err != nil {
 			return err
 		}
 		for i, info := range replaced {
-			lfHeight := frameSize.height >> info.vshift
-			lfWidth := frameSize.width >> info.hshift
-			info.origin.Y = uint32(lfGroupPos.Y) * info.size.height
-			info.origin.X = uint32(lfGroupPos.X) * info.size.width
-			info.size.height = util.Min(info.size.height, lfHeight-info.origin.Y)
-			info.size.width = util.Min(info.size.width, lfWidth-info.origin.X)
+			lfHeight := frameSize.Height >> info.vshift
+			lfWidth := frameSize.Width >> info.hshift
+			info.origin.Y = uint32(lfGroupPos.Y) * info.size.Height
+			info.origin.X = uint32(lfGroupPos.X) * info.size.Width
+			info.size.Height = util.Min(info.size.Height, lfHeight-info.origin.Y)
+			info.size.Width = util.Min(info.size.Width, lfWidth-info.origin.X)
 			replaced[i] = info
 		}
 		f.lfGroups[lfGroupID], err = NewLFGroup(reader, f, int32(lfGroupID), replaced, lfBuffer)
@@ -428,7 +428,7 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
 		for j := 0; j < len(lfReplacementChannelIndicies); j++ {
 			index := lfReplacementChannelIndicies[j]
-			channel := f.lfGlobal.gModular.stream.channels[index]
+			channel := f.LfGlobal.gModular.Stream.channels[index]
 			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
 			newChannel := newChannelInfo.buffer
 			for y := 0; y < len(newChannel); y++ {
@@ -442,7 +442,7 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 
 	var err error
-	f.passes = make([]Pass, f.header.passes.numPasses)
+	f.passes = make([]Pass, f.Header.passes.numPasses)
 	for pass := 0; pass < len(f.passes); pass++ {
 		prevMinShift := uint32(0)
 		if pass > 0 {
@@ -485,14 +485,14 @@ func (f *Frame) decodePassGroupsSerial() error {
 				for i := 0; i < len(replaced); i++ {
 					info := replaced[i]
 					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-					passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-					rowStride := util.CeilDiv(uint32(info.size.width), passGroupSize.X)
+					passGroupSize := util.NewIntPoint(int(f.Header.groupDim)).ShiftRightWithIntPoint(shift)
+					rowStride := util.CeilDiv(uint32(info.size.Width), passGroupSize.X)
 					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-					chanSize := util.NewIntPointWithXY(uint32(info.size.width), uint32(info.size.height))
+					chanSize := util.NewIntPointWithXY(uint32(info.size.Width), uint32(info.size.Height))
 					info.origin = pos
 					size := passGroupSize.Min(chanSize.Minus(info.origin))
-					info.size.width = size.X
-					info.size.height = size.Y
+					info.size.Width = size.X
+					info.size.Height = size.Y
 					replaced[i] = info
 				}
 
@@ -515,7 +515,7 @@ func (f *Frame) decodePassGroupsSerial() error {
 			ii := i
 			jj := j
 			eg.Go(func() error {
-				channel := f.lfGlobal.gModular.stream.channels[ii]
+				channel := f.LfGlobal.gModular.Stream.channels[ii]
 				channel.allocate()
 				for group := 0; group < int(f.numGroups); group++ {
 					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
@@ -533,7 +533,7 @@ func (f *Frame) decodePassGroupsSerial() error {
 			return err
 		}
 	}
-	if f.header.encoding == VARDCT {
+	if f.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	}
 
@@ -555,14 +555,14 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 	for i := 0; i < len(replaced); i++ {
 		info := replaced[i]
 		shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-		passGroupSize := util.NewIntPoint(int(f.header.groupDim)).ShiftRightWithIntPoint(shift)
-		rowStride := util.CeilDiv(uint32(info.size.width), passGroupSize.X)
+		passGroupSize := util.NewIntPoint(int(f.Header.groupDim)).ShiftRightWithIntPoint(shift)
+		rowStride := util.CeilDiv(uint32(info.size.Width), passGroupSize.X)
 		pos := util.Coordinates(uint32(iGroup), rowStride).TimesWithIntPoint(passGroupSize)
-		chanSize := util.NewIntPointWithXY(uint32(info.size.width), uint32(info.size.height))
+		chanSize := util.NewIntPointWithXY(uint32(info.size.Width), uint32(info.size.Height))
 		info.origin = pos
 		size := passGroupSize.Min(chanSize.Minus(info.origin))
-		info.size.width = size.X
-		info.size.height = size.Y
+		info.size.Width = size.X
+		info.size.Height = size.Y
 		replaced[i] = info
 	}
 
@@ -618,7 +618,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			ii := i
 			jj := j
 			eg.Go(func() error {
-				channel := f.lfGlobal.gModular.stream.channels[ii]
+				channel := f.LfGlobal.gModular.Stream.channels[ii]
 				channel.allocate()
 				for group := 0; group < int(f.numGroups); group++ {
 					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
@@ -636,7 +636,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			return err
 		}
 	}
-	if f.header.encoding == VARDCT {
+	if f.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	}
 
@@ -645,11 +645,11 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 
 func (f *Frame) invertSubsampling() {
 	for c := 0; c < 3; c++ {
-		xShift := f.header.jpegUpsamplingX[c]
-		yShift := f.header.jpegUpsamplingY[c]
+		xShift := f.Header.jpegUpsamplingX[c]
+		yShift := f.Header.jpegUpsamplingY[c]
 		for xShift > 0 {
 			xShift--
-			oldChannel := f.buffer[c]
+			oldChannel := f.Buffer[c]
 			newChannel := util.MakeMatrix2D[float32](len(oldChannel), 0)
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
@@ -669,11 +669,11 @@ func (f *Frame) invertSubsampling() {
 				}
 				newChannel[y] = newRow
 			}
-			f.buffer[c] = newChannel
+			f.Buffer[c] = newChannel
 		}
 		for yShift > 0 {
 			yShift--
-			oldChannel := f.buffer[c]
+			oldChannel := f.Buffer[c]
 			newChannel := util.MakeMatrix2D[float32](len(oldChannel)*2, 0)
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
@@ -697,7 +697,7 @@ func (f *Frame) invertSubsampling() {
 				newChannel[2*y] = firstNewRow
 				newChannel[2*y+1] = secondNewRow
 			}
-			f.buffer[c] = newChannel
+			f.Buffer[c] = newChannel
 		}
 	}
 }
@@ -710,63 +710,63 @@ func (f *Frame) performEdgePreservingFilter() error {
 	panic("not implemented")
 }
 
-func (f *Frame) initializeNoise(seed0 int64) error {
-	if f.lfGlobal.noiseParameters == nil || len(f.lfGlobal.noiseParameters) == 0 {
+func (f *Frame) InitializeNoise(seed0 int64) error {
+	if f.LfGlobal.noiseParameters == nil || len(f.LfGlobal.noiseParameters) == 0 {
 		return nil
 	}
 	// FIXME(kpfaulkner) yet to do.
 	panic("not implemented")
 
-	//rowStride := util.CeilDiv(f.header.Width, f.header.groupDim)
-	//localNoiseBuffer := util.MakeMatrix3D[float32](3, int(f.header.Height), int(f.header.Width))
-	//numGroups := rowStride * util.CeilDiv(f.header.Height, f.header.groupDim)
+	//rowStride := util.CeilDiv(f.Header.Width, f.Header.groupDim)
+	//localNoiseBuffer := util.MakeMatrix3D[float32](3, int(f.Header.Height), int(f.Header.Width))
+	//numGroups := rowStride * util.CeilDiv(f.Header.Height, f.Header.groupDim)
 	//for group := uint32(0); group < numGroups; group++ {
-	//	groupXYUp := util.Coordinates(group, rowStride).Times(f.header.upsampling)
-	//	for iy := uint32(0); iy < f.header.upsampling; iy++ {
-	//		for ix := uint32(0); ix < f.header.upsampling; ix++ {
-	//			x0 := (groupXYUp.X + ix) * f.header.groupDim
-	//			y0 := (groupXYUp.Y + iy) * f.header.groupDim
+	//	groupXYUp := util.Coordinates(group, rowStride).Times(f.Header.Upsampling)
+	//	for iy := uint32(0); iy < f.Header.Upsampling; iy++ {
+	//		for ix := uint32(0); ix < f.Header.Upsampling; ix++ {
+	//			x0 := (groupXYUp.X + ix) * f.Header.groupDim
+	//			y0 := (groupXYUp.Y + iy) * f.Header.groupDim
 	//
 	//		}
 	//	}
 	//}
 }
 
-func (f *Frame) getImageSample(c int32, x int32, y int32) float32 {
+func (f *Frame) GetImageSample(c int32, x int32, y int32) float32 {
 
-	frameY := y - f.bounds.origin.Y
-	frameX := x - f.bounds.origin.X
+	frameY := y - f.bounds.Origin.Y
+	frameX := x - f.bounds.Origin.X
 
-	if frameY < 0 || frameX < 0 || frameY >= int32(f.bounds.size.height) || frameX >= int32(f.bounds.size.width) {
+	if frameY < 0 || frameX < 0 || frameY >= int32(f.bounds.Size.Height) || frameX >= int32(f.bounds.Size.Width) {
 		return 0
 	}
-	return f.buffer[c][frameY][frameX]
+	return f.Buffer[c][frameY][frameX]
 }
 
-func (f *Frame) upsample() error {
+func (f *Frame) Upsample() error {
 	var err error
-	for c := 0; c < len(f.buffer); c++ {
-		f.buffer[c], err = f.performUpsampling(f.buffer[c], c)
+	for c := 0; c < len(f.Buffer); c++ {
+		f.Buffer[c], err = f.performUpsampling(f.Buffer[c], c)
 		if err != nil {
 			return err
 		}
 	}
-	f.bounds.size.height *= f.header.upsampling
-	f.bounds.size.width *= f.header.upsampling
+	f.bounds.Size.Height *= f.Header.Upsampling
+	f.bounds.Size.Width *= f.Header.Upsampling
 
-	f.bounds.origin.Y *= int32(f.header.upsampling)
-	f.bounds.origin.X *= int32(f.header.upsampling)
+	f.bounds.Origin.Y *= int32(f.Header.Upsampling)
+	f.bounds.Origin.X *= int32(f.Header.Upsampling)
 	return nil
 }
 
 func (f *Frame) performUpsampling(buffer [][]float32, c int) ([][]float32, error) {
 
-	colour := f.getColorChannelCount()
+	colour := f.GetColorChannelCount()
 	var k uint32
 	if c < colour {
-		k = f.header.upsampling
+		k = f.Header.Upsampling
 	} else {
-		k = f.header.ecUpsampling[c-colour]
+		k = f.Header.EcUpsampling[c-colour]
 	}
 	if k == 1 {
 		return buffer, nil
@@ -776,34 +776,34 @@ func (f *Frame) performUpsampling(buffer [][]float32, c int) ([][]float32, error
 	panic("not implemented")
 }
 
-func (f *Frame) renderSplines() error {
-	if f.lfGlobal.splines == nil {
+func (f *Frame) RenderSplines() error {
+	if f.LfGlobal.splines == nil {
 		return nil
 	}
 
-	panic("renderSplines not implemented")
+	panic("RenderSplines not implemented")
 }
 
-func (f *Frame) synthesizeNoise() error {
-	if f.lfGlobal.noiseParameters == nil {
+func (f *Frame) SynthesizeNoise() error {
+	if f.LfGlobal.noiseParameters == nil {
 		return nil
 	}
 
-	panic("synthesizeNoise not implemented")
+	panic("SynthesizeNoise not implemented")
 }
 
 func (f *Frame) getLFGroupSize(lfGroupID int32) (util.Dimension, error) {
 	pos := f.getLFGroupLocation(lfGroupID)
-	paddedSize, err := f.getPaddedFrameSize()
+	paddedSize, err := f.GetPaddedFrameSize()
 	if err != nil {
 		return util.Dimension{}, err
 	}
 
-	height := util.Min(f.header.lfGroupDim, paddedSize.height-uint32(pos.Y)*f.header.lfGroupDim)
-	width := util.Min(f.header.lfGroupDim, paddedSize.width-uint32(pos.X)*f.header.lfGroupDim)
+	height := util.Min(f.Header.lfGroupDim, paddedSize.Height-uint32(pos.Y)*f.Header.lfGroupDim)
+	width := util.Min(f.Header.lfGroupDim, paddedSize.Width-uint32(pos.X)*f.Header.lfGroupDim)
 	return util.Dimension{
-		height: height,
-		width:  width,
+		Height: height,
+		Width:  width,
 	}, nil
 }
 

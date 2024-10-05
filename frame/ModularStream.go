@@ -166,14 +166,14 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 
 	if channelArray == nil || len(channelArray) == 0 {
 		for i := 0; i < channelCount; i++ {
-			size := frame.bounds.size
+			size := frame.bounds.Size
 			var dimShift int32
 			if i < ecStart {
 				dimShift = 0
 			} else {
-				dimShift = frame.globalMetadata.extraChannelInfo[i-ecStart].dimShift
+				dimShift = frame.globalMetadata.ExtraChannelInfo[i-ecStart].DimShift
 			}
-			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.width), int32(size.height), dimShift, dimShift, false))
+			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.Width), int32(size.Height), dimShift, dimShift, false))
 		}
 	} else {
 		//ms.channels = append(ms.channels, channelArray...)
@@ -253,8 +253,8 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 	// get max Width from all channels.
 	maxWidth := uint32(0)
 	for _, c := range ms.channels {
-		if c.size.width > maxWidth {
-			maxWidth = c.size.width
+		if c.size.Width > maxWidth {
+			maxWidth = c.size.Width
 		}
 	}
 	ms.distMultiplier = int(maxWidth)
@@ -263,11 +263,11 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 
 func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) error {
 
-	groupDim := uint32(ms.frame.header.groupDim)
+	groupDim := uint32(ms.frame.Header.groupDim)
 	for i := 0; i < len(ms.channels); i++ {
 		channel := ms.channels[i]
 		if partial && i >= ms.nbMetaChannels &&
-			(channel.size.width > groupDim || channel.size.height > groupDim) {
+			(channel.size.Width > groupDim || channel.size.Height > groupDim) {
 			break
 		}
 		err := channel.decode(reader, ms.stream, ms.wpParams, ms.tree, ms, int32(i), int32(ms.streamIndex), ms.distMultiplier)
@@ -316,14 +316,14 @@ func (ms *ModularStream) applyTransforms() error {
 					residu := ms.channels[r]
 					var output *ModularChannel
 					if sp.horizontal {
-						outputInfo := NewModularChannelWithAllParams(int32(ch.size.width+residu.size.width), int32(ch.size.height), ch.hshift-1, ch.vshift, false)
+						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Width+residu.size.Width), int32(ch.size.Height), ch.hshift-1, ch.vshift, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
 						}
 					} else {
 
-						outputInfo := NewModularChannelWithAllParams(int32(ch.size.width), int32(ch.size.height+residu.size.height), ch.hshift, ch.vshift-1, false)
+						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Width), int32(ch.size.Height+residu.size.Height), ch.hshift, ch.vshift-1, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
@@ -404,8 +404,8 @@ func (ms *ModularStream) applyTransforms() error {
 				return errors.New("illegal RCT type")
 			}
 
-			for y := uint32(0); y < v[0].size.height; y++ {
-				for x := uint32(0); x < v[0].size.width; x++ {
+			for y := uint32(0); y < v[0].size.Height; y++ {
+				for x := uint32(0); x < v[0].size.Width; x++ {
 					err = rct(int32(x), int32(y))
 					if err != nil {
 						return err
@@ -422,7 +422,7 @@ func (ms *ModularStream) applyTransforms() error {
 			first := ms.transforms[i].beginC + 1
 			endC := ms.transforms[i].beginC + ms.transforms[i].numC - 1
 			last := endC + 1
-			bitDepth := ms.frame.globalMetadata.bitDepth.bitsPerSample
+			bitDepth := ms.frame.globalMetadata.BitDepth.BitsPerSample
 			firstChannel := ms.channels[first]
 			c0 := ms.channels[0]
 			for j := first + 1; j <= last; j++ {
@@ -430,8 +430,8 @@ func (ms *ModularStream) applyTransforms() error {
 			}
 			for c := 0; c < ms.transforms[i].numC; c++ {
 				ch := ms.channels[first+c]
-				for y := uint32(0); y < firstChannel.size.height; y++ {
-					for x := uint32(0); x < firstChannel.size.width; x++ {
+				for y := uint32(0); y < firstChannel.size.Height; y++ {
+					for x := uint32(0); x < firstChannel.size.Width; x++ {
 						index := ch.buffer[y][x]
 						isDelta := index < int32(ms.transforms[i].nbDeltas)
 						var value int32
@@ -485,20 +485,20 @@ func (ms *ModularStream) applyTransforms() error {
 
 func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {
 
-	if channel.size.height != orig.size.height+res.size.height ||
-		(orig.size.height != res.size.height && orig.size.height != 1+res.size.height) ||
-		channel.size.width != orig.size.width || res.size.width != orig.size.width {
+	if channel.size.Height != orig.size.Height+res.size.Height ||
+		(orig.size.Height != res.size.Height && orig.size.Height != 1+res.size.Height) ||
+		channel.size.Width != orig.size.Width || res.size.Width != orig.size.Width {
 		return nil, errors.New("Corrupted squeeze transform")
 	}
 
 	channel.allocate()
 
-	for y := uint32(0); y < channel.size.height; y++ {
-		for x := uint32(0); x < channel.size.width; x++ {
+	for y := uint32(0); y < channel.size.Height; y++ {
+		for x := uint32(0); x < channel.size.Width; x++ {
 			avg := orig.buffer[y][x]
 			residu := res.buffer[y][x]
 			var nextAvg int32
-			if x+1 < uint32(orig.size.width) {
+			if x+1 < uint32(orig.size.Width) {
 				nextAvg = orig.buffer[y][x+1]
 			} else {
 				nextAvg = avg
@@ -515,10 +515,10 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 			channel.buffer[y][2*x+1] = first - diff
 		}
 	}
-	if orig.size.width > res.size.width {
-		xs := 2 * res.size.width
-		for y := uint32(0); y < channel.size.height; y++ {
-			channel.buffer[y][xs] = orig.buffer[y][res.size.width]
+	if orig.size.Width > res.size.Width {
+		xs := 2 * res.size.Width
+		for y := uint32(0); y < channel.size.Height; y++ {
+			channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
 		}
 	}
 

@@ -7,7 +7,7 @@ import (
 
 type LFGlobal struct {
 	frame           *Frame
-	patches         []Patch
+	Patches         []Patch
 	splines         []SplinesBundle
 	noiseParameters []NoiseParameters
 	lfDequant       [3]float32
@@ -28,7 +28,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	lf := NewLFGlobal()
 	lf.frame = parent
 
-	if lf.frame.header.flags&PATCHES != 0 {
+	if lf.frame.Header.Flags&PATCHES != 0 {
 
 		// TODO(kpfaulkner) not used yet with the lossless images I'm trying.
 		panic("Patches not implemented yet")
@@ -40,25 +40,25 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		if err != nil {
 			return nil, err
 		}
-		lf.patches = make([]Patch, numPatches)
+		lf.Patches = make([]Patch, numPatches)
 		for i := 0; i < int(numPatches); i++ {
-			lf.patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.globalMetadata.extraChannelInfo), len(parent.globalMetadata.alphaIndices))
+			lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.globalMetadata.ExtraChannelInfo), len(parent.globalMetadata.AlphaIndices))
 			if err != nil {
 				return nil, err
 			}
 		}
 
 	} else {
-		lf.patches = []Patch{}
+		lf.Patches = []Patch{}
 	}
 
-	if lf.frame.header.flags&SPLINES != 0 {
+	if lf.frame.Header.Flags&SPLINES != 0 {
 		panic("Splines not implemented yet")
 	} else {
 		lf.splines = nil
 	}
 
-	if lf.frame.header.flags&NOISE != 0 {
+	if lf.frame.Header.Flags&NOISE != 0 {
 		panic("noise not implemented yet")
 	} else {
 		lf.noiseParameters = nil
@@ -71,7 +71,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	}
 
 	var err error
-	if lf.frame.header.encoding == VARDCT {
+	if lf.frame.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		lf.quantizer = nil

@@ -112,15 +112,15 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			return nil, err
 		}
 		jxl.imageHeader = imageHeader
-		if imageHeader.animationHeader != nil {
+		if imageHeader.AnimationHeader != nil {
 			panic("dont care about animation for now")
 		}
 
-		if imageHeader.previewHeader != nil {
-			previewOptions := NewJXLOptions(&jxl.options)
-			previewOptions.parseOnly = true
+		if imageHeader.PreviewSize != nil {
+			previewOptions := options.NewJXLOptions(&jxl.options)
+			previewOptions.ParseOnly = true
 			frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
-			frame.readFrameHeader()
+			frame.ReadFrameHeader()
 			panic("not implemented previewheader yet")
 		}
 
@@ -130,101 +130,99 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		lfBuffer := make([][][][]float32, 5)
 
 		var matrix *color.OpsinInverseMatrix
-		if imageHeader.xybEncoded {
-			bundle := imageHeader.colorEncoding
-			matrix, err = imageHeader.opsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
+		if imageHeader.XybEncoded {
+			bundle := imageHeader.ColorEncoding
+			matrix, err = imageHeader.OpsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		var canvas [][][]float32
-		if !jxl.options.parseOnly {
-			canvas = util.MakeMatrix3D[float32](imageHeader.getColourChannelCount()+len(imageHeader.extraChannelInfo), int(imageHeader.size.height), int(imageHeader.size.width))
+		if !jxl.options.ParseOnly {
+			canvas = util.MakeMatrix3D[float32](imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo), int(imageHeader.Size.Height), int(imageHeader.Size.Width))
 		}
 		invisibleFrames := int64(0)
 		visibleFrames := 0
 
 		for {
-			frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
-			header, err = frame.readFrameHeader()
+			imgFrame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
+			header, err = imgFrame.ReadFrameHeader()
 			if err != nil {
 				return nil, err
 			}
 			frameCount++
 
-			if lfBuffer[header.lfLevel] == nil && header.flags&frame.USE_LF_FRAME != 0 {
+			if lfBuffer[header.LfLevel] == nil && header.Flags&frame.USE_LF_FRAME != 0 {
 				return nil, errors.New("LF level too large")
 			}
 
-			//s := profile.Start(profile.CPUProfile, profile.ProfilePath(`.`))
-			err := frame.readTOC()
+			err := imgFrame.ReadTOC()
 			if err != nil {
 				return nil, err
 			}
-			//s.Stop()
 
-			if jxl.options.parseOnly {
-				frame.skipFrameData()
+			if jxl.options.ParseOnly {
+				imgFrame.SkipFrameData()
 				continue
 			}
-			err = frame.decodeFrame(lfBuffer[header.lfLevel])
+			err = imgFrame.DecodeFrame(lfBuffer[header.LfLevel])
 			if err != nil {
 				return nil, err
 			}
 
-			if header.lfLevel > 0 {
-				lfBuffer[header.lfLevel-1] = frame.buffer
+			if header.LfLevel > 0 {
+				lfBuffer[header.LfLevel-1] = imgFrame.Buffer
 			}
-			save := (header.saveAsReference != 0 || header.duration == 0) && !header.isLast && header.frameType != frame.LF_FRAME
-			if frame.isVisible() {
+			save := (header.SaveAsReference != 0 || header.Duration == 0) && !header.IsLast && header.FrameType != frame.LF_FRAME
+			if imgFrame.IsVisible() {
 				visibleFrames++
 				invisibleFrames = 0
 			} else {
 				invisibleFrames++
 			}
 
-			err = frame.initializeNoise(int64(visibleFrames<<32) | invisibleFrames)
+			err = imgFrame.InitializeNoise(int64(visibleFrames<<32) | invisibleFrames)
 			if err != nil {
 				return nil, err
 			}
-			err = frame.upsample()
-			if err != nil {
-				return nil, err
-			}
-
-			if save && header.saveBeforeCT {
-				reference[header.saveAsReference] = frame.buffer
-			}
-
-			err = jxl.computePatches(reference, frame)
+			err = imgFrame.Upsample()
 			if err != nil {
 				return nil, err
 			}
 
-			err = frame.renderSplines()
+			if save && header.SaveBeforeCT {
+				reference[header.SaveAsReference] = imgFrame.Buffer
+			}
+
+			err = jxl.computePatches(reference, imgFrame)
 			if err != nil {
 				return nil, err
 			}
 
-			err = frame.synthesizeNoise()
+			err = imgFrame.RenderSplines()
 			if err != nil {
 				return nil, err
 			}
 
-			err = jxl.performColourTransforms(matrix, frame)
+			err = imgFrame.SynthesizeNoise()
 			if err != nil {
 				return nil, err
 			}
 
-			if header.encoding == frame.VARDCT && jxl.options.renderVarblocks {
+			err = jxl.performColourTransforms(matrix, imgFrame)
+			if err != nil {
+				return nil, err
+			}
+
+			if header.Encoding == frame.VARDCT && jxl.options.RenderVarblocks {
 				panic("VARDCT not implemented yet")
 			}
 
-			if header.frameType == frame.REGULAR_FRAME || header.frameType == frame.SKIP_PROGRESSIVE {
+			if header.FrameType == frame.REGULAR_FRAME || header.FrameType == frame.SKIP_PROGRESSIVE {
 				found := false
 				for i := uint32(0); i < 4; i++ {
-					if util.Matrix3Equal(reference[i], canvas) && i != header.saveAsReference {
+					if util.Matrix3Equal(reference[i], canvas) && i != header.SaveAsReference {
 						found = true
 						break
 					}
@@ -232,17 +230,17 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 				if found {
 					canvas = util.DeepCopy3[float32](canvas)
 				}
-				err = jxl.blendFrame(canvas, reference, frame)
+				err = jxl.blendFrame(canvas, reference, imgFrame)
 				if err != nil {
 					return nil, err
 				}
 			}
 
-			if save && !header.saveBeforeCT {
-				reference[header.saveAsReference] = canvas
+			if save && !header.SaveBeforeCT {
+				reference[header.SaveAsReference] = canvas
 			}
 
-			if header.isLast {
+			if header.IsLast {
 				break
 			}
 		}
@@ -253,11 +251,11 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		// TOOD(kpfaulkner) unsure if need to perform similar drain cache functionality here. Don't think we do.
-		if jxl.options.parseOnly {
+		if jxl.options.ParseOnly {
 			return nil, nil
 		}
 
-		orientation := imageHeader.orientation
+		orientation := imageHeader.Orientation
 		orientedCanvas := util.MakeMatrix3D[float32](len(canvas), 0, 0)
 		for i := 0; i < len(orientedCanvas); i++ {
 			orientedCanvas[i], err = jxl.transposeBuffer(canvas[i], orientation)
@@ -295,31 +293,31 @@ func (jxl *JXLCodestreamDecoder) readSignatureAndBoxes() error {
 
 func (jxl *JXLCodestreamDecoder) computePatches(references [][][][]float32, frame *frame.Frame) error {
 
-	header := frame.header
-	frameBuffer := frame.buffer
-	colourChannels := jxl.imageHeader.getColourChannelCount()
-	extraChannels := len(jxl.imageHeader.extraChannelInfo)
-	patches := frame.lfGlobal.patches
+	header := frame.Header
+	frameBuffer := frame.Buffer
+	colourChannels := jxl.imageHeader.GetColourChannelCount()
+	extraChannels := len(jxl.imageHeader.ExtraChannelInfo)
+	patches := frame.LfGlobal.Patches
 	for i := 0; i < len(patches); i++ {
 		patch := patches[i]
-		if patch.ref > 3 {
+		if patch.Ref > 3 {
 			return errors.New("patch out of range")
 		}
-		refBuffer := references[patch.ref]
+		refBuffer := references[patch.Ref]
 		if refBuffer == nil || len(refBuffer) == 0 {
 			continue
 		}
-		if patch.height+int32(patch.origin.Y) > int32(len(refBuffer[0])) || patch.width+int32(patch.origin.X) > int32(len(refBuffer[0][0])) {
+		if patch.Height+int32(patch.Origin.Y) > int32(len(refBuffer[0])) || patch.Width+int32(patch.Origin.X) > int32(len(refBuffer[0][0])) {
 			return errors.New("patch too large")
 		}
-		for j := 0; i < len(patch.positions); j++ {
-			x0 := patch.positions[j].X
-			y0 := patch.positions[j].Y
+		for j := 0; i < len(patch.Positions); j++ {
+			x0 := patch.Positions[j].X
+			y0 := patch.Positions[j].Y
 			if x0 < 0 || y0 < 0 {
 				return errors.New("patch size out of bounds")
 			}
 
-			if patch.height+int32(y0) > int32(header.height) || patch.width+int32(x0) > int32(header.width) {
+			if patch.Height+int32(y0) > int32(header.Height) || patch.Width+int32(x0) > int32(header.Width) {
 				return errors.New("patch size out of bounds")
 			}
 
@@ -330,43 +328,43 @@ func (jxl *JXLCodestreamDecoder) computePatches(references [][][][]float32, fram
 				} else {
 					c = d - int32(colourChannels) + 1
 				}
-				info := patch.blendingInfos[j][c]
+				info := patch.BlendingInfos[j][c]
 				if info.Mode == 0 {
 					continue
 				}
 				var premult bool
-				if jxl.imageHeader.hasAlpha() {
-					premult = jxl.imageHeader.extraChannelInfo[info.alphaChannel].alphaAssociated
+				if jxl.imageHeader.HasAlpha() {
+					premult = jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].AlphaAssociated
 				} else {
 					premult = true
 				}
-				isAlpha := c > 0 && jxl.imageHeader.extraChannelInfo[c-1].ecType == bundle.ALPHA
-				if info.Mode > 0 && header.upsampling > 1 && c > 0 && header.ecUpsampling[c-1]<<jxl.imageHeader.extraChannelInfo[c-1].dimShift != header.upsampling {
+				isAlpha := c > 0 && jxl.imageHeader.ExtraChannelInfo[c-1].EcType == bundle.ALPHA
+				if info.Mode > 0 && header.Upsampling > 1 && c > 0 && header.EcUpsampling[c-1]<<jxl.imageHeader.ExtraChannelInfo[c-1].DimShift != header.Upsampling {
 					return errors.New("Alpha channel upsampling mismatch during patches")
 				}
-				for y := int32(0); y < patch.height; y++ {
-					for x := int32(0); x < patch.width; x++ {
+				for y := int32(0); y < patch.Height; y++ {
+					for x := int32(0); x < patch.Width; x++ {
 						oldX := x + int32(x0)
 						oldY := y + int32(y0)
-						newX := x + int32(patch.origin.X)
-						newY := y + int32(patch.origin.Y)
+						newX := x + int32(patch.Origin.X)
+						newY := y + int32(patch.Origin.Y)
 						oldSample := frameBuffer[d][oldY][oldX]
 						newSample := refBuffer[d][newY][newX]
 						alpha := float32(0.0)
 						newAlpha := float32(0.0)
 						oldAlpha := float32(0.0)
 						if info.Mode > 3 {
-							if jxl.imageHeader.hasAlpha() {
-								oldAlpha = frameBuffer[uint32(colourChannels)+info.alphaChannel][oldY][oldX]
+							if jxl.imageHeader.HasAlpha() {
+								oldAlpha = frameBuffer[uint32(colourChannels)+info.AlphaChannel][oldY][oldX]
 							} else {
 								oldAlpha = 1.0
 							}
-							if jxl.imageHeader.hasAlpha() {
-								newAlpha = refBuffer[uint32(colourChannels)+info.alphaChannel][newY][newX]
+							if jxl.imageHeader.HasAlpha() {
+								newAlpha = refBuffer[uint32(colourChannels)+info.AlphaChannel][newY][newX]
 							} else {
 								newAlpha = 1.0
 							}
-							if info.clamp {
+							if info.Clamp {
 								newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
 							}
 							if info.Mode < 6 || !isAlpha || !premult {
@@ -438,21 +436,21 @@ func (jxl *JXLCodestreamDecoder) computePatches(references [][][][]float32, fram
 }
 
 func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInverseMatrix, frame *frame.Frame) error {
-	frameBuffer := frame.buffer
+	frameBuffer := frame.Buffer
 	if matrix != nil {
-		err := matrix.InvertXYB(frameBuffer, jxl.imageHeader.toneMapping.GetIntensityTarget())
+		err := matrix.InvertXYB(frameBuffer, jxl.imageHeader.ToneMapping.GetIntensityTarget())
 		if err != nil {
 			return err
 		}
 	}
 
-	if frame.header.doYCbCr {
-		size, err := frame.getPaddedFrameSize()
+	if frame.Header.DoYCbCr {
+		size, err := frame.GetPaddedFrameSize()
 		if err != nil {
 			return err
 		}
-		for y := uint32(0); y < size.height; y++ {
-			for x := uint32(0); x < size.width; x++ {
+		for y := uint32(0); y < size.Height; y++ {
+			for x := uint32(0); x < size.Width; x++ {
 				cb := frameBuffer[0][y][x]
 				yh := frameBuffer[1][y][x] + 0.50196078431372549019
 				cr := frameBuffer[2][y][x]
@@ -465,26 +463,26 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][][][]float32, frame *frame.Frame) error {
+func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][][][]float32, imgFrame *frame.Frame) error {
 
-	width := jxl.imageHeader.size.width
-	height := jxl.imageHeader.size.height
-	header := frame.header
+	width := jxl.imageHeader.Size.Width
+	height := jxl.imageHeader.Size.Height
+	header := imgFrame.Header
 	frameStartY := int32(0)
-	if header.bounds.origin.X >= 0 {
-		frameStartY = header.bounds.origin.Y
+	if header.Bounds.Origin.X >= 0 {
+		frameStartY = header.Bounds.Origin.Y
 	}
 	frameStartX := int32(0)
-	if header.bounds.origin.X >= 0 {
-		frameStartX = header.bounds.origin.X
+	if header.Bounds.Origin.X >= 0 {
+		frameStartX = header.Bounds.Origin.X
 	}
-	lowerCorner := header.bounds.computeLowerCorner()
+	lowerCorner := header.Bounds.ComputeLowerCorner()
 	frameHeight := util.Min(lowerCorner.Y, int32(height))
 	frameWidth := util.Min(lowerCorner.X, int32(width))
 
-	frameColours := frame.getColorChannelCount()
-	imageColours := jxl.imageHeader.getColourChannelCount()
-	hasAlpha := jxl.imageHeader.hasAlpha()
+	frameColours := imgFrame.GetColorChannelCount()
+	imageColours := jxl.imageHeader.GetColourChannelCount()
+	hasAlpha := jxl.imageHeader.HasAlpha()
 	for c := int32(0); c < int32(len(canvas)); c++ {
 		var frameC int32
 		if frameColours != imageColours {
@@ -496,22 +494,22 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 		} else {
 			frameC = c
 		}
-		frameBuffer := frame.buffer[frameC]
+		frameBuffer := imgFrame.Buffer[frameC]
 		var info *frame.BlendingInfo
 		if frameC < int32(frameColours) {
-			info = frame.header.blendingInfo
+			info = imgFrame.Header.BlendingInfo
 		} else {
-			info = &frame.header.ecBlendingInfo[frameC-int32(frameColours)]
+			info = &imgFrame.Header.EcBlendingInfo[frameC-int32(frameColours)]
 		}
-		isAlpha := c >= int32(imageColours) && jxl.imageHeader.extraChannelInfo[c-int32(imageColours)].ecType == bundle.ALPHA
-		premult := hasAlpha && jxl.imageHeader.extraChannelInfo[info.alphaChannel].alphaAssociated
+		isAlpha := c >= int32(imageColours) && jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].EcType == bundle.ALPHA
+		premult := hasAlpha && jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].AlphaAssociated
 
-		refBuffer := reference[info.source]
+		refBuffer := reference[info.Source]
 		if info.Mode == frame.BLEND_REPLACE || refBuffer == nil && info.Mode == frame.BLEND_ADD {
-			offY := frameStartY - header.bounds.origin.Y
-			offX := frameStartX - header.bounds.origin.X
+			offY := frameStartY - header.Bounds.Origin.Y
+			offX := frameStartX - header.Bounds.Origin.X
 			jxl.copyToCanvas(canvas[c], util.Point{Y: frameStartY, X: frameStartX}, util.Point{X: offX, Y: offY},
-				Dimension{width: uint32(frameWidth), height: uint32(frameHeight)}, frameBuffer)
+				util.Dimension{Width: uint32(frameWidth), Height: uint32(frameHeight)}, frameBuffer)
 			continue
 		}
 		ref := refBuffer[c]
@@ -532,7 +530,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					for x := int32(0); x < frameWidth; x++ {
 						cx := x + frameStartX
 						newSample := frameBuffer[y][x]
-						if info.clamp {
+						if info.Clamp {
 							newSample = util.Clamp3Float32(newSample, 0.0, 1.0)
 						}
 						canvas[c][cy][cx] = newSample * ref[cy][cx]
@@ -547,23 +545,23 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 				for cx := frameStartX; cx < frameWidth+frameStartX; cx++ {
 					var oldAlpha float32
 
-					if jxl.imageHeader.hasAlpha() {
+					if jxl.imageHeader.HasAlpha() {
 						oldAlpha = 1.0
 					} else {
 						if ref != nil {
-							oldAlpha = refBuffer[imageColours+int(info.alphaChannel)][cy][cx]
+							oldAlpha = refBuffer[imageColours+int(info.AlphaChannel)][cy][cx]
 						} else {
 							oldAlpha = 0.0
 						}
 					}
 					var newAlpha float32
-					if jxl.imageHeader.hasAlpha() {
+					if jxl.imageHeader.HasAlpha() {
 						newAlpha = 1.0
 					} else {
-						newAlpha = frame.getImageSample(int32(uint32(frameColours)+info.alphaChannel), cx, cy)
+						newAlpha = imgFrame.GetImageSample(int32(uint32(frameColours)+info.AlphaChannel), cx, cy)
 					}
 
-					if info.clamp {
+					if info.Clamp {
 						newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
 					}
 					var alpha = float32(1.0)
@@ -573,7 +571,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 					} else {
 						oldSample = 0.0
 					}
-					newSample := frame.getImageSample(frameC, cx, cy)
+					newSample := imgFrame.GetImageSample(frameC, cx, cy)
 					if isAlpha || hasAlpha && !premult {
 						alpha = oldAlpha + newAlpha*(1-oldAlpha)
 					}
@@ -594,9 +592,9 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start util.Point, off util.Point, size Dimension, frameBuffer [][]float32) {
-	for y := uint32(0); y < size.height; y++ {
-		copy(canvas[y+uint32(start.X)][off.X:], frameBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.width])
+func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas [][]float32, start util.Point, off util.Point, size util.Dimension, frameBuffer [][]float32) {
+	for y := uint32(0); y < size.Height; y++ {
+		copy(canvas[y+uint32(start.X)][off.X:], frameBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 	}
 }
 

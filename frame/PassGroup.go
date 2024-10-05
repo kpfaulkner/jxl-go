@@ -20,7 +20,7 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 	pg.frame = frame
 	pg.groupID = group
 	pg.passID = pass
-	if frame.header.encoding == VARDCT {
+	if frame.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		pg.hfCoefficients = nil

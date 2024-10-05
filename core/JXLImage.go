@@ -31,7 +31,7 @@ func NewJXLImageWithBuffer(buffer [][][]float32, header bundle.ImageHeader) (*JX
 	jxl.Width = len(buffer[0][0])
 	jxl.Height = len(buffer[0])
 
-	channels := header.getTotalChannelCount()
+	channels := header.GetTotalChannelCount()
 	jxl.Buffer = util.MakeMatrix2D[float32](channels, jxl.Width*jxl.Height)
 	for c := 0; c < channels; c++ {
 		for y := 0; y < jxl.Height; y++ {
@@ -39,10 +39,10 @@ func NewJXLImageWithBuffer(buffer [][][]float32, header bundle.ImageHeader) (*JX
 		}
 	}
 
-	bundle := header.colorEncoding
+	bundle := header.ColorEncoding
 	jxl.ColorEncoding = bundle.ColorEncoding
-	if header.hasAlpha() {
-		jxl.alphaIndex = header.alphaIndices[0]
+	if header.HasAlpha() {
+		jxl.alphaIndex = header.AlphaIndices[0]
 	} else {
 		jxl.alphaIndex = -1
 	}
@@ -52,15 +52,15 @@ func NewJXLImageWithBuffer(buffer [][][]float32, header bundle.ImageHeader) (*JX
 	jxl.primariesXY = bundle.Prim
 	jxl.whiteXY = bundle.White
 
-	if jxl.imageHeader.xybEncoded {
+	if jxl.imageHeader.XybEncoded {
 		jxl.transfer = color.TF_LINEAR
 		jxl.iccProfile = nil
 	} else {
 		jxl.transfer = bundle.Tf
-		jxl.iccProfile = header.getDecodedICC()
+		jxl.iccProfile = header.GetDecodedICC()
 	}
 	jxl.taggedTransfer = bundle.Tf
-	jxl.alphaIsPremultiplied = jxl.imageHeader.hasAlpha() && jxl.imageHeader.extraChannelInfo[jxl.alphaIndex].alphaAssociated
+	jxl.alphaIsPremultiplied = jxl.imageHeader.HasAlpha() && jxl.imageHeader.ExtraChannelInfo[jxl.alphaIndex].AlphaAssociated
 	return jxl, nil
 }
 

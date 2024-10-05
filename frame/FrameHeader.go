@@ -29,21 +29,21 @@ const (
 )
 
 type FrameHeader struct {
-	frameType  uint32
-	width      uint32
-	height     uint32
-	upsampling uint32
-	lfLevel    uint32
+	FrameType  uint32
+	Width      uint32
+	Height     uint32
+	Upsampling uint32
+	LfLevel    uint32
 	groupDim   uint32
 	passes     *PassesInfo
-	encoding   uint32
-	flags      uint64
-	doYCbCr    bool
+	Encoding   uint32
+	Flags      uint64
+	DoYCbCr    bool
 	//jpegUpsampling  []util.IntPoint
 	jpegUpsamplingX []int32
 	jpegUpsamplingY []int32
 
-	ecUpsampling   []uint32
+	EcUpsampling   []uint32
 	groupSizeShift uint32
 	lfGroupDim     uint32
 	logGroupDim    uint32
@@ -51,18 +51,18 @@ type FrameHeader struct {
 	xqmScale       uint32
 	bqmScale       uint32
 	haveCrop       bool
-	//origin            util.IntPoint
-	ecBlendingInfo    []BlendingInfo
-	blendingInfo      *BlendingInfo
-	isLast            bool
-	duration          uint32
+	//Origin            util.IntPoint
+	EcBlendingInfo    []BlendingInfo
+	BlendingInfo      *BlendingInfo
+	IsLast            bool
+	Duration          uint32
 	timecode          uint32
-	saveAsReference   uint32
-	saveBeforeCT      bool
+	SaveAsReference   uint32
+	SaveBeforeCT      bool
 	name              string
 	restorationFilter *RestorationFilter
 	extensions        *bundle.Extensions
-	bounds            util.Rectangle
+	Bounds            util.Rectangle
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeader) (*FrameHeader, error) {
@@ -70,24 +70,24 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 
 	allDefault := reader.MustReadBool()
 	if allDefault {
-		fh.frameType = REGULAR_FRAME
-		fh.encoding = VARDCT
-		fh.flags = 0
+		fh.FrameType = REGULAR_FRAME
+		fh.Encoding = VARDCT
+		fh.Flags = 0
 	} else {
-		fh.frameType = uint32(reader.MustReadBits(2))
-		fh.encoding = uint32(reader.MustReadBits(1))
-		fh.flags = reader.MustReadU64()
+		fh.FrameType = uint32(reader.MustReadBits(2))
+		fh.Encoding = uint32(reader.MustReadBits(1))
+		fh.Flags = reader.MustReadU64()
 	}
 
 	if !allDefault && !parent.XybEncoded {
-		fh.doYCbCr = reader.MustReadBool()
+		fh.DoYCbCr = reader.MustReadBool()
 	} else {
-		fh.doYCbCr = false
+		fh.DoYCbCr = false
 	}
 	//fh.jpegUpsampling = make([]util.IntPoint, 3)
 	fh.jpegUpsamplingX = make([]int32, 3)
 	fh.jpegUpsamplingY = make([]int32, 3)
-	if fh.doYCbCr && (fh.flags&USE_LF_FRAME) == 0 {
+	if fh.DoYCbCr && (fh.Flags&USE_LF_FRAME) == 0 {
 		for i := 0; i < 3; i++ {
 			mode := reader.MustReadBits(2)
 			//y := reader.MustReadBits(1)
@@ -110,18 +110,18 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		}
 	}
 
-	fh.ecUpsampling = make([]uint32, len(parent.ExtraChannelInfo))
-	if !allDefault && (fh.flags&USE_LF_FRAME) == 0 {
-		fh.upsampling = 1 << reader.MustReadBits(2)
-		for i := 0; i < len(fh.ecUpsampling); i++ {
-			fh.ecUpsampling[i] = 1 << reader.MustReadBits(2)
+	fh.EcUpsampling = make([]uint32, len(parent.ExtraChannelInfo))
+	if !allDefault && (fh.Flags&USE_LF_FRAME) == 0 {
+		fh.Upsampling = 1 << reader.MustReadBits(2)
+		for i := 0; i < len(fh.EcUpsampling); i++ {
+			fh.EcUpsampling[i] = 1 << reader.MustReadBits(2)
 		}
 	} else {
-		fh.upsampling = 1
-		fh.ecUpsampling = []uint32{1}
+		fh.Upsampling = 1
+		fh.EcUpsampling = []uint32{1}
 	}
 
-	if fh.encoding == MODULAR {
+	if fh.Encoding == MODULAR {
 		fh.groupSizeShift = uint32(reader.MustReadBits(2))
 	} else {
 		fh.groupSizeShift = 1
@@ -130,7 +130,7 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	fh.lfGroupDim = fh.groupDim << 3
 	fh.logGroupDim = uint32(util.CeilLog2(int64(fh.groupDim)))
 	fh.logLFGroupDIM = uint32(util.CeilLog2(int64(fh.lfGroupDim)))
-	if parent.XybEncoded && fh.encoding == VARDCT {
+	if parent.XybEncoded && fh.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
 		fh.xqmScale = 2
@@ -138,7 +138,7 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	var err error
-	if !allDefault && fh.frameType != REFERENCE_ONLY {
+	if !allDefault && fh.FrameType != REFERENCE_ONLY {
 		fh.passes, err = NewPassesInfoWithReader(reader)
 		if err != nil {
 			return nil, err
@@ -147,63 +147,63 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		fh.passes = NewPassesInfo()
 	}
 
-	if fh.frameType == LF_FRAME {
-		fh.lfLevel = uint32(reader.MustReadBits(2))
+	if fh.FrameType == LF_FRAME {
+		fh.LfLevel = uint32(reader.MustReadBits(2))
 	} else {
-		fh.lfLevel = 0
+		fh.LfLevel = 0
 	}
-	if !allDefault && fh.frameType != LF_FRAME {
+	if !allDefault && fh.FrameType != LF_FRAME {
 		fh.haveCrop = reader.MustReadBool()
 	} else {
 		fh.haveCrop = false
 	}
 
-	if fh.haveCrop && fh.frameType != REFERENCE_ONLY {
+	if fh.haveCrop && fh.FrameType != REFERENCE_ONLY {
 		x0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
 		y0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
 		x0Signed := jxlio.UnpackSigned(x0)
 		y0Signed := jxlio.UnpackSigned(y0)
-		fh.bounds.Origin.X = x0Signed
-		fh.bounds.Origin.Y = y0Signed
+		fh.Bounds.Origin.X = x0Signed
+		fh.Bounds.Origin.Y = y0Signed
 	}
 
 	if fh.haveCrop {
-		fh.width = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
-		fh.height = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		fh.Width = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		fh.Height = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
 	} else {
-		fh.bounds.Size = *parent.Size
+		fh.Bounds.Size = parent.Size
 	}
 
-	normalFrame := !allDefault && (fh.frameType == REGULAR_FRAME || fh.frameType == SKIP_PROGRESSIVE)
-	lowerCorner := fh.bounds.ComputeLowerCorner()
-	//fullFrame := fh.bounds.origin.X <= 0 && fh.bounds.origin.Y <= 0 &&
-	//	(fh.Width+uint32(fh.bounds.origin.X) >= parent.size.Width && (fh.Height+uint32(fh.bounds.origin.Y) >= parent.size.Height))
-	fullFrame := fh.bounds.Origin.Y <= 0 && fh.bounds.Origin.X <= 0 &&
+	normalFrame := !allDefault && (fh.FrameType == REGULAR_FRAME || fh.FrameType == SKIP_PROGRESSIVE)
+	lowerCorner := fh.Bounds.ComputeLowerCorner()
+	//fullFrame := fh.Bounds.Origin.X <= 0 && fh.Bounds.Origin.Y <= 0 &&
+	//	(fh.Width+uint32(fh.Bounds.Origin.X) >= parent.size.Width && (fh.Height+uint32(fh.Bounds.Origin.Y) >= parent.size.Height))
+	fullFrame := fh.Bounds.Origin.Y <= 0 && fh.Bounds.Origin.X <= 0 &&
 		lowerCorner.Y >= int32(parent.Size.Height) && lowerCorner.X >= int32(parent.Size.Width)
 
-	fh.bounds.Size.Height = util.CeilDiv(fh.bounds.Size.Height, fh.upsampling)
-	fh.bounds.Size.Width = util.CeilDiv(fh.bounds.Size.Width, fh.upsampling)
-	fh.bounds.Size.Height = util.CeilDiv(fh.bounds.Size.Height, 1<<(3*fh.lfLevel))
-	fh.bounds.Size.Width = util.CeilDiv(fh.bounds.Size.Width, 1<<(3*fh.lfLevel))
+	fh.Bounds.Size.Height = util.CeilDiv(fh.Bounds.Size.Height, fh.Upsampling)
+	fh.Bounds.Size.Width = util.CeilDiv(fh.Bounds.Size.Width, fh.Upsampling)
+	fh.Bounds.Size.Height = util.CeilDiv(fh.Bounds.Size.Height, 1<<(3*fh.LfLevel))
+	fh.Bounds.Size.Width = util.CeilDiv(fh.Bounds.Size.Width, 1<<(3*fh.LfLevel))
 
-	fh.ecBlendingInfo = make([]BlendingInfo, len(parent.ExtraChannelInfo))
+	fh.EcBlendingInfo = make([]BlendingInfo, len(parent.ExtraChannelInfo))
 	if normalFrame {
-		fh.blendingInfo, err = NewBlendingInfoWithReader(reader, len(fh.ecBlendingInfo) > 0, fullFrame)
+		fh.BlendingInfo, err = NewBlendingInfoWithReader(reader, len(fh.EcBlendingInfo) > 0, fullFrame)
 		if err != nil {
 			return nil, err
 		}
-		for i := 0; i < len(fh.ecBlendingInfo); i++ {
+		for i := 0; i < len(fh.EcBlendingInfo); i++ {
 			bi, err := NewBlendingInfoWithReader(reader, true, fullFrame)
 			if err != nil {
 				return nil, err
 			}
 			// store value not pointer. TODO(kpfaulkner) check this is fine.
-			fh.ecBlendingInfo[i] = *bi
+			fh.EcBlendingInfo[i] = *bi
 		}
 	} else {
-		fh.blendingInfo = NewBlendingInfo()
-		for i := 0; i < len(fh.ecBlendingInfo); i++ {
-			fh.ecBlendingInfo[i] = *fh.blendingInfo
+		fh.BlendingInfo = NewBlendingInfo()
+		for i := 0; i < len(fh.EcBlendingInfo); i++ {
+			fh.EcBlendingInfo[i] = *fh.BlendingInfo
 		}
 	}
 
@@ -211,7 +211,7 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		// dont care about animation
 		panic("animation")
 	} else {
-		fh.duration = 0
+		fh.Duration = 0
 	}
 	if normalFrame && parent.AnimationHeader != nil && parent.AnimationHeader.HaveTimeCodes {
 		// dont care about animation
@@ -221,24 +221,24 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if normalFrame {
-		fh.isLast = reader.MustReadBool()
+		fh.IsLast = reader.MustReadBool()
 	} else {
-		fh.isLast = fh.frameType == REGULAR_FRAME
+		fh.IsLast = fh.FrameType == REGULAR_FRAME
 	}
 
-	if !allDefault && fh.frameType != LF_FRAME && !fh.isLast {
-		fh.saveAsReference = uint32(reader.MustReadBits(2))
+	if !allDefault && fh.FrameType != LF_FRAME && !fh.IsLast {
+		fh.SaveAsReference = uint32(reader.MustReadBits(2))
 	} else {
-		fh.saveAsReference = 0
+		fh.SaveAsReference = 0
 	}
 
-	if !allDefault && (fh.frameType == REFERENCE_ONLY || fullFrame &&
-		(fh.frameType == REGULAR_FRAME || fh.frameType == SKIP_PROGRESSIVE) &&
-		(fh.duration == 0 || fh.saveAsReference != 0) &&
-		!fh.isLast && fh.blendingInfo.Mode == BLEND_REPLACE) {
-		fh.saveBeforeCT = reader.MustReadBool()
+	if !allDefault && (fh.FrameType == REFERENCE_ONLY || fullFrame &&
+		(fh.FrameType == REGULAR_FRAME || fh.FrameType == SKIP_PROGRESSIVE) &&
+		(fh.Duration == 0 || fh.SaveAsReference != 0) &&
+		!fh.IsLast && fh.BlendingInfo.Mode == BLEND_REPLACE) {
+		fh.SaveBeforeCT = reader.MustReadBool()
 	} else {
-		fh.saveBeforeCT = false
+		fh.SaveBeforeCT = false
 	}
 
 	if allDefault {
@@ -257,7 +257,7 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	if allDefault {
 		fh.restorationFilter = NewRestorationFilter()
 	} else {
-		fh.restorationFilter, err = NewRestorationFilterWithReader(reader, fh.encoding)
+		fh.restorationFilter, err = NewRestorationFilterWithReader(reader, fh.Encoding)
 		if err != nil {
 			return nil, err
 		}
@@ -274,8 +274,8 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 
 	maxJPY := util.Max(fh.jpegUpsamplingY...)
 	maxJPX := util.Max(fh.jpegUpsamplingX...)
-	fh.bounds.Size.Height = util.CeilDiv(fh.bounds.Size.Height, 1<<maxJPY) << maxJPY
-	fh.bounds.Size.Width = util.CeilDiv(fh.bounds.Size.Width, 1<<maxJPX) << maxJPX
+	fh.Bounds.Size.Height = util.CeilDiv(fh.Bounds.Size.Height, 1<<maxJPY) << maxJPY
+	fh.Bounds.Size.Width = util.CeilDiv(fh.Bounds.Size.Width, 1<<maxJPX) << maxJPX
 
 	for i := 0; i < 3; i++ {
 		fh.jpegUpsamplingY[i] = maxJPY - fh.jpegUpsamplingY[i]

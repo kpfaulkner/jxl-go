@@ -6,17 +6,17 @@ import (
 
 type BlendingInfo struct {
 	Mode         uint32
-	alphaChannel uint32
-	clamp        bool
-	source       uint32
+	AlphaChannel uint32
+	Clamp        bool
+	Source       uint32
 }
 
 func NewBlendingInfo() *BlendingInfo {
 	bi := &BlendingInfo{}
 	bi.Mode = BLEND_REPLACE
-	bi.alphaChannel = 0
-	bi.clamp = false
-	bi.source = 0
+	bi.AlphaChannel = 0
+	bi.Clamp = false
+	bi.Source = 0
 	return bi
 }
 
@@ -29,23 +29,23 @@ func NewBlendingInfoWithReader(reader *jxlio.Bitreader, extra bool, fullFrame bo
 	//}
 
 	if extra && (bi.Mode == BLEND_BLEND || bi.Mode == BLEND_MULADD) {
-		bi.alphaChannel = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 3)
+		bi.AlphaChannel = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 3)
 	} else {
-		bi.alphaChannel = 0
+		bi.AlphaChannel = 0
 	}
 
 	if extra && (bi.Mode == BLEND_BLEND ||
 		bi.Mode == BLEND_MULT ||
 		bi.Mode == BLEND_MULADD) {
-		bi.clamp = reader.MustReadBool()
+		bi.Clamp = reader.MustReadBool()
 	} else {
-		bi.clamp = false
+		bi.Clamp = false
 	}
 
 	if bi.Mode != BLEND_REPLACE || !fullFrame {
-		bi.source = uint32(reader.MustReadBits(2))
+		bi.Source = uint32(reader.MustReadBits(2))
 	} else {
-		bi.source = 0
+		bi.Source = 0
 	}
 
 	return bi, nil
