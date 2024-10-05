@@ -5,6 +5,8 @@ import (
 	"errors"
 	"math"
 	"math/bits"
+
+	"golang.org/x/exp/constraints"
 )
 
 type signedInts interface {
@@ -18,21 +20,21 @@ func SignedPow(base float32, exponent float32) float32 {
 	return float32(math.Pow(float64(base), float64(exponent)))
 }
 
-func CeilLog1p(x int64) int {
+func CeilLog1p[T constraints.Integer](x T) int {
 	xx := bits.LeadingZeros64(uint64(x))
 	return 64 - xx
 }
 
-func FloorLog1p(x int64) int64 {
-	c := int64(CeilLog1p(x))
+func FloorLog1p[T constraints.Integer](x T) int64 {
+	c := int64(CeilLog1p[T](x))
 	if (x+1)&x != 0 {
 		return c - 1
 	}
 	return c
 }
 
-func CeilLog2(x int64) int {
-	return CeilLog1p(x - 1)
+func CeilLog2[T constraints.Integer](x T) int {
+	return CeilLog1p[T](x - 1)
 }
 
 func Max[T cmp.Ordered](args ...T) T {

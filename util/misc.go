@@ -1,5 +1,7 @@
 package util
 
+import "golang.org/x/exp/constraints"
+
 func IfThenElse[T any](condition bool, a T, b T) T {
 	if condition {
 		return a
@@ -7,7 +9,7 @@ func IfThenElse[T any](condition bool, a T, b T) T {
 	return b
 }
 
-func MakeMatrix2D[T any](a int, b int) [][]T {
+func MakeMatrix2D[T any, S constraints.Integer](a S, b S) [][]T {
 	matrix := make([][]T, a)
 	for i, _ := range matrix {
 		matrix[i] = make([]T, b)
