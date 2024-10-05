@@ -294,7 +294,6 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 }
 
 // Read signature
-// See Demuxer.java supplyExceptionally()
 func (jxl *JXLCodestreamDecoder) readSignatureAndBoxes() error {
 
 	br := NewBoxReader(jxl.bitReader)
@@ -485,8 +484,6 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][]
 	width := jxl.imageHeader.size.width
 	height := jxl.imageHeader.size.height
 	header := frame.header
-	//frameStart := header.origin.Max(util.ZERO)
-	//frameSize := util.NewIntPointWithXY(Width, Height).Min(header.origin.Plus(util.NewIntPointWithXY(header.Width, header.Height))).Minus(frameStart)
 	frameStartY := int32(0)
 	if header.bounds.origin.X >= 0 {
 		frameStartY = header.bounds.origin.Y
