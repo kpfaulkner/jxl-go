@@ -9,11 +9,6 @@ const (
 	tempBufSize = 10000
 )
 
-//func NewIOHelper() (rcvr *IOHelper) {
-//	rcvr = &IOHelper{}
-//	return
-//}
-
 // returns number of bytes NOT read (remaining) and error.
 func ReadFullyWithOffset(in io.ReadSeeker, buffer []byte, offset int, len int) (int, error) {
 	remaining := len

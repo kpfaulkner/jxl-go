@@ -440,7 +440,6 @@ func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
 
 func (br *Bitreader) ZeroPadToByte() error {
 
-	//remaining := 7 - br.index
 	remaining := br.index % 8
 	if remaining > 0 {
 		_, err := br.ReadBits(uint32(remaining))

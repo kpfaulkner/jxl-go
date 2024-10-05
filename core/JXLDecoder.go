@@ -3,6 +3,8 @@ package core
 import (
 	"image"
 	"io"
+
+	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
 // JXLDecoder decodes the JXL image
@@ -20,7 +22,8 @@ func NewJXLDecoder(in io.ReadSeeker) *JXLDecoder {
 		in: in,
 	}
 
-	jxl.decoder = NewJXLCodestreamDecoder(jxl.in, nil)
+	br := jxlio.NewBitreader(in)
+	jxl.decoder = NewJXLCodestreamDecoder(br, nil)
 	return jxl
 }
 
