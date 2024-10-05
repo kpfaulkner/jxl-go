@@ -446,3 +446,68 @@ func TestSkipBits(t *testing.T) {
 		})
 	}
 }
+
+func TestShowBits(t *testing.T) {
+
+	for _, tc := range []struct {
+		name             string
+		data             []uint8
+		numBitsToShow    int
+		expectedResponse uint64
+		expectErr        bool
+	}{
+		{
+			name:          "No data",
+			data:          []uint8{},
+			numBitsToShow: 1,
+			expectErr:     true,
+		},
+		{
+			name:             "Show 4 bits",
+			data:             []uint8{0xFF},
+			numBitsToShow:    4,
+			expectedResponse: 15,
+			expectErr:        false,
+		},
+		{
+			name:             "Show 10 bits, crossing byte boundaries",
+			data:             []uint8{0xFF, 0xFF},
+			numBitsToShow:    10,
+			expectedResponse: 0x3FF,
+			expectErr:        false,
+		},
+		{
+			name:             "Show 18 bits, crossing multiple byte boundaries",
+			data:             []uint8{0xFF, 0xFF, 0xFF},
+			numBitsToShow:    18,
+			expectedResponse: 0x3FFFF,
+			expectErr:        false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+
+			resp, err := br.ShowBits(tc.numBitsToShow)
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
+				return
+			}
+
+			if err != nil && tc.expectErr {
+				// all good return
+				return
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			if resp != tc.expectedResponse {
+				t.Errorf("expected %v but got %v", tc.expectedResponse, resp)
+			}
+
+		})
+	}
+}

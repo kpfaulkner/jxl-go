@@ -365,7 +365,7 @@ func (br *Bitreader) ReadU8() (int, error) {
 	return int(nn + 1<<n), nil
 }
 
-func (br *Bitreader) ShowBits(bits int) (int, error) {
+func (br *Bitreader) ShowBits(bits int) (uint64, error) {
 
 	curPos, err := br.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -388,7 +388,7 @@ func (br *Bitreader) ShowBits(bits int) (int, error) {
 	br.index = oldIndex
 	br.bitsRead = oldBitsRead
 
-	return int(b), nil
+	return b, nil
 }
 
 func (br *Bitreader) SkipBits(bits uint32) error {
