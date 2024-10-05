@@ -383,3 +383,66 @@ func TestReadU8(t *testing.T) {
 		})
 	}
 }
+
+func TestSkipBits(t *testing.T) {
+
+	for _, tc := range []struct {
+		name            string
+		data            []uint8
+		numBitsToSkip   uint32
+		expectedNextBit uint8
+		expectErr       bool
+	}{
+		{
+			name:          "Skip but no data",
+			data:          []uint8{},
+			numBitsToSkip: 1,
+			expectErr:     true,
+		},
+		{
+			name:            "Skip 1, next read should be 0",
+			data:            []uint8{0x01},
+			numBitsToSkip:   1,
+			expectedNextBit: 0,
+			expectErr:       false,
+		},
+		{
+			name:            "Skip 1, next read should be 1",
+			data:            []uint8{0x03},
+			numBitsToSkip:   1,
+			expectedNextBit: 1,
+			expectErr:       false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			data := bytes.NewReader(tc.data)
+			br := NewBitreader(data)
+
+			err := br.SkipBits(tc.numBitsToSkip)
+			if err != nil && !tc.expectErr {
+				t.Errorf("got error when none was expected : %v", err)
+				return
+			}
+
+			if err != nil && tc.expectErr {
+				// all good return
+				return
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			resp, err := br.readBit()
+			if err != nil {
+				t.Errorf("error reading bit : %v", err)
+			}
+
+			if resp != tc.expectedNextBit {
+				t.Errorf("expected %v but got %v", tc.expectedNextBit, resp)
+			}
+
+		})
+	}
+}

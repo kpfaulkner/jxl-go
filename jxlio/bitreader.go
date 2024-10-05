@@ -365,18 +365,6 @@ func (br *Bitreader) ReadU8() (int, error) {
 	return int(nn + 1<<n), nil
 }
 
-func (br *Bitreader) MustShowBits(bits int) int {
-	b, err := br.ShowBits(bits)
-	if err != nil {
-		panic("unable to show bits")
-	}
-	br.bitsRead -= uint64(bits)
-	return b
-}
-
-// WRONG WRONG WRONG
-// When just performing ReadBits I get whats expected... but show bits is wrong... really unsure how?!?!
-// unless the curPos, err := br.Seek(0, io.SeekCurrent) is adjusting the content somehow?!?!
 func (br *Bitreader) ShowBits(bits int) (int, error) {
 
 	curPos, err := br.Seek(0, io.SeekCurrent)
