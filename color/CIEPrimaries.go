@@ -1,17 +1,17 @@
 package color
 
 type CIEPrimaries struct {
-	red   *CIEXY
-	green *CIEXY
-	blue  *CIEXY
+	Red   *CIEXY
+	Green *CIEXY
+	Blue  *CIEXY
 }
 
 func NewCIEPrimaries(red *CIEXY, green *CIEXY, blue *CIEXY) *CIEPrimaries {
-	cp := &CIEPrimaries{}
-	cp.red = red
-	cp.green = green
-	cp.blue = blue
-	return cp
+	cp := CIEPrimaries{}
+	cp.Red = red
+	cp.Green = green
+	cp.Blue = blue
+	return &cp
 }
 
 func (cp *CIEPrimaries) Matches(b *CIEPrimaries) bool {
@@ -19,5 +19,5 @@ func (cp *CIEPrimaries) Matches(b *CIEPrimaries) bool {
 	if b == nil {
 		return false
 	}
-	return cp.red.Matches(b.red) && cp.green.Matches(b.green) && cp.blue.Matches(b.blue)
+	return cp.Red.Matches(b.Red) && cp.Green.Matches(b.Green) && cp.Blue.Matches(b.Blue)
 }

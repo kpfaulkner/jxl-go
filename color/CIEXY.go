@@ -8,14 +8,14 @@ import (
 )
 
 type CIEXY struct {
-	x float32
-	y float32
+	X float32
+	Y float32
 }
 
 func NewCIEXY(x float32, y float32) *CIEXY {
 	cxy := &CIEXY{}
-	cxy.x = x
-	cxy.y = y
+	cxy.X = x
+	cxy.Y = y
 	return cxy
 }
 
@@ -24,7 +24,7 @@ func (cxy *CIEXY) Matches(b *CIEXY) bool {
 		return false
 	}
 
-	return math.Abs(float64(cxy.x-b.x))+math.Abs(float64(cxy.y-b.y)) < 0.0001
+	return math.Abs(float64(cxy.X-b.X))+math.Abs(float64(cxy.Y-b.Y)) < 0.0001
 }
 
 func AdaptWhitePoint(targetWP *CIEXY, currentWP *CIEXY) ([][]float32, error) {

@@ -7,19 +7,19 @@ import (
 )
 
 type ToneMapping struct {
-	intensityTarget      float32
-	minNits              float32
-	relativeToMaxDisplay bool
-	linearBelow          float32
+	IntensityTarget      float32
+	MinNits              float32
+	RelativeToMaxDisplay bool
+	LinearBelow          float32
 }
 
 func NewToneMapping() *ToneMapping {
 	tm := &ToneMapping{}
 
-	tm.intensityTarget = 255.0
-	tm.minNits = 0.0
-	tm.relativeToMaxDisplay = false
-	tm.linearBelow = 0
+	tm.IntensityTarget = 255.0
+	tm.MinNits = 0.0
+	tm.RelativeToMaxDisplay = false
+	tm.LinearBelow = 0
 
 	return tm
 }
@@ -27,28 +27,28 @@ func NewToneMapping() *ToneMapping {
 func NewToneMappingWithReader(reader *jxlio.Bitreader) (*ToneMapping, error) {
 	tm := &ToneMapping{}
 	if reader.MustReadBool() {
-		tm.intensityTarget = 255.0
-		tm.minNits = 0.0
-		tm.relativeToMaxDisplay = false
-		tm.linearBelow = 0
+		tm.IntensityTarget = 255.0
+		tm.MinNits = 0.0
+		tm.RelativeToMaxDisplay = false
+		tm.LinearBelow = 0
 	} else {
-		tm.intensityTarget = reader.MustReadF16()
-		if tm.intensityTarget <= 0 {
+		tm.IntensityTarget = reader.MustReadF16()
+		if tm.IntensityTarget <= 0 {
 			return nil, errors.New("Intensity Target must be positive")
 		}
-		tm.minNits = reader.MustReadF16()
-		if tm.minNits < 0 {
+		tm.MinNits = reader.MustReadF16()
+		if tm.MinNits < 0 {
 			return nil, errors.New("Min Nits must be positive")
 		}
-		if tm.minNits > tm.intensityTarget {
+		if tm.MinNits > tm.IntensityTarget {
 			return nil, errors.New("Min Nits must be at most the Intensity Target")
 		}
-		tm.relativeToMaxDisplay = reader.MustReadBool()
-		tm.linearBelow = reader.MustReadF16()
-		if tm.relativeToMaxDisplay && (tm.linearBelow < 0 || tm.linearBelow > 1) {
+		tm.RelativeToMaxDisplay = reader.MustReadBool()
+		tm.LinearBelow = reader.MustReadF16()
+		if tm.RelativeToMaxDisplay && (tm.LinearBelow < 0 || tm.LinearBelow > 1) {
 			return nil, errors.New("Linear Below out of relative range")
 		}
-		if !tm.relativeToMaxDisplay && tm.linearBelow < 0 {
+		if !tm.RelativeToMaxDisplay && tm.LinearBelow < 0 {
 			return nil, errors.New("Linear Below must be nonnegative")
 		}
 	}
@@ -56,5 +56,5 @@ func NewToneMappingWithReader(reader *jxlio.Bitreader) (*ToneMapping, error) {
 }
 
 func (tm *ToneMapping) GetIntensityTarget() float32 {
-	return tm.intensityTarget
+	return tm.IntensityTarget
 }

@@ -59,12 +59,12 @@ func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) ([][]float32, error) {
 	if wp == nil {
 		wp = CM_WP_D50
 	}
-	if wp.x < 0 || wp.x > 1 || wp.y <= 0 || wp.y > 1 {
+	if wp.X < 0 || wp.X > 1 || wp.Y <= 0 || wp.Y > 1 {
 		return nil, errors.New("invalid argument")
 	}
-	r, errR := GetXYZ(*primaries.red)
-	g, errG := GetXYZ(*primaries.green)
-	b, errB := GetXYZ(*primaries.blue)
+	r, errR := GetXYZ(*primaries.Red)
+	g, errG := GetXYZ(*primaries.Green)
+	b, errB := GetXYZ(*primaries.Blue)
 	if errR != nil || errG != nil || errB != nil {
 		return nil, errors.New("invalid argument")
 	}
@@ -89,7 +89,7 @@ func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) ([][]float32, error) {
 }
 
 func validateXY(xy CIEXY) error {
-	if xy.x < 0 || xy.x > 1 || xy.y <= 0 || xy.y > 1 {
+	if xy.X < 0 || xy.X > 1 || xy.Y <= 0 || xy.Y > 1 {
 		return errors.New("Invalid argument")
 	}
 	return nil
@@ -99,6 +99,6 @@ func GetXYZ(xy CIEXY) ([]float32, error) {
 	if err := validateXY(xy); err != nil {
 		return nil, err
 	}
-	invY := 1.0 / xy.y
-	return []float32{xy.x * invY, 1.0, (1.0 - xy.x - xy.y) * invY}, nil
+	invY := 1.0 / xy.Y
+	return []float32{xy.X * invY, 1.0, (1.0 - xy.X - xy.Y) * invY}, nil
 }
