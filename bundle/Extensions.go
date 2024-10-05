@@ -25,7 +25,7 @@ func NewExtensionsWithReader(reader *jxlio.Bitreader) (*Extensions, error) {
 		if (1<<i)&ex.ExtensionsKey != 0 {
 			length := reader.MustReadU64()
 			if length > math.MaxInt32 {
-				return nil, errors.New("Large extensions unsupported")
+				return nil, errors.New("Large Extensions unsupported")
 			}
 			ex.Payloads[i] = make([]byte, length)
 		}

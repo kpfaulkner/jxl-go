@@ -9,6 +9,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
 )
 
 func generateTestBitReader(t *testing.T) *jxlio.Bitreader {
@@ -80,23 +81,23 @@ func TestGetImageHeader(t *testing.T) {
 			name:      "success",
 			expectErr: false,
 			expectedHeader: bundle.ImageHeader{
-				level: 5,
-				size: &Dimension{
-					width:  3264,
-					height: 2448,
+				Level: 5,
+				Size: util.Dimension{
+					Width:  3264,
+					Height: 2448,
 				},
-				orientation: 1,
-				bitDepth: &bundle.BitDepthHeader{
+				Orientation: 1,
+				BitDepth: &bundle.BitDepthHeader{
 					UsesFloatSamples: false,
 					BitsPerSample:    8,
 					ExpBits:          0,
 				},
-				orientedWidth:       3264,
-				orientedHeight:      2448,
-				modular16BitBuffers: true,
-				extraChannelInfo:    nil,
-				xybEncoded:          false,
-				colorEncoding: &color.ColorEncodingBundle{
+				OrientedWidth:       3264,
+				OrientedHeight:      2448,
+				Modular16BitBuffers: true,
+				ExtraChannelInfo:    nil,
+				XybEncoded:          false,
+				ColorEncoding: &color.ColorEncodingBundle{
 					UseIccProfile: false,
 					ColorEncoding: 0,
 					WhitePoint:    1,
@@ -122,19 +123,19 @@ func TestGetImageHeader(t *testing.T) {
 					Tf:              16777229,
 					RenderingIntent: 0,
 				},
-				alphaIndices: nil,
-				toneMapping: &color.ToneMapping{
+				AlphaIndices: nil,
+				ToneMapping: &color.ToneMapping{
 					IntensityTarget:      255,
 					MinNits:              0,
 					RelativeToMaxDisplay: false,
 					LinearBelow:          0,
 				},
-				extensions:         nil,
-				opsinInverseMatrix: nil,
-				up2Weights:         nil,
-				up4Weights:         nil,
-				up8Weights:         nil,
-				encodedICC:         nil,
+				Extensions:         nil,
+				OpsinInverseMatrix: nil,
+				Up2Weights:         nil,
+				Up4Weights:         nil,
+				Up8Weights:         nil,
+				EncodedICC:         nil,
 			},
 		},
 	} {
@@ -158,30 +159,30 @@ func TestGetImageHeader(t *testing.T) {
 			}
 
 			// not going to deepequals the whole struct. Will check a few key fields and will extend this later on.
-			if header.level != tc.expectedHeader.level {
-				t.Errorf("expected level %d but got %d", tc.expectedHeader.level, header.level)
+			if header.Level != tc.expectedHeader.Level {
+				t.Errorf("expected level %d but got %d", tc.expectedHeader.Level, header.Level)
 			}
 
-			if header.size.width != tc.expectedHeader.size.width {
-				t.Errorf("expected width %d but got %d", tc.expectedHeader.size.width, header.size.width)
+			if header.Size.Width != tc.expectedHeader.Size.Width {
+				t.Errorf("expected width %d but got %d", tc.expectedHeader.Size.Width, header.Size.Width)
 			}
-			if header.size.height != tc.expectedHeader.size.height {
-				t.Errorf("expected height %d but got %d", tc.expectedHeader.size.height, header.size.height)
+			if header.Size.Height != tc.expectedHeader.Size.Height {
+				t.Errorf("expected height %d but got %d", tc.expectedHeader.Size.Height, header.Size.Height)
 			}
-			if header.bitDepth.bitsPerSample != tc.expectedHeader.bitDepth.bitsPerSample {
-				t.Errorf("expected bits per sample %d but got %d", tc.expectedHeader.bitDepth.bitsPerSample, header.bitDepth.bitsPerSample)
+			if header.BitDepth.BitsPerSample != tc.expectedHeader.BitDepth.BitsPerSample {
+				t.Errorf("expected bits per sample %d but got %d", tc.expectedHeader.BitDepth.BitsPerSample, header.BitDepth.BitsPerSample)
 			}
-			if header.bitDepth.usesFloatSamples != tc.expectedHeader.bitDepth.usesFloatSamples {
-				t.Errorf("expected uses float samples %t but got %t", tc.expectedHeader.bitDepth.usesFloatSamples, header.bitDepth.usesFloatSamples)
+			if header.BitDepth.UsesFloatSamples != tc.expectedHeader.BitDepth.UsesFloatSamples {
+				t.Errorf("expected uses float samples %t but got %t", tc.expectedHeader.BitDepth.UsesFloatSamples, header.BitDepth.UsesFloatSamples)
 			}
-			if header.bitDepth.expBits != tc.expectedHeader.bitDepth.expBits {
-				t.Errorf("expected exp bits %d but got %d", tc.expectedHeader.bitDepth.expBits, header.bitDepth.expBits)
+			if header.BitDepth.ExpBits != tc.expectedHeader.BitDepth.ExpBits {
+				t.Errorf("expected exp bits %d but got %d", tc.expectedHeader.BitDepth.ExpBits, header.BitDepth.ExpBits)
 			}
-			if header.colorEncoding.UseIccProfile != tc.expectedHeader.colorEncoding.UseIccProfile {
-				t.Errorf("expected use icc profile %t but got %t", tc.expectedHeader.colorEncoding.UseIccProfile, header.colorEncoding.UseIccProfile)
+			if header.ColorEncoding.UseIccProfile != tc.expectedHeader.ColorEncoding.UseIccProfile {
+				t.Errorf("expected use icc profile %t but got %t", tc.expectedHeader.ColorEncoding.UseIccProfile, header.ColorEncoding.UseIccProfile)
 			}
 
-			if !header.colorEncoding.Prim.Matches(tc.expectedHeader.colorEncoding.Prim) {
+			if !header.ColorEncoding.Prim.Matches(tc.expectedHeader.ColorEncoding.Prim) {
 				t.Errorf("expected primaries to match but they did not")
 			}
 		})

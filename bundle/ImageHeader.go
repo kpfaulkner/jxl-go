@@ -80,7 +80,7 @@ var (
 )
 
 type ImageHeader struct {
-	level           int32
+	Level           int32
 	Size            util.Dimension
 	Orientation     uint32
 	intrinsicSize   util.Dimension
@@ -88,9 +88,9 @@ type ImageHeader struct {
 	AnimationHeader *AnimationHeader
 	BitDepth        *BitDepthHeader
 
-	orientedWidth       uint32
-	orientedHeight      uint32
-	modular16BitBuffers bool
+	OrientedWidth       uint32
+	OrientedHeight      uint32
+	Modular16BitBuffers bool
 
 	ExtraChannelInfo []ExtraChannelInfo
 	XybEncoded       bool
@@ -98,14 +98,14 @@ type ImageHeader struct {
 	AlphaIndices     []int32
 
 	ToneMapping        *color.ToneMapping
-	extensions         *Extensions
+	Extensions         *Extensions
 	OpsinInverseMatrix *color.OpsinInverseMatrix
 
-	up2Weights []float32
-	up4Weights []float32
-	up8Weights []float32
+	Up2Weights []float32
+	Up4Weights []float32
+	Up8Weights []float32
 
-	encodedICC []byte
+	EncodedICC []byte
 }
 
 func NewImageHeader() *ImageHeader {
@@ -164,16 +164,16 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if header.Orientation > 4 {
-		header.orientedWidth = header.Size.Height
-		header.orientedHeight = header.Size.Width
+		header.OrientedWidth = header.Size.Height
+		header.OrientedHeight = header.Size.Width
 	} else {
-		header.orientedWidth = header.Size.Width
-		header.orientedHeight = header.Size.Height
+		header.OrientedWidth = header.Size.Width
+		header.OrientedHeight = header.Size.Height
 	}
 
 	if allDefault {
 		header.BitDepth = NewBitDepthHeader()
-		header.modular16BitBuffers = true
+		header.Modular16BitBuffers = true
 		header.ExtraChannelInfo = []ExtraChannelInfo{}
 		header.XybEncoded = true
 		header.ColorEncoding, err = color.NewColorEncodingBundle()
@@ -182,7 +182,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 	} else {
 		header.BitDepth = NewBitDepthHeaderWithReader(reader)
-		header.modular16BitBuffers = reader.MustReadBool()
+		header.Modular16BitBuffers = reader.MustReadBool()
 		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
 		header.ExtraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
 		alphaIndicies := make([]int32, extraChannelCount)
@@ -219,9 +219,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if allDefault {
-		header.extensions = NewExtensions()
+		header.Extensions = NewExtensions()
 	} else {
-		header.extensions, err = NewExtensionsWithReader(reader)
+		header.Extensions, err = NewExtensionsWithReader(reader)
 		if err != nil {
 			return nil, err
 		}
@@ -242,30 +242,30 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if cwMask&1 != 0 {
-		header.up2Weights = make([]float32, 15)
-		for i := 0; i < len(header.up2Weights); i++ {
-			header.up2Weights[i] = reader.MustReadF16()
+		header.Up2Weights = make([]float32, 15)
+		for i := 0; i < len(header.Up2Weights); i++ {
+			header.Up2Weights[i] = reader.MustReadF16()
 		}
 	} else {
-		header.up2Weights = DEFAULT_UP2
+		header.Up2Weights = DEFAULT_UP2
 	}
 
 	if cwMask&2 != 0 {
-		header.up4Weights = make([]float32, 55)
-		for i := 0; i < len(header.up4Weights); i++ {
-			header.up4Weights[i] = reader.MustReadF16()
+		header.Up4Weights = make([]float32, 55)
+		for i := 0; i < len(header.Up4Weights); i++ {
+			header.Up4Weights[i] = reader.MustReadF16()
 		}
 	} else {
-		header.up4Weights = DEFAULT_UP4
+		header.Up4Weights = DEFAULT_UP4
 	}
 
 	if cwMask&4 != 0 {
-		header.up8Weights = make([]float32, 210)
-		for i := 0; i < len(header.up8Weights); i++ {
-			header.up8Weights[i] = reader.MustReadF16()
+		header.Up8Weights = make([]float32, 210)
+		for i := 0; i < len(header.Up8Weights); i++ {
+			header.Up8Weights[i] = reader.MustReadF16()
 		}
 	} else {
-		header.up8Weights = DEFAULT_UP8
+		header.Up8Weights = DEFAULT_UP8
 	}
 
 	if header.ColorEncoding.UseIccProfile {
@@ -275,17 +275,17 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		if encodedSize > math.MaxUint32 {
 			return nil, errors.New("Invalid encoded Size")
 		}
-		header.encodedICC = make([]byte, encodedSize)
+		header.EncodedICC = make([]byte, encodedSize)
 		iccDistribution, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 41)
 		if err != nil {
 			return nil, err
 		}
 		for i := 0; i < int(encodedSize); i++ {
-			cc, err := iccDistribution.ReadSymbol(reader, GetICCContext(header.encodedICC, i))
+			cc, err := iccDistribution.ReadSymbol(reader, GetICCContext(header.EncodedICC, i))
 			if err != nil {
 				return nil, err
 			}
-			header.encodedICC[i] = byte(cc)
+			header.EncodedICC[i] = byte(cc)
 		}
 		if !iccDistribution.ValidateFinalState() {
 			return nil, errors.New("ICC Stream")
@@ -315,7 +315,7 @@ func (h *ImageHeader) setLevel(level int32) error {
 	if level != 5 && level != 10 {
 		return errors.New("invalid bitstream")
 	}
-	h.level = level
+	h.Level = level
 	return nil
 }
 
