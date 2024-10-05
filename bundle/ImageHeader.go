@@ -1,13 +1,15 @@
-package core
+package bundle
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
-	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -79,24 +81,24 @@ var (
 
 type ImageHeader struct {
 	level           int32
-	size            *Dimension
+	Size            util.Dimension
 	orientation     uint32
-	intrinsicSize   *Dimension
-	previewHeader   *PreviewHeader
-	animationHeader *AnimationHeader
-	bitDepth        *BitDepthHeader
+	intrinsicSize   util.Dimension
+	previewSize     util.Dimension
+	AnimationHeader *AnimationHeader
+	BitDepth        *BitDepthHeader
 
 	orientedWidth       uint32
 	orientedHeight      uint32
 	modular16BitBuffers bool
 
-	extraChannelInfo []ExtraChannelInfo
-	xybEncoded       bool
+	ExtraChannelInfo []ExtraChannelInfo
+	XybEncoded       bool
 	colorEncoding    *color.ColorEncodingBundle
 	alphaIndices     []int32
 
 	toneMapping        *color.ToneMapping
-	extensions         *bundle.Extensions
+	extensions         *Extensions
 	opsinInverseMatrix *color.OpsinInverseMatrix
 
 	up2Weights []float32
@@ -108,7 +110,7 @@ type ImageHeader struct {
 
 func NewImageHeader() *ImageHeader {
 	ih := &ImageHeader{
-		xybEncoded: true,
+		XybEncoded: true,
 	}
 	return ih
 }
@@ -126,7 +128,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		return nil, err
 	}
 
-	header.size, err = readSizeHeader(reader, level)
+	header.Size, err = readSizeHeader(reader, level)
 	if err != nil {
 		return nil, err
 	}
@@ -146,13 +148,13 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			}
 		}
 		if reader.MustReadBool() {
-			header.previewHeader, err = NewPreviewHeader(reader)
+			header.previewSize, err = readPreviewHeader(reader)
 			if err != nil {
 				return nil, err
 			}
 		}
 		if reader.MustReadBool() {
-			header.animationHeader, err = NewAnimationHeader(reader)
+			header.AnimationHeader, err = NewAnimationHeader(reader)
 			if err != nil {
 				return nil, err
 			}
@@ -162,27 +164,27 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if header.orientation > 4 {
-		header.orientedWidth = header.size.height
-		header.orientedHeight = header.size.width
+		header.orientedWidth = header.Size.Height
+		header.orientedHeight = header.Size.Width
 	} else {
-		header.orientedWidth = header.size.width
-		header.orientedHeight = header.size.height
+		header.orientedWidth = header.Size.Width
+		header.orientedHeight = header.Size.Height
 	}
 
 	if allDefault {
-		header.bitDepth = NewBitDepthHeader()
+		header.BitDepth = NewBitDepthHeader()
 		header.modular16BitBuffers = true
-		header.extraChannelInfo = []ExtraChannelInfo{}
-		header.xybEncoded = true
+		header.ExtraChannelInfo = []ExtraChannelInfo{}
+		header.XybEncoded = true
 		header.colorEncoding, err = color.NewColorEncodingBundle()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		header.bitDepth = NewBitDepthHeaderWithReader(reader)
+		header.BitDepth = NewBitDepthHeaderWithReader(reader)
 		header.modular16BitBuffers = reader.MustReadBool()
 		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
-		header.extraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
+		header.ExtraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
 		alphaIndicies := make([]int32, extraChannelCount)
 		numAlphaChannels := 0
 
@@ -191,16 +193,16 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			if err != nil {
 				return nil, err
 			}
-			header.extraChannelInfo[i] = *eci
+			header.ExtraChannelInfo[i] = *eci
 
-			if header.extraChannelInfo[i].ecType == bundle.ALPHA {
+			if header.ExtraChannelInfo[i].EcType == ALPHA {
 				alphaIndicies[numAlphaChannels] = int32(i)
 				numAlphaChannels++
 			}
 		}
 		header.alphaIndices = make([]int32, numAlphaChannels)
 		copy(header.alphaIndices, alphaIndicies[:numAlphaChannels])
-		header.xybEncoded = reader.MustReadBool()
+		header.XybEncoded = reader.MustReadBool()
 		header.colorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
 		if err != nil {
 			return nil, err
@@ -217,16 +219,16 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if allDefault {
-		header.extensions = bundle.NewExtensions()
+		header.extensions = NewExtensions()
 	} else {
-		header.extensions, err = bundle.NewExtensionsWithReader(reader)
+		header.extensions, err = NewExtensionsWithReader(reader)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	defaultMatrix := reader.MustReadBool()
-	if !defaultMatrix && header.xybEncoded {
+	if !defaultMatrix && header.XybEncoded {
 		header.opsinInverseMatrix = color.NewOpsinInverseMatrixWithReader(reader)
 	} else {
 		header.opsinInverseMatrix = color.NewOpsinInverseMatrix()
@@ -271,7 +273,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 
 		// check MaxUint32 or MaxInt32
 		if encodedSize > math.MaxUint32 {
-			return nil, errors.New("Invalid encoded size")
+			return nil, errors.New("Invalid encoded Size")
 		}
 		header.encodedICC = make([]byte, encodedSize)
 		iccDistribution, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 41)
@@ -293,7 +295,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 
 	return header, nil
 }
-func (h *ImageHeader) getColourChannelCount() int {
+func (h *ImageHeader) GetColourChannelCount() int {
 	if h.colorEncoding.ColorEncoding == color.CE_GRAY {
 		return 1
 	}
@@ -302,7 +304,7 @@ func (h *ImageHeader) getColourChannelCount() int {
 }
 
 func (h *ImageHeader) GetSize() (uint32, uint32) {
-	return h.size.width, h.size.height
+	return h.Size.Width, h.Size.Height
 }
 
 func (h *ImageHeader) GetColourModel() int32 {
@@ -322,7 +324,7 @@ func (h *ImageHeader) hasAlpha() bool {
 }
 
 func (h *ImageHeader) getTotalChannelCount() int {
-	return len(h.extraChannelInfo) + h.getColourChannelCount()
+	return len(h.ExtraChannelInfo) + h.GetColourChannelCount()
 }
 
 func (h *ImageHeader) getDecodedICC() []byte {
@@ -366,4 +368,99 @@ func GetICCContext(buffer []byte, index int) int {
 		p2 = 4
 	}
 	return 1 + p1 + 8*p2
+}
+
+func readPreviewHeader(reader *jxlio.Bitreader) (util.Dimension, error) {
+
+	var dim util.Dimension
+	var err error
+
+	div8 := reader.MustReadBool()
+	if div8 {
+		dim.Height = reader.MustReadU32(16, 0, 32, 0, 1, 5, 33, 9)
+	} else {
+		dim.Height = reader.MustReadU32(1, 6, 65, 8, 321, 10, 1345, 12)
+	}
+	ratio := reader.MustReadBits(3)
+	if ratio != 0 {
+		dim.Width, err = getWidthFromRatio(uint32(ratio), dim.Height)
+		if err != nil {
+			log.Errorf("Error getting Width from ratio: %v\n", err)
+			return util.Dimension{}, err
+		}
+	} else {
+		if div8 {
+			dim.Width = reader.MustReadU32(16, 0, 32, 0, 1, 5, 33, 9)
+		} else {
+			dim.Width = reader.MustReadU32(1, 6, 65, 8, 321, 10, 1345, 12)
+		}
+	}
+
+	if dim.Width > 4096 || dim.Height > 4096 {
+		log.Errorf("preview Width or preview Height too large: %d, %d", dim.Width, dim.Height)
+		return util.Dimension{}, errors.New("preview Width or preview Height too large")
+	}
+
+	return dim, nil
+}
+
+func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error) {
+	dim := util.Dimension{}
+	var err error
+
+	div8 := reader.MustReadBool()
+	if div8 {
+		dim.Height = 1 + uint32(reader.MustReadBits(5))<<3
+	} else {
+		dim.Height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+	}
+	ratio := reader.MustReadBits(3)
+	if ratio != 0 {
+		dim.Width, err = getWidthFromRatio(uint32(ratio), dim.Height)
+		if err != nil {
+
+			log.Errorf("Error getting Width from ratio: %v\n", err)
+			return util.Dimension{}, err
+		}
+	} else {
+		if div8 {
+			dim.Width = 1 + uint32(reader.MustReadBits(5))<<3
+		} else {
+			dim.Width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+		}
+	}
+
+	maxDim := util.IfThenElse[uint64](level <= 5, 1<<18, 1<<28)
+	maxTimes := util.IfThenElse[uint64](level <= 5, 1<<30, 1<<40)
+	if dim.Width > uint32(maxDim) || dim.Height > uint32(maxDim) {
+		log.Errorf("Invalid size header: %d x %d", dim.Width, dim.Height)
+		return util.Dimension{}, fmt.Errorf("Invalid size header: %d x %d", dim.Width, dim.Height)
+	}
+	if uint64(dim.Width*dim.Height) > maxTimes {
+		log.Errorf("Width times Height too large: %d %d", dim.Width, dim.Height)
+		return util.Dimension{}, fmt.Errorf("Width times Height too large: %d %d", dim.Width, dim.Height)
+	}
+
+	return dim, nil
+}
+
+func getWidthFromRatio(ratio uint32, height uint32) (uint32, error) {
+	switch ratio {
+	case 1:
+		return height, nil
+	case 2:
+		return height * 6 / 5, nil
+	case 3:
+		return height * 4 / 3, nil
+	case 4:
+		return height * 3 / 2, nil
+	case 5:
+		return height * 16 / 9, nil
+	case 6:
+		return height * 5 / 4, nil
+	case 7:
+		return height * 2, nil
+	default:
+		return 0, fmt.Errorf("invalid ratio: %d", ratio)
+	}
 }

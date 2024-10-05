@@ -3,6 +3,7 @@ package core
 import (
 	"image"
 
+	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -14,7 +15,7 @@ type JXLImage struct {
 	Buffer               [][]float32
 	ColorEncoding        int32
 	alphaIndex           int32
-	imageHeader          ImageHeader
+	imageHeader          bundle.ImageHeader
 	primaries            int32
 	whitePoint           int32
 	primariesXY          *color.CIEPrimaries
@@ -25,7 +26,7 @@ type JXLImage struct {
 	alphaIsPremultiplied bool
 }
 
-func NewJXLImageWithBuffer(buffer [][][]float32, header ImageHeader) (*JXLImage, error) {
+func NewJXLImageWithBuffer(buffer [][][]float32, header bundle.ImageHeader) (*JXLImage, error) {
 	jxl := &JXLImage{}
 	jxl.Width = len(buffer[0][0])
 	jxl.Height = len(buffer[0])
@@ -64,7 +65,7 @@ func NewJXLImageWithBuffer(buffer [][][]float32, header ImageHeader) (*JXLImage,
 }
 
 // NewImage generates a standard go image.Image from the JXL image.
-func NewImage(buffer [][][]float32, header ImageHeader) (image.Image, error) {
+func NewImage(buffer [][][]float32, header bundle.ImageHeader) (image.Image, error) {
 
 	// default to NRGBA for now. Will need to detect properly later.
 	// TODO(kpfaulkner) get right image type

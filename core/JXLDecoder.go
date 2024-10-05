@@ -4,13 +4,14 @@ import (
 	"image"
 	"io"
 
+	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
 // JXLDecoder decodes the JXL image
 type JXLDecoder struct {
 
-	// input stream
+	// input Stream
 	in io.ReadSeeker
 
 	// decoder
@@ -38,7 +39,7 @@ func (jxl *JXLDecoder) Decode() (image.Image, error) {
 
 }
 
-func (jxl *JXLDecoder) GetImageHeader() (*ImageHeader, error) {
+func (jxl *JXLDecoder) GetImageHeader() (*bundle.ImageHeader, error) {
 
 	header, err := jxl.decoder.GetImageHeader()
 	if err != nil {

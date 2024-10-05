@@ -1,4 +1,4 @@
-package core
+package frame
 
 import (
 	"github.com/kpfaulkner/jxl-go/color"
@@ -8,7 +8,7 @@ import (
 type GlobalModular struct {
 	frame      *Frame
 	globalTree *MATree
-	stream     *ModularStream
+	Stream     *ModularStream
 }
 
 func NewGlobalModularWithReader(reader *jxlio.Bitreader, parent *Frame) (*GlobalModular, error) {
@@ -28,23 +28,23 @@ func NewGlobalModularWithReader(reader *jxlio.Bitreader, parent *Frame) (*Global
 	}
 
 	gm.frame.globalTree = gm.globalTree
-	subModularChannelCount := len(gm.frame.globalMetadata.extraChannelInfo)
+	subModularChannelCount := len(gm.frame.globalMetadata.ExtraChannelInfo)
 	header := gm.frame.header
 	ecStart := 0
 	if header.encoding == MODULAR {
-		if !header.doYCbCr && !gm.frame.globalMetadata.xybEncoded && gm.frame.globalMetadata.colorEncoding.ColorEncoding == color.CE_GRAY {
+		if !header.doYCbCr && !gm.frame.globalMetadata.XybEncoded && gm.frame.globalMetadata.colorEncoding.ColorEncoding == color.CE_GRAY {
 			ecStart = 1
 		} else {
 			ecStart = 3
 		}
 	}
 	subModularChannelCount += ecStart
-	gm.stream, err = NewModularStreamWithReader(reader, gm.frame, 0, subModularChannelCount, ecStart)
+	gm.Stream, err = NewModularStreamWithReader(reader, gm.frame, 0, subModularChannelCount, ecStart)
 	if err != nil {
 		return nil, err
 	}
 
-	err = gm.stream.decodeChannels(reader, true)
+	err = gm.Stream.decodeChannels(reader, true)
 	if err != nil {
 		return nil, err
 	}

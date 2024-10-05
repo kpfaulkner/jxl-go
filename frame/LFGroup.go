@@ -1,6 +1,9 @@
-package core
+package frame
 
-import "github.com/kpfaulkner/jxl-go/jxlio"
+import (
+	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
+)
 
 type LFGroup struct {
 	//lfCoeff        LFCoefficients
@@ -11,7 +14,7 @@ type LFGroup struct {
 	hfMetadata     any
 	lfGroupID      int32
 	frame          *Frame
-	size           Dimension
+	size           util.Dimension
 	modularLFGroup *ModularStream
 }
 
@@ -26,7 +29,7 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 		return nil, err
 	}
 
-	lfg.size = Dimension{
+	lfg.size = util.Dimension{
 		height: pixelSize.height >> 3,
 		width:  pixelSize.width >> 3,
 	}

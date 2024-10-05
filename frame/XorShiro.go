@@ -1,4 +1,4 @@
-package core
+package frame
 
 type XorShiro struct {
 	state0   []uint64

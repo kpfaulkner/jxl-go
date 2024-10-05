@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -73,22 +74,22 @@ func TestGetImageHeader(t *testing.T) {
 		name           string
 		data           []uint8
 		expectErr      bool
-		expectedHeader ImageHeader
+		expectedHeader bundle.ImageHeader
 	}{
 		{
 			name:      "success",
 			expectErr: false,
-			expectedHeader: ImageHeader{
+			expectedHeader: bundle.ImageHeader{
 				level: 5,
 				size: &Dimension{
 					width:  3264,
 					height: 2448,
 				},
 				orientation: 1,
-				bitDepth: &BitDepthHeader{
-					usesFloatSamples: false,
-					bitsPerSample:    8,
-					expBits:          0,
+				bitDepth: &bundle.BitDepthHeader{
+					UsesFloatSamples: false,
+					BitsPerSample:    8,
+					ExpBits:          0,
 				},
 				orientedWidth:       3264,
 				orientedHeight:      2448,

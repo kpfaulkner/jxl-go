@@ -1,4 +1,4 @@
-package core
+package frame
 
 import (
 	"errors"
@@ -13,23 +13,6 @@ var (
 	oneL24OverKP1 = make([]int64, 64)
 )
 
-type Dimension struct {
-	width  uint32
-	height uint32
-}
-
-type Rectangle struct {
-	origin Point
-	size   Dimension
-}
-
-func (r Rectangle) computeLowerCorner() Point {
-	return Point{
-		X: r.origin.X + int32(r.size.width),
-		Y: r.origin.Y + int32(r.size.height),
-	}
-}
-
 type ModularChannel struct {
 	//Width   int32
 	//Height  int32
@@ -37,7 +20,7 @@ type ModularChannel struct {
 	vshift  int32
 	origin  util.IntPoint
 	forceWP bool
-	size    Dimension
+	size    util.Dimension
 
 	buffer  [][]int32
 	decoded bool

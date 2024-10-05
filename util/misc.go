@@ -51,3 +51,20 @@ func Add[T any](slice []T, index int, elem T) []T {
 	newSlice = append(newSlice, slice[index:]...)
 	return newSlice
 }
+
+type Dimension struct {
+	Width  uint32
+	Height uint32
+}
+
+type Rectangle struct {
+	Origin Point
+	Size   Dimension
+}
+
+func (r Rectangle) ComputeLowerCorner() Point {
+	return Point{
+		X: r.Origin.X + int32(r.Size.Width),
+		Y: r.Origin.Y + int32(r.Size.Height),
+	}
+}

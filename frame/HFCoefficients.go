@@ -1,4 +1,4 @@
-package core
+package frame
 
 type HFCoefficients struct {
 	hfPreset uint32

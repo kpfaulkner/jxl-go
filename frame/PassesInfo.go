@@ -1,4 +1,4 @@
-package core
+package frame
 
 import "github.com/kpfaulkner/jxl-go/jxlio"
 

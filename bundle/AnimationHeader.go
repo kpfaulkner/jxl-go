@@ -1,11 +1,11 @@
-package core
+package bundle
 
 import (
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
 type AnimationHeader struct {
-	haveTimeCodes bool
+	HaveTimeCodes bool
 }
 
 func NewAnimationHeader(reader *jxlio.Bitreader) (*AnimationHeader, error) {

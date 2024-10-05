@@ -1,4 +1,4 @@
-package core
+package frame
 
 import (
 	"bytes"
@@ -7,8 +7,10 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
@@ -17,13 +19,13 @@ var (
 )
 
 type Frame struct {
-	globalMetadata   *ImageHeader
-	options          *JXLOptions
+	globalMetadata   *bundle.ImageHeader
+	options          *options.JXLOptions
 	reader           *jxlio.Bitreader
 	header           *FrameHeader
 	width            uint32
 	height           uint32
-	bounds           Rectangle
+	bounds           util.Rectangle
 	groupRowStride   uint32
 	lfGroupRowStride uint32
 	numGroups        uint32
@@ -52,15 +54,15 @@ func (f *Frame) readFrameHeader() (FrameHeader, error) {
 		return FrameHeader{}, err
 	}
 
-	f.bounds = Rectangle{
-		origin: f.header.bounds.origin,
-		size:   f.header.bounds.size,
+	f.bounds = util.Rectangle{
+		Origin: f.header.bounds.Origin,
+		Size:   f.header.bounds.Size,
 	}
 
-	f.groupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim)
-	f.lfGroupRowStride = util.CeilDiv(f.bounds.size.width, f.header.groupDim<<3)
-	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim)
-	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.size.height, f.header.groupDim<<3)
+	f.groupRowStride = util.CeilDiv(f.bounds.Size.Width, f.header.groupDim)
+	f.lfGroupRowStride = util.CeilDiv(f.bounds.Size.Width, f.header.groupDim<<3)
+	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.Size.Height, f.header.groupDim)
+	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.Size.Height, f.header.groupDim<<3)
 
 	return *f.header, nil
 }
@@ -171,7 +173,7 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 	return permutation, nil
 }
 
-func NewFrameWithReader(reader *jxlio.Bitreader, imageHeader *ImageHeader, options *JXLOptions) *Frame {
+func NewFrameWithReader(reader *jxlio.Bitreader, imageHeader *bundle.ImageHeader, options *options.JXLOptions) *Frame {
 
 	frame := &Frame{
 		globalMetadata: imageHeader,
@@ -223,15 +225,15 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	f.buffer = make([][][]float32, f.getColorChannelCount()+len(f.globalMetadata.extraChannelInfo))
+	f.buffer = make([][][]float32, f.getColorChannelCount()+len(f.globalMetadata.ExtraChannelInfo))
 	for c := 0; c < len(f.buffer); c++ {
 		if c < 3 && c < f.getColorChannelCount() {
 			//shiftedSize := paddedSize.ShiftRightWithIntPoint(f.header.jpegUpsampling[c])
-			shiftedHeight := paddedSize.height >> f.header.jpegUpsamplingY[c]
-			shiftedWidth := paddedSize.width >> f.header.jpegUpsamplingX[c]
+			shiftedHeight := paddedSize.Height >> f.header.jpegUpsamplingY[c]
+			shiftedWidth := paddedSize.Width >> f.header.jpegUpsamplingX[c]
 			f.buffer[c] = util.MakeMatrix2D[float32](int(shiftedHeight), int(shiftedWidth))
 		} else {
-			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.height), int(paddedSize.width))
+			f.buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.Height), int(paddedSize.Width))
 		}
 	}
 
@@ -261,17 +263,17 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	err = f.lfGlobal.gModular.stream.applyTransforms()
+	err = f.lfGlobal.gModular.Stream.applyTransforms()
 	if err != nil {
 		return err
 	}
 
-	modularBuffer := f.lfGlobal.gModular.stream.getDecodedBuffer()
+	modularBuffer := f.lfGlobal.gModular.Stream.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
 		var scaleFactor float32
 		isModularColour := f.header.encoding == MODULAR && c < f.getColorChannelCount()
-		isModularXYB := f.globalMetadata.xybEncoded && isModularColour
+		isModularXYB := f.globalMetadata.XybEncoded && isModularColour
 		var cOut int
 		if isModularXYB {
 			cOut = cMap[c]
@@ -281,19 +283,19 @@ func (f *Frame) decodeFrame(lfBuffer [][][]float32) error {
 		cOut += len(f.buffer) - len(modularBuffer)
 		ecIndex := c
 		if f.header.encoding == MODULAR {
-			ecIndex -= f.globalMetadata.getColourChannelCount()
+			ecIndex -= f.globalMetadata.GetColourChannelCount()
 		}
 		if isModularXYB {
 			scaleFactor = f.lfGlobal.lfDequant[cOut]
-		} else if isModularColour && f.globalMetadata.bitDepth.expBits != 0 {
+		} else if isModularColour && f.globalMetadata.BitDepth.ExpBits != 0 {
 			scaleFactor = 1.0
 		} else if isModularColour {
-			step1 := f.globalMetadata.bitDepth.bitsPerSample
+			step1 := f.globalMetadata.BitDepth.BitsPerSample
 			step2 := ^int32(0) << step1
 			step3 := ^step2
 			scaleFactor = 1.0 / float32(step3)
 		} else {
-			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.extraChannelInfo[ecIndex].bitDepth.bitsPerSample))
+			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.ExtraChannelInfo[ecIndex].BitDepth.BitsPerSample))
 		}
 
 		cOutSection := f.buffer[cOut]
@@ -349,7 +351,7 @@ func (f *Frame) getColorChannelCount() int {
 	return f.globalMetadata.getColourChannelCount()
 }
 
-func (f *Frame) getPaddedFrameSize() (Dimension, error) {
+func (f *Frame) getPaddedFrameSize() (util.Dimension, error) {
 
 	factorY := 1 << util.Max(f.header.jpegUpsamplingY...)
 	factorX := 1 << util.Max(f.header.jpegUpsamplingX...)
@@ -367,7 +369,7 @@ func (f *Frame) getPaddedFrameSize() (Dimension, error) {
 	if f.header.encoding == VARDCT {
 		panic("VARDCT not implemented")
 	} else {
-		return Dimension{
+		return util.Dimension{
 			width:  width * uint32(factorX),
 			height: height * uint32(factorY),
 		}, nil
@@ -790,27 +792,27 @@ func (f *Frame) synthesizeNoise() error {
 	panic("synthesizeNoise not implemented")
 }
 
-func (f *Frame) getLFGroupSize(lfGroupID int32) (Dimension, error) {
+func (f *Frame) getLFGroupSize(lfGroupID int32) (util.Dimension, error) {
 	pos := f.getLFGroupLocation(lfGroupID)
 	paddedSize, err := f.getPaddedFrameSize()
 	if err != nil {
-		return Dimension{}, err
+		return util.Dimension{}, err
 	}
 
 	height := util.Min(f.header.lfGroupDim, paddedSize.height-uint32(pos.Y)*f.header.lfGroupDim)
 	width := util.Min(f.header.lfGroupDim, paddedSize.width-uint32(pos.X)*f.header.lfGroupDim)
-	return Dimension{
+	return util.Dimension{
 		height: height,
 		width:  width,
 	}, nil
 }
 
-func (f *Frame) getLFGroupLocation(lfGroupID int32) *Point {
-	return NewPoint(lfGroupID/int32(f.lfGroupRowStride), lfGroupID%int32(f.lfGroupRowStride))
+func (f *Frame) getLFGroupLocation(lfGroupID int32) *util.Point {
+	return util.NewPoint(lfGroupID/int32(f.lfGroupRowStride), lfGroupID%int32(f.lfGroupRowStride))
 }
 
-func (f *Frame) getGroupLocation(groupID int32) *Point {
-	return NewPoint(groupID/int32(f.groupRowStride), groupID%int32(f.groupRowStride))
+func (f *Frame) getGroupLocation(groupID int32) *util.Point {
+	return util.NewPoint(groupID/int32(f.groupRowStride), groupID%int32(f.groupRowStride))
 }
 
 func (f *Frame) getLFGroupForGroup(groupID int32) *LFGroup {
