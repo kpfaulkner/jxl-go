@@ -6,7 +6,7 @@ import (
 )
 
 type LFGroup struct {
-	lfCoeff    LFCoefficients
+	lfCoeff    *LFCoefficients
 	hfMetadata *HFMetadata
 
 	lfGroupID      int32

@@ -10,7 +10,7 @@ import (
 
 type HFMetadata struct {
 	nbBlocks       uint64
-	dctSelect      [][]TransformType
+	dctSelect      [][]*TransformType
 	hfMultiplier   [][]int32
 	hfStreamBuffer [][][]int32
 	parent         *LFGroup
@@ -23,7 +23,7 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 	}
 
 	n := util.CeilLog2(parent.size.Height * parent.size.Width)
-	nbBlocks, err := reader.ReadBits(n)
+	nbBlocks, err := reader.ReadBits(uint32(n))
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 	}
 
 	hf.hfStreamBuffer = hfStream.getDecodedBuffer()
-	hf.dctSelect = util.MakeMatrix2D[TransformType](parent.size.Height, parent.size.Width)
+	hf.dctSelect = util.MakeMatrix2D[*TransformType](parent.size.Height, parent.size.Width)
 	hf.hfMultiplier = util.MakeMatrix2D[int32](parent.size.Height, parent.size.Width)
 	blockInfoBuffer := hf.hfStreamBuffer[2]
 	lastBlock := util.Point{X: 0, Y: 0}
@@ -72,8 +72,9 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 
 func (m *HFMetadata) placeBlock(lastBlock util.Point, block TransformType, mul int32) (util.Point, error) {
 
-outerY:
 	x := lastBlock.X
+outerY:
+
 	for y := lastBlock.Y; y < int32(len(m.dctSelect)); y++ {
 		x = 0
 		dctY := m.dctSelect[y]
@@ -81,6 +82,7 @@ outerY:
 		for ; x < int32(len(dctY)); x++ {
 
 			if block.dctSelectWidth+x > int32(len(dctY)) {
+				x = lastBlock.X
 				continue outerY
 			}
 
@@ -98,7 +100,7 @@ outerY:
 			m.hfMultiplier[y][x] = mul
 			for iy := int32(0); iy < block.dctSelectHeight; iy++ {
 				for f := x; f < x+block.dctSelectWidth; f++ {
-					m.dctSelect[y+iy][f] = block
+					m.dctSelect[y+iy][f] = &block
 				}
 			}
 			return pos, nil

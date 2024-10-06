@@ -31,7 +31,7 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent LFGroup, frame 
 	for i := 0; i < 3; i++ {
 		sizeY := parent.size.Height >> header.jpegUpsamplingY[i]
 		sizeX := parent.size.Width >> header.jpegUpsamplingX[i]
-		info[cMap[i]] = *NewModularChannelWithAllParams(sizeY, sizeX, header.jpegUpsamplingY[i], header.jpegUpsamplingX[i], false)
+		info[cMap[i]] = *NewModularChannelWithAllParams(int32(sizeY), int32(sizeX), header.jpegUpsamplingY[i], header.jpegUpsamplingX[i], false)
 		dequantLFCoeff[i] = util.MakeMatrix2D[float32, uint32](sizeY, sizeX)
 	}
 
@@ -66,12 +66,12 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent LFGroup, frame 
 	scaledDequant := frame.LfGlobal.quantizer.scaledDequant
 	for i := 0; i < 3; i++ {
 		c := cMap[i]
-		sd := scaledDequant[i] / (1 << extraPrecision)
+		sd := int32(scaledDequant[i]) / (1 << extraPrecision)
 		for y := 0; y < len(lfQuant[c]); y++ {
 			dq := dequantLFCoeff[i][y]
 			q := lfQuant[c][y]
 			for x := 0; x < len(lfQuant[c][y]); x++ {
-				dq[x] = float32(q[x]) * sd
+				dq[x] = float32(q[x] * sd)
 			}
 		}
 	}
