@@ -9,7 +9,7 @@ import (
 )
 
 var level0Table = NewVLCTable(4, [][]int32{{0, 2}, {4, 2}, {3, 2}, {2, 3}, {0, 2}, {4, 2}, {3, 2}, {1, 4}, {0, 2}, {4, 2}, {3, 2}, {2, 3}, {0, 2}, {4, 2}, {3, 2}, {5, 4}})
-var codelenMap []int
+var codelenMap = []int{1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 
 type PrefixSymbolDistribution struct {
 	*SymbolDistributionBase
@@ -76,10 +76,14 @@ func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitrea
 	}
 
 	var level1Table *VLCTable
+	var err error
 	if numCodes == 1 {
 		level1Table = NewVLCTable(0, [][]int32{{level1Symbols[17], 0}})
 	} else {
-		level1Table = NewVLCTable(5, [][]int32{level1LengthsScrambled, level1Symbols})
+		level1Table, err = NewVLCTableWithSymbols(5, level1LengthsScrambled, level1Symbols)
+		if err != nil {
+			return err
+		}
 	}
 
 	totalCode = 0
@@ -154,7 +158,6 @@ func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitrea
 		level2LengthsScrambled[index] = level2Lengths[i]
 		level2Symbols[index] = i
 	}
-	var err error
 	rcvr.table, err = NewVLCTableWithSymbols(15, level2LengthsScrambled, level2Symbols)
 	if err != nil {
 		return err

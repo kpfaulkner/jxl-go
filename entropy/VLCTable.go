@@ -54,7 +54,7 @@ func NewVLCTableWithSymbols(bits int32, lengths []int32, symbols []int32) (*VLCT
 	}
 	for i := 0; i < count; i++ {
 		if nLengths[i] <= bits {
-			index := bbits.Reverse(uint(codes[i]))
+			index := bbits.Reverse32(uint32(codes[i]))
 			number := 1 << (bits - nLengths[i])
 			offset := 1 << nLengths[i]
 			for j := 0; j < number; j++ {
@@ -65,7 +65,7 @@ func NewVLCTableWithSymbols(bits int32, lengths []int32, symbols []int32) (*VLCT
 				}
 				table[index][0] = nSymbols[i]
 				table[index][1] = nLengths[i]
-				index += uint(offset)
+				index += uint32(offset)
 			}
 		} else {
 			return nil, errors.New("Table size too small")
