@@ -217,7 +217,6 @@ func (rcvr *PrefixSymbolDistribution) populateSimplePrefix(reader *jxlio.Bitread
 	if err != nil {
 		return err
 	}
-	panic("not implemented")
 	return nil
 }
 
