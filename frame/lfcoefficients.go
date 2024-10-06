@@ -106,9 +106,36 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent LFGroup, frame 
 	return lf, nil
 }
 
-func (c LFCoefficients) populatedLFIndex(parent LFGroup, quant [][][]int32) error {
-	panic("not implemented yet")
+func (c *LFCoefficients) populatedLFIndex(parent LFGroup, lfQuant [][][]int32) error {
+	hfctx := c.frame.LfGlobal.hfBlockCtx
+	for y := uint32(0); y < parent.size.Height; y++ {
+		for x := uint32(0); x < parent.size.Width; x++ {
+			c.lfIndex[y][x] = c.getLFIndex(lfQuant, hfctx, y, x)
+		}
+	}
 	return nil
+}
+
+func (c *LFCoefficients) getLFIndex(lfQuant [][][]int32, hfctx *HFBlockContext, y uint32, x uint32) int32 {
+	index := make([]int, 3)
+	header := c.frame.Header
+	for i := 0; i < 3; i++ {
+		sy := y >> header.jpegUpsamplingY[i]
+		sx := x >> header.jpegUpsamplingX[i]
+		hft := hfctx.lfThresholds[i]
+		for j := 0; j < len(hft); j++ {
+			if lfQuant[cMap[i]][sy][sx] > hft[j] {
+				index[i]++
+			}
+		}
+	}
+
+	lfIndex := index[0]
+	lfIndex *= len(hfctx.lfThresholds[2]) + 1
+	lfIndex += index[2]
+	lfIndex *= len(hfctx.lfThresholds[1]) + 1
+	lfIndex += index[1]
+	return int32(lfIndex)
 }
 
 func adaptiveSmooth(coeff [][][]float32, scaledDequant []float32) [][][]float32 {
