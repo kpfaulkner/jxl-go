@@ -9,9 +9,6 @@ type LFGroup struct {
 	lfCoeff    LFCoefficients
 	hfMetadata *HFMetadata
 
-	// lossless doesn't use lfCoeff or hfMetadata afaik... so not implementing them.
-	lfCoeff        any
-	hfMetadata     any
 	lfGroupID      int32
 	frame          *Frame
 	size           util.Dimension

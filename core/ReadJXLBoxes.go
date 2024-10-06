@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	JPEGXLHEADERALT = [12]byte{0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A}
+	JPEGXL_CONTAINER_HEADER = [12]byte{0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A}
 
 	JXLL = makeTag([]byte{'j', 'x', 'l', 'l'}, 0, 4)
 	JXLP = makeTag([]byte{'j', 'x', 'l', 'p'}, 0, 4)
@@ -48,7 +48,8 @@ func (br *BoxReader) ReadBoxHeader() ([]ContainerBoxHeader, error) {
 
 	var containerBoxHeaders []ContainerBoxHeader
 
-	if !bytes.Equal(buffer, JPEGXLHEADERALT[:]) {
+	// Believe this header is used when performing lossless decoding. Need to verify
+	if !bytes.Equal(buffer, JPEGXL_CONTAINER_HEADER[:]) {
 		log.Errorf("invalid magic number: %+v", buffer)
 		// setup fake box header (if we dont have a container...?)
 		bh := ContainerBoxHeader{
