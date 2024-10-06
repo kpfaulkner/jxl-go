@@ -57,16 +57,52 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 			return nil, errors.New(fmt.Sprintf("Invalid Transform Type %d", t))
 		}
 		tt := tta[t]
-		pos := hf.placeBlock(lastBlock, tt, 1+blockInfoBuffer[1][i])
+		pos, err := hf.placeBlock(lastBlock, tt, 1+blockInfoBuffer[1][i])
+		if err != nil {
+			return nil, err
+		}
 		lastBlock = util.Point{
 			X: pos.X,
 			Y: pos.Y,
 		}
+		hf.blockList[i] = pos
 	}
 	return hf, nil
 }
 
-func (m HFMetadata) placeBlock(block util.Point, tt TransformType, i int32) util.Point {
+func (m *HFMetadata) placeBlock(lastBlock util.Point, block TransformType, mul int32) (util.Point, error) {
 
-	panic("not implemented")
+outerY:
+	x := lastBlock.X
+	for y := lastBlock.Y; y < int32(len(m.dctSelect)); y++ {
+		x = 0
+		dctY := m.dctSelect[y]
+	outerX:
+		for ; x < int32(len(dctY)); x++ {
+
+			if block.dctSelectWidth+x > int32(len(dctY)) {
+				continue outerY
+			}
+
+			for ix := int32(0); ix < block.dctSelectWidth; ix++ {
+				tt := dctY[x+ix]
+				if tt != nil {
+					x += tt.dctSelectWidth - 1
+					continue outerX
+				}
+			}
+			pos := util.Point{
+				X: x,
+				Y: y,
+			}
+			m.hfMultiplier[y][x] = mul
+			for iy := int32(0); iy < block.dctSelectHeight; iy++ {
+				for f := x; f < x+block.dctSelectWidth; f++ {
+					m.dctSelect[y+iy][f] = block
+				}
+			}
+			return pos, nil
+		}
+	}
+	return util.Point{}, errors.New("No space for block")
 }

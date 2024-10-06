@@ -1,6 +1,23 @@
 package frame
 
+import (
+	"math"
+
+	"github.com/kpfaulkner/jxl-go/util"
+)
+
 type TransformType struct {
+	dctSelectWidth  int32
+	dctSelectHeight int32
+	name            string
+	ttType          int32
+	blockWidth      int32
+	blockHeight     int32
+	matrixWidth     int32
+	matrixHeight    int32
+	orderID         int32
+	transformMethod int32
+	llfScale        [][]float32
 }
 
 var (
@@ -38,6 +55,29 @@ var (
 func NewTransformType(name string, transType int32, parameterIndex int32, dctSelectHeight int32, dctSelectWidth int32,
 	blockHeight int32, blockWidth int32, matrixHeight int32, matrixWidth int32, orderID int32, transformMethod int32) *TransformType {
 
-	panic("not implemented")
-	return &TransformType{}
+	tt := &TransformType{
+		dctSelectWidth:  dctSelectWidth,
+		dctSelectHeight: dctSelectHeight,
+		name:            name,
+		ttType:          transType,
+		blockWidth:      blockWidth,
+		blockHeight:     blockHeight,
+		matrixWidth:     matrixWidth,
+		matrixHeight:    matrixHeight,
+		orderID:         orderID,
+		transformMethod: transformMethod,
+		llfScale:        util.MakeMatrix2D[float32](dctSelectHeight, dctSelectWidth),
+	}
+	for y := int32(0); y < dctSelectHeight; y++ {
+		for x := int32(0); x < dctSelectWidth; x++ {
+			tt.llfScale[y][x] = float32(scaleF(float64(y), float64(dctSelectHeight)) * scaleF(float64(x), float64(dctSelectWidth)))
+		}
+	}
+
+	return tt
+}
+
+func scaleF(c float64, b float64) float64 {
+	piSize := math.Pi * c
+	return (1.0 / math.Cos(piSize/(2*b)) * math.Cos(piSize/b) * math.Cos(2.0*piSize/(2.0*b)))
 }

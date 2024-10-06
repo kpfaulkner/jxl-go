@@ -6,8 +6,8 @@ import (
 )
 
 type LFGroup struct {
-	//lfCoeff        LFCoefficients
-	//hfMetadata     HFMetadata
+	lfCoeff    LFCoefficients
+	hfMetadata *HFMetadata
 
 	// lossless doesn't use lfCoeff or hfMetadata afaik... so not implementing them.
 	lfCoeff        any
@@ -35,7 +35,6 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 	}
 
 	if parent.Header.Encoding == VARDCT {
-		lfg.hfMetadata = NewHFMetadataWithReader(reader, lfg, parent)
 		panic("VARDCT not implemented")
 	} else {
 		lfg.lfCoeff = nil
@@ -52,7 +51,11 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 	}
 
 	if parent.Header.Encoding == VARDCT {
-		panic("VARDCT not implemented")
+		metadata, err := NewHFMetadataWithReader(reader, lfg, parent)
+		if err != nil {
+			return nil, err
+		}
+		lfg.hfMetadata = metadata
 	} else {
 		lfg.hfMetadata = nil
 	}
