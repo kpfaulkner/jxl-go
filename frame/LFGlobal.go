@@ -10,7 +10,7 @@ type LFGlobal struct {
 	Patches         []Patch
 	splines         []SplinesBundle
 	noiseParameters []NoiseParameters
-	lfDequant       [3]float32
+	lfDequant       []float32
 	quantizer       *Quantizer
 	hfBlockCtx      *HFBlockContext
 	lfChanCorr      *LFChannelCorrelation
@@ -19,7 +19,7 @@ type LFGlobal struct {
 
 func NewLFGlobal() *LFGlobal {
 	lf := &LFGlobal{}
-	lf.lfDequant = [3]float32{1.0 / 4096.0, 1.0 / 512.0, 1.0 / 256.0}
+	lf.lfDequant = []float32{1.0 / 4096.0, 1.0 / 512.0, 1.0 / 256.0}
 	return lf
 }
 
@@ -72,6 +72,11 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 
 	var err error
 	if lf.frame.Header.Encoding == VARDCT {
+		lf.quantizer, err = NewQuantizerWithReader(reader, lf.lfDequant)
+		if err != nil {
+			return nil, err
+		}
+		lf.hfBlockCtx, err = NewHF
 		panic("VARDCT not implemented")
 	} else {
 		lf.quantizer = nil
