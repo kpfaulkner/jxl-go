@@ -9,26 +9,26 @@ import (
 )
 
 type VLCTable struct {
-	table [][]int
-	bits  int
+	table [][]int32
+	bits  int32
 }
 
-func NewVLCTable(bits int, table [][]int) (rcvr *VLCTable) {
+func NewVLCTable(bits int32, table [][]int32) (rcvr *VLCTable) {
 	rcvr = &VLCTable{}
 	rcvr.bits = bits
 	rcvr.table = table
 	return
 }
-func NewVLCTableWithSymbols(bits int, lengths []int, symbols []int) (*VLCTable, error) {
+func NewVLCTableWithSymbols(bits int32, lengths []int32, symbols []int32) (*VLCTable, error) {
 	rcvr := &VLCTable{}
 	rcvr.bits = bits
-	table := util.MakeMatrix2D[int](1<<bits, 2)
+	table := util.MakeMatrix2D[int32](1<<bits, 2)
 	codes := make([]int, len(lengths))
-	nLengths := make([]int, len(lengths))
-	nSymbols := make([]int, len(lengths))
+	nLengths := make([]int32, len(lengths))
+	nSymbols := make([]int32, len(lengths))
 	count := 0
 	code := 0
-	for i := 0; i < len(lengths); i++ {
+	for i := int32(0); i < int32(len(lengths)); i++ {
 		currentLen := lengths[i]
 		if currentLen > 0 {
 			nLengths[count] = currentLen
@@ -79,9 +79,9 @@ func NewVLCTableWithSymbols(bits int, lengths []int, symbols []int) (*VLCTable, 
 	rcvr.table = table
 	return rcvr, nil
 }
-func (rcvr *VLCTable) GetVLC(reader *jxlio.Bitreader) (int, error) {
+func (rcvr *VLCTable) GetVLC(reader *jxlio.Bitreader) (int32, error) {
 
-	index, err := reader.ShowBits(rcvr.bits)
+	index, err := reader.ShowBits(int(rcvr.bits))
 	if err != nil {
 		return 0, err
 	}

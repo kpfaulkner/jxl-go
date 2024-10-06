@@ -8,22 +8,22 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-var distPrefixTable = NewVLCTable(7, [][]int{{10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {13, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}})
+var distPrefixTable = NewVLCTable(7, [][]int32{{10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {13, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}})
 
 var count int
 
 type ANSSymbolDistribution struct {
 	SymbolDistributionBase
-	frequencies []int
-	cutoffs     []int
-	symbols     []int
-	offsets     []int
+	frequencies []int32
+	cutoffs     []int32
+	symbols     []int32
+	offsets     []int32
 }
 
-func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*ANSSymbolDistribution, error) {
+func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int32) (*ANSSymbolDistribution, error) {
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
-	uniqPos := -1
+	uniqPos := int32(-1)
 	if reader.MustReadBool() {
 
 		if reader.MustReadBool() {
@@ -38,36 +38,36 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 			if v1 == v2 {
 				return nil, errors.New("Overlapping dual peak distribution")
 			}
-			asd.alphabetSize = 1 + util.Max(v1, v2)
+			asd.alphabetSize = 1 + util.Max[int32](int32(v1), int32(v2))
 			if asd.alphabetSize > (1 << asd.logAlphabetSize) {
 				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 			}
-			asd.frequencies = make([]int, asd.alphabetSize)
-			asd.frequencies[v1] = int(reader.MustReadBits(12))
+			asd.frequencies = make([]int32, asd.alphabetSize)
+			asd.frequencies[v1] = int32(reader.MustReadBits(12))
 			asd.frequencies[v2] = 1<<12 - asd.frequencies[v1]
 			if asd.frequencies[v1] == 0 {
-				uniqPos = v2
+				uniqPos = int32(v2)
 			}
 		} else {
 			x, err := reader.ReadU8()
 			if err != nil {
 				return nil, err
 			}
-			asd.alphabetSize = 1 + x
-			asd.frequencies = make([]int, asd.alphabetSize)
+			asd.alphabetSize = 1 + int32(x)
+			asd.frequencies = make([]int32, asd.alphabetSize)
 
 			//if x >= len(asd.frequencies) {
 			//	return nil, errors.New("Invalid frequency position")
 			//}
 			asd.frequencies[x] = 1 << 12
-			uniqPos = x
+			uniqPos = int32(x)
 		}
 	} else if reader.MustReadBool() {
 		r, err := reader.ReadU8()
 		if err != nil {
 			return nil, err
 		}
-		asd.alphabetSize = 1 + r
+		asd.alphabetSize = 1 + int32(r)
 		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
 			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 		}
@@ -75,11 +75,11 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 			uniqPos = 0
 		}
 
-		asd.frequencies = make([]int, asd.alphabetSize)
-		for i := 0; i < asd.alphabetSize; i++ {
+		asd.frequencies = make([]int32, asd.alphabetSize)
+		for i := int32(0); i < asd.alphabetSize; i++ {
 			asd.frequencies[i] = (1 << 12) / asd.alphabetSize
 		}
-		for i := 0; i < (1<<12)%asd.alphabetSize; i++ {
+		for i := int32(0); i < (1<<12)%asd.alphabetSize; i++ {
 			asd.frequencies[i]++
 		}
 	} else {
@@ -97,17 +97,17 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		if err != nil {
 			return nil, err
 		}
-		asd.alphabetSize = 3 + r
+		asd.alphabetSize = 3 + int32(r)
 		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
 			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 		}
 
-		asd.frequencies = make([]int, asd.alphabetSize)
-		logCounts := make([]int, asd.alphabetSize)
+		asd.frequencies = make([]int32, asd.alphabetSize)
+		logCounts := make([]int32, asd.alphabetSize)
 		same := make([]int, asd.alphabetSize)
-		omitLog := -1
-		omitPos := -1
-		for i := 0; i < asd.alphabetSize; i++ {
+		omitLog := int32(-1)
+		omitPos := int32(-1)
+		for i := int32(0); i < asd.alphabetSize; i++ {
 			logCounts[i], err = distPrefixTable.GetVLC(reader)
 			if err != nil {
 				return nil, err
@@ -118,7 +118,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 					return nil, err
 				}
 				same[i] = rle + 5
-				i += rle + 3
+				i += int32(rle) + 3
 				continue
 			}
 			if logCounts[i] > omitLog {
@@ -130,10 +130,10 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 		if omitPos < 0 || omitPos+1 < asd.alphabetSize && logCounts[omitPos+1] == 13 {
 			return nil, errors.New("Invalid OmitPos")
 		}
-		totalCount := 0
+		totalCount := int32(0)
 		numSame := 0
-		prev := 0
-		for i := 0; i < asd.alphabetSize; i++ {
+		prev := int32(0)
+		for i := int32(0); i < asd.alphabetSize; i++ {
 			if same[i] != 0 {
 				numSame = same[i] - 1
 				if i > 0 {
@@ -159,7 +159,7 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 					if bitcount > int32(logCounts[i])-1 {
 						bitcount = int32(logCounts[i] - 1)
 					}
-					asd.frequencies[i] = int(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-int(bitcount)))
+					asd.frequencies[i] = int32(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-bitcount))
 				}
 			}
 			totalCount += asd.frequencies[i]
@@ -170,18 +170,18 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int) (*AN
 	return asd, nil
 }
 
-func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int) {
+func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int32) {
 	asd.logBucketSize = 12 - asd.logAlphabetSize
-	bucketSize := 1 << asd.logBucketSize
-	tableSize := 1 << asd.logAlphabetSize
-	overfull := util.NewDeque[int]()
-	underfull := util.NewDeque[int]()
+	bucketSize := int32(1 << asd.logBucketSize)
+	tableSize := int32(1 << asd.logAlphabetSize)
+	overfull := util.NewDeque[int32]()
+	underfull := util.NewDeque[int32]()
 
-	asd.symbols = make([]int, tableSize)
-	asd.cutoffs = make([]int, tableSize)
-	asd.offsets = make([]int, tableSize)
+	asd.symbols = make([]int32, tableSize)
+	asd.cutoffs = make([]int32, tableSize)
+	asd.offsets = make([]int32, tableSize)
 	if uniqPos >= 0 {
-		for i := 0; i < tableSize; i++ {
+		for i := int32(0); i < tableSize; i++ {
 			asd.symbols[i] = uniqPos
 			asd.offsets[i] = i * bucketSize
 			asd.cutoffs[i] = 0
@@ -189,7 +189,7 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int) {
 		return
 	}
 
-	for i := 0; i < asd.alphabetSize; i++ {
+	for i := int32(0); i < asd.alphabetSize; i++ {
 		asd.cutoffs[i] = asd.frequencies[i]
 		if asd.cutoffs[i] > bucketSize {
 			overfull.AddFirst(i)
@@ -213,7 +213,7 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int) {
 			overfull.AddFirst(*o)
 		}
 	}
-	for i := 0; i < tableSize; i++ {
+	for i := int32(0); i < tableSize; i++ {
 		if asd.cutoffs[i] == bucketSize {
 			asd.symbols[i] = i
 			asd.offsets[i] = 0
@@ -224,7 +224,7 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int) {
 	}
 }
 
-func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *ANSState) (int, error) {
+func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *ANSState) (int32, error) {
 	var state int32
 	var err error
 	count++
@@ -243,14 +243,14 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 	i := uint32(index) >> asd.logBucketSize
 	pos := index & ((1 << asd.logBucketSize) - 1)
 	greater := pos >= int32(asd.cutoffs[i])
-	var symbol int
-	var offset int
+	var symbol int32
+	var offset int32
 	if greater {
 		symbol = asd.symbols[i]
-		offset = asd.offsets[i] + int(pos)
+		offset = asd.offsets[i] + int32(pos)
 	} else {
-		symbol = int(i)
-		offset = int(pos)
+		symbol = int32(i)
+		offset = int32(pos)
 	}
 
 	state = int32(asd.frequencies[symbol])*int32(uint32(state)>>12) + int32(offset)

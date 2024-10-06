@@ -98,7 +98,6 @@ func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
 	}
 
 	if n != int(numBytes) {
-		panic("boom")
 		return errors.New("unable to read all bytes")
 	}
 	return nil

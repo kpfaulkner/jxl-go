@@ -16,7 +16,7 @@ type EntropyStream struct {
 	state          *ANSState
 
 	dists           []SymbolDistribution
-	logAlphabetSize int
+	logAlphabetSize int32
 	numToCopy77     int
 	copyPos77       int
 	numDecoded77    int
@@ -76,7 +76,7 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	if prefixCodes {
 		es.logAlphabetSize = 15
 	} else {
-		es.logAlphabetSize = 5 + int(reader.MustReadBits(2))
+		es.logAlphabetSize = 5 + int32(reader.MustReadBits(2))
 	}
 
 	configs := make([]*HybridIntegerConfig, len(es.dists))
@@ -88,11 +88,11 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	}
 
 	if prefixCodes {
-		alphabetSizes := make([]int, len(es.dists))
+		alphabetSizes := make([]int32, len(es.dists))
 		for i := 0; i < len(es.dists); i++ {
 			if reader.MustReadBool() {
 				n := reader.MustReadBits(4)
-				alphabetSizes[i] = 1 + int(1<<n+reader.MustReadBits(uint32(n)))
+				alphabetSizes[i] = 1 + int32(1<<n+reader.MustReadBits(uint32(n)))
 			} else {
 				alphabetSizes[i] = 1
 			}
@@ -230,7 +230,7 @@ func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *Hybr
 	if token < int32(split) {
 		return token, nil
 	}
-	n := config.SplitExponent - config.LsbInToken - config.MsbInToken + int(uint32(token-int32(split))>>(config.MsbInToken+config.LsbInToken))
+	n := config.SplitExponent - config.LsbInToken - config.MsbInToken + (token-int32(split))>>(config.MsbInToken+config.LsbInToken)
 	if n > 32 {
 		return 0, errors.New("n is too large")
 	}
