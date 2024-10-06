@@ -6,9 +6,8 @@ import (
 	"errors"
 	"io"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	log "github.com/sirupsen/logrus"
 )
 
 var (

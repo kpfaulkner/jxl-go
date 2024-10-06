@@ -131,7 +131,21 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	fh.logGroupDim = uint32(util.CeilLog2(int64(fh.groupDim)))
 	fh.logLFGroupDIM = uint32(util.CeilLog2(int64(fh.lfGroupDim)))
 	if parent.XybEncoded && fh.Encoding == VARDCT {
-		panic("VARDCT not implemented")
+		if !allDefault {
+			xqmScale, err := reader.ReadBits(3)
+			if err != nil {
+				return nil, err
+			}
+			fh.xqmScale = uint32(xqmScale)
+			bqmScale, err := reader.ReadBits(3)
+			if err != nil {
+				return nil, err
+			}
+			fh.bqmScale = uint32(bqmScale)
+		} else {
+			fh.xqmScale = 3
+			fh.bqmScale = 2
+		}
 	} else {
 		fh.xqmScale = 2
 		fh.bqmScale = 2

@@ -292,7 +292,6 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 	}
 	reader.ZeroPadToByte()
-
 	return header, nil
 }
 func (h *ImageHeader) GetColourChannelCount() int {
