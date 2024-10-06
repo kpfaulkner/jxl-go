@@ -76,8 +76,14 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		if err != nil {
 			return nil, err
 		}
-		lf.hfBlockCtx, err = NewHF
-		panic("VARDCT not implemented")
+		lf.hfBlockCtx, err = NewHFBlockContextWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
+		lf.lfChanCorr, err = NewLFChannelCorrelationWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		lf.quantizer = nil
 		lf.hfBlockCtx = nil

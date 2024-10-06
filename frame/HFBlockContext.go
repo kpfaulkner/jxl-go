@@ -18,7 +18,7 @@ type HFBlockContext struct {
 
 func NewHFBlockContextWithReader(reader *jxlio.Bitreader) (*HFBlockContext, error) {
 	hf := &HFBlockContext{}
-
+	hf.lfThresholds = util.MakeMatrix2D[int32](3, 0)
 	useDefault, err := reader.ReadBool()
 	if err != nil {
 		return nil, err

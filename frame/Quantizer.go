@@ -10,6 +10,7 @@ type Quantizer struct {
 
 func NewQuantizerWithReader(reader *jxlio.Bitreader, lfDequant []float32) (*Quantizer, error) {
 	q := &Quantizer{}
+	q.scaledDequant = make([]float32, 3)
 	var err error
 	q.globalScale, err = reader.ReadU32(1, 11, 2049, 11, 4097, 12, 8193, 16)
 	if err != nil {
