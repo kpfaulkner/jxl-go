@@ -358,7 +358,8 @@ func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
 	var width uint32
 	var height uint32
 	if f.Header.Encoding == VARDCT {
-		panic("VARDCT not implemented")
+		height = (f.bounds.Size.Height + 7) >> 3
+		width = (f.bounds.Size.Width + 7) >> 3
 	} else {
 		width = f.bounds.Size.Width
 		height = f.bounds.Size.Height
@@ -367,7 +368,10 @@ func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
 	height = util.CeilDiv(height, uint32(factorY))
 	width = util.CeilDiv(width, uint32(factorX))
 	if f.Header.Encoding == VARDCT {
-		panic("VARDCT not implemented")
+		return util.Dimension{
+			Width:  (width * uint32(factorX)) << 3,
+			Height: (height * uint32(factorY)) << 3,
+		}, nil
 	} else {
 		return util.Dimension{
 			Width:  width * uint32(factorX),

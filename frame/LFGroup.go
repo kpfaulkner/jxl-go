@@ -32,7 +32,10 @@ func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []
 	}
 
 	if parent.Header.Encoding == VARDCT {
-		panic("VARDCT not implemented")
+		lfg.lfCoeff, err = NewLFCoefficientsWithReader(reader, lfg, parent, lfBuffer)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		lfg.lfCoeff = nil
 	}

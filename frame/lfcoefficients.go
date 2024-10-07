@@ -14,7 +14,7 @@ type LFCoefficients struct {
 	frame          *Frame
 }
 
-func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent LFGroup, frame *Frame, lfBuffer [][][]float32) (*LFCoefficients, error) {
+func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Frame, lfBuffer [][][]float32) (*LFCoefficients, error) {
 	lf := &LFCoefficients{}
 
 	lf.frame = frame
@@ -106,7 +106,7 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent LFGroup, frame 
 	return lf, nil
 }
 
-func (c *LFCoefficients) populatedLFIndex(parent LFGroup, lfQuant [][][]int32) error {
+func (c *LFCoefficients) populatedLFIndex(parent *LFGroup, lfQuant [][][]int32) error {
 	hfctx := c.frame.LfGlobal.hfBlockCtx
 	for y := uint32(0); y < parent.size.Height; y++ {
 		for x := uint32(0); x < parent.size.Width; x++ {
