@@ -6,20 +6,35 @@ import (
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
-type EntropyStream struct {
-	usesLZ77       bool
-	lz77MinSymbol  int32
-	lz77MinLength  int32
-	lzLengthConfig *HybridIntegerConfig
-	window         []int32
-	clusterMap     []int
-	state          *ANSState
+var (
+	SPECIAL_DISTANCES = [][]int32{
+		{0, 1}, {1, 0}, {1, 1}, {-1, 1}, {0, 2}, {2, 0}, {1, 2}, {-1, 2}, {2, 1}, {-2, 1}, {2, 2},
+		{-2, 2}, {0, 3}, {3, 0}, {1, 3}, {-1, 3}, {3, 1}, {-3, 1}, {2, 3}, {-2, 3}, {3, 2},
+		{-3, 2}, {0, 4}, {4, 0}, {1, 4}, {-1, 4}, {4, 1}, {-4, 1}, {3, 3}, {-3, 3}, {2, 4},
+		{-2, 4}, {4, 2}, {-4, 2}, {0, 5}, {3, 4}, {-3, 4}, {4, 3}, {-4, 3}, {5, 0}, {1, 5},
+		{-1, 5}, {5, 1}, {-5, 1}, {2, 5}, {-2, 5}, {5, 2}, {-5, 2}, {4, 4}, {-4, 4}, {3, 5},
+		{-3, 5}, {5, 3}, {-5, 3}, {0, 6}, {6, 0}, {1, 6}, {-1, 6}, {6, 1}, {-6, 1}, {2, 6},
+		{-2, 6}, {6, 2}, {-6, 2}, {4, 5}, {-4, 5}, {5, 4}, {-5, 4}, {3, 6}, {-3, 6}, {6, 3},
+		{-6, 3}, {0, 7}, {7, 0}, {1, 7}, {-1, 7}, {5, 5}, {-5, 5}, {7, 1}, {-7, 1}, {4, 6},
+		{-4, 6}, {6, 4}, {-6, 4}, {2, 7}, {-2, 7}, {7, 2}, {-7, 2}, {3, 7}, {-3, 7}, {7, 3},
+		{-7, 3}, {5, 6}, {-5, 6}, {6, 5}, {-6, 5}, {8, 0}, {4, 7}, {-4, 7}, {7, 4}, {-7, 4},
+		{8, 1}, {8, 2}, {6, 6}, {-6, 6}, {8, 3}, {5, 7}, {-5, 7}, {7, 5}, {-7, 5}, {8, 4}, {6, 7},
+		{-6, 7}, {7, 6}, {-7, 6}, {8, 5}, {7, 7}, {-7, 7}, {8, 6}, {8, 7}}
+)
 
+type EntropyStream struct {
+	usesLZ77        bool
+	lz77MinSymbol   int32
+	lz77MinLength   int32
+	lzLengthConfig  *HybridIntegerConfig
+	window          []int32
+	clusterMap      []int
 	dists           []SymbolDistribution
 	logAlphabetSize int32
-	numToCopy77     int
-	copyPos77       int
-	numDecoded77    int
+	numToCopy77     int32
+	copyPos77       int32
+	numDecoded77    int32
+	ansState        *ANSState
 }
 
 func NewEntropyStreamWithReaderAndNumDists(reader *jxlio.Bitreader, numDists int) (*EntropyStream, error) {
@@ -38,7 +53,7 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 	if es.usesLZ77 {
 		es.window = make([]int32, 1<<20)
 	}
-	es.state = NewANSState()
+	es.ansState = &ANSState{State: -1}
 	return es
 }
 
@@ -49,8 +64,8 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 		return nil, errors.New("Num Dists must be positive")
 	}
 	es := &EntropyStream{}
-	es.state = NewANSState()
 	es.usesLZ77 = reader.MustReadBool()
+	es.ansState = &ANSState{State: -1}
 	if es.usesLZ77 {
 		if disallowLZ77 {
 			return nil, errors.New("Nested distributions cannot use LZ77")
@@ -188,7 +203,7 @@ func (es *EntropyStream) TryReadSymbol(reader *jxlio.Bitreader, context int) int
 	return v
 }
 
-func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, context int, distanceMultiplier int) (int32, error) {
+func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, context int, distanceMultiplier int32) (int32, error) {
 	if es.numToCopy77 > 0 {
 		es.copyPos77++
 		hybridInt := es.window[es.copyPos77&0xFFFFF]
@@ -205,14 +220,43 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, conte
 	}
 
 	dist := es.dists[es.clusterMap[context]]
-	t, err := dist.ReadSymbol(reader, es.state)
+	t, err := dist.ReadSymbol(reader, es.ansState)
 	token := int32(t)
 	if err != nil {
 		return 0, err
 	}
 
 	if es.usesLZ77 && token >= es.lz77MinSymbol {
-		panic("not implemented")
+		lz77dist := es.dists[es.clusterMap[len(es.clusterMap)-1]]
+		hi, err := es.readHybridInteger(reader, es.lzLengthConfig, token-es.lz77MinSymbol)
+		if err != nil {
+			return 0, err
+		}
+		es.numToCopy77 = es.lz77MinLength + hi
+		token, err = lz77dist.ReadSymbol(reader, es.ansState)
+		if err != nil {
+			return 0, err
+		}
+		distance, err := es.readHybridInteger(reader, lz77dist.GetConfig(), token)
+		if err != nil {
+			return 0, err
+		}
+		if distanceMultiplier == 0 {
+			distance++
+		} else if distance < 120 {
+			distance = SPECIAL_DISTANCES[distance][0] + distanceMultiplier*SPECIAL_DISTANCES[distance][1]
+		} else {
+			distance -= 119
+		}
+		if distance > (1 << 20) {
+			distance = 1 << 20
+		}
+		if distance > es.numDecoded77 {
+			distance = es.numDecoded77
+		}
+		es.copyPos77 = es.numDecoded77 - distance
+		return es.ReadSymbolWithMultiplier(reader, context, distanceMultiplier)
+
 	}
 	hybridInt, err := es.readHybridInteger(reader, dist.GetConfig(), token)
 	if err != nil {
@@ -242,13 +286,5 @@ func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *Hybr
 }
 
 func (es *EntropyStream) ValidateFinalState() bool {
-	if !es.state.hasState {
-		return true
-	}
-	s, err := es.state.GetState()
-	if err != nil || s != 0x130000 {
-		return false
-	}
-
-	return true
+	return es.ansState.State == -1 || es.ansState.State == 0x130000
 }

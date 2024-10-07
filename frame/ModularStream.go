@@ -122,7 +122,7 @@ type ModularStream struct {
 	tree           *MATree
 	wpParams       *WPParams
 	transforms     []TransformInfo
-	distMultiplier int
+	distMultiplier int32
 	nbMetaChannels int
 	stream         *entropy.EntropyStream
 	transformed    bool
@@ -257,7 +257,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			maxWidth = c.size.Width
 		}
 	}
-	ms.distMultiplier = int(maxWidth)
+	ms.distMultiplier = int32(maxWidth)
 	return ms, nil
 }
 

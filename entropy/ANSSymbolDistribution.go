@@ -10,8 +10,6 @@ import (
 
 var distPrefixTable = NewVLCTable(7, [][]int32{{10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {13, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}})
 
-var count int
-
 type ANSSymbolDistribution struct {
 	SymbolDistributionBase
 	frequencies []int32
@@ -225,24 +223,22 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int32) {
 }
 
 func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *ANSState) (int32, error) {
+
 	var state int32
-	var err error
-	count++
-
-	if stateObj.hasState {
-
-		state, err = stateObj.GetState()
+	if stateObj.State == -1 {
+		s, err := reader.ReadBits(32)
 		if err != nil {
 			return 0, err
 		}
+		state = int32(s)
 	} else {
-		state = int32(reader.MustReadBits(32))
+		state = stateObj.State
 	}
 
 	index := state & 0xFFF
 	i := uint32(index) >> asd.logBucketSize
 	pos := index & ((1 << asd.logBucketSize) - 1)
-	greater := pos >= int32(asd.cutoffs[i])
+	greater := pos >= asd.cutoffs[i]
 	var symbol int32
 	var offset int32
 	if greater {
@@ -253,14 +249,16 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 		offset = int32(pos)
 	}
 
-	state = int32(asd.frequencies[symbol])*int32(uint32(state)>>12) + int32(offset)
+	state = asd.frequencies[symbol]*int32(uint32(state)>>12) + offset
 	if uint32(state)&0xFFFF0000 == 0 {
-		//state = (state << 16) | int32(reader.MustReadBits(16))
 		state = (state << 16)
-		data := reader.MustReadBits(16)
+		data, err := reader.ReadBits(16)
+		if err != nil {
+			return 0, err
+		}
 		state = state | int32(data)
 	}
 
-	stateObj.SetState(int32(state))
+	stateObj.State = state
 	return symbol, nil
 }
