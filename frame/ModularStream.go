@@ -204,33 +204,77 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			ms.channels = append([]*ModularChannel{mc}, ms.channels...)
 
 		} else if ms.transforms[i].tr == SQUEEZE {
-			panic("TODO implement squeeze transform")
-			//squeezeList := []SqueezeParam{}
-			//if len(ms.transforms[i].sp) == 0 {
-			//	first := ms.nbMetaChannels
-			//	count := len(ms.channels) - first
-			//	w = ms.channels[first].getWidth()
-			//	h = ms.channels[first].getHeight()
-			//	if count > 2 && ms.channels[first+1].getWidth() == w && ms.channels[first+1].getHeight() == h {
-			//		squeezeList = append(squeezeList, SqueezeParam{horizontal: true, inPlace: false, beginC: first + 1, numC: 2})
-			//		squeezeList = append(squeezeList, SqueezeParam{horizontal: false, inPlace: false, beginC: first + 1, numC: 2})
-			//	}
-			//	if h >= w && h > 8 {
-			//		squeezeList = append(squeezeList, SqueezeParam{horizontal: false, inPlace: true, beginC: first, numC: count})
-			//		h = (h + 1) / 2
-			//	}
-			//
-			//	for w > 8 || h > 8 {
-			//		if w > 8 {
-			//			squeezeList = append(squeezeList, SqueezeParam{horizontal: true, inPlace: true, beginC: first, numC: count})
-			//			w = (w + 1) / 2
-			//		}
-			//		if h > 8 {
-			//			squeezeList = append(squeezeList, SqueezeParam{horizontal: false, inPlace: true, beginC: first, numC: count})
-			//			h = (h + 1) / 2
-			//		}
-			//	}
 
+			squeezeList := []SqueezeParam{}
+			if len(ms.transforms[i].sp) == 0 {
+				first := ms.nbMetaChannels
+				count := len(ms.channels) - first
+				size := ms.channels[0].size
+				if count > 2 && size.Width == ms.channels[first+1].size.Width && size.Height == ms.channels[first+1].size.Height {
+					squeezeList = append(squeezeList, SqueezeParam{horizontal: true, inPlace: false, beginC: first + 1, numC: 2})
+					squeezeList = append(squeezeList, SqueezeParam{horizontal: false, inPlace: false, beginC: first + 1, numC: 2})
+				}
+				if size.Height >= size.Width && size.Height > 8 {
+					squeezeList = append(squeezeList, SqueezeParam{horizontal: false, inPlace: true, beginC: first, numC: count})
+					size.Height = (size.Height + 1) / 2
+				}
+
+				for size.Width > 8 || size.Height > 8 {
+					if size.Width > 8 {
+						squeezeList = append(squeezeList, SqueezeParam{horizontal: true, inPlace: true, beginC: first, numC: count})
+						size.Width = (size.Width + 1) / 2
+					}
+					if size.Height > 8 {
+						squeezeList = append(squeezeList, SqueezeParam{horizontal: false, inPlace: true, beginC: first, numC: count})
+						size.Height = (size.Height + 1) / 2
+					}
+				}
+			} else {
+				squeezeList = append(squeezeList, ms.transforms[i].sp...)
+			}
+
+			ms.squeezeMap[i] = squeezeList
+			spa := squeezeList
+			for j := 0; j < len(squeezeList); j++ {
+				begin := spa[j].beginC
+				end := begin + spa[j].numC - 1
+				var offset int
+				if spa[j].inPlace {
+					offset = end + 1
+				} else {
+					offset = len(ms.channels)
+				}
+				if begin < ms.nbMetaChannels {
+					if !spa[j].inPlace {
+						return nil, errors.New("squeeze meta must be in place")
+					}
+					if end >= ms.nbMetaChannels {
+						return nil, errors.New("squeeze meta must end in meta")
+					}
+					ms.nbMetaChannels += spa[j].numC
+				}
+				for k := begin; k <= end; k++ {
+					var residu *ModularChannel
+					ch := ms.channels[k]
+					r := offset + k - begin
+					if spa[j].horizontal {
+						w := ch.size.Width
+						ch.size.Width = (w + 1) / 2
+						ch.hshift++
+						residu = NewModularChannelFromChannel(*ch)
+						residu.size.Width = w / 2
+					} else {
+						h := ch.size.Height
+						ch.size.Height = (h + 1) / 2
+						ch.vshift++
+						residu = NewModularChannelFromChannel(*ch)
+						residu.size.Height = h / 2
+					}
+					temp := append(ms.channels[:r], residu)
+					temp = append(temp, ms.channels[r:]...)
+					ms.channels = temp
+				}
+			}
 		} else if ms.transforms[i].tr == RCT {
 			//squeezeList = append(squeezeList, ms.transforms[i].sp...)
 			continue
