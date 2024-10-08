@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	cMap = []int{0, 2, 1}
+	cMap = []int{1, 0, 2}
 )
 
 type Frame struct {

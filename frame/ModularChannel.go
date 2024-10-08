@@ -2,6 +2,7 @@ package frame
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -417,6 +418,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		mc.weight = make([]int32, 4)
 	}
 
+	zeroCount := 0
 	var err error
 	for y0 := uint32(0); y0 < mc.size.Height; y0++ {
 		y := int32(y0)
@@ -442,6 +444,11 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			diff, err := stream.ReadSymbolWithMultiplier(reader, int(leafNode.context), distMultiplier)
 			if err != nil {
 				return err
+			}
+			if diff != 0 {
+				fmt.Printf("X %d : Y %d : symbol %d\n", x, y, diff)
+			} else {
+				zeroCount++
 			}
 
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset

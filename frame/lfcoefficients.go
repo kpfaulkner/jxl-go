@@ -66,12 +66,13 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame
 	scaledDequant := frame.LfGlobal.quantizer.scaledDequant
 	for i := 0; i < 3; i++ {
 		c := cMap[i]
-		sd := int32(scaledDequant[i]) / (1 << extraPrecision)
+		xx := 1 << extraPrecision
+		sd := scaledDequant[i] / float32(xx)
 		for y := 0; y < len(lfQuant[c]); y++ {
 			dq := dequantLFCoeff[i][y]
 			q := lfQuant[c][y]
 			for x := 0; x < len(lfQuant[c][y]); x++ {
-				dq[x] = float32(q[x] * sd)
+				dq[x] = float32(q[x]) * sd
 			}
 		}
 	}

@@ -182,6 +182,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 		}
 	}
 
+	newChannels := []*ModularChannel{}
 	for i := 0; i < int(nbTransforms); i++ {
 
 		if ms.transforms[i].tr == PALETTE {
@@ -205,6 +206,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 
 		} else if ms.transforms[i].tr == SQUEEZE {
 
+			// See JPEGXL specs, section I.3
 			squeezeList := []SqueezeParam{}
 			if len(ms.transforms[i].sp) == 0 {
 				first := ms.nbMetaChannels
@@ -233,6 +235,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 				squeezeList = append(squeezeList, ms.transforms[i].sp...)
 			}
 
+			// FIXME(kpfaulkner) need to rework this squeeze loop :/
 			ms.squeezeMap[i] = squeezeList
 			spa := squeezeList
 			for j := 0; j < len(squeezeList); j++ {
@@ -253,10 +256,12 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 					}
 					ms.nbMetaChannels += spa[j].numC
 				}
-				for k := begin; k <= end; k++ {
+				ii := 0
+				for c := begin; c <= end; c++ {
 					var residu *ModularChannel
-					ch := ms.channels[k]
-					r := offset + k - begin
+					ch := ms.channels[c]
+					//r := offset + k - begin
+					r := offset + ii
 					if spa[j].horizontal {
 						w := ch.size.Width
 						ch.size.Width = (w + 1) / 2
@@ -270,9 +275,11 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 						residu = NewModularChannelFromChannel(*ch)
 						residu.size.Height = h / 2
 					}
-					temp := append(ms.channels[:r], residu)
-					temp = append(temp, ms.channels[r:]...)
-					ms.channels = temp
+					newChannels = append([]*ModularChannel{residu}, newChannels...)
+					chpos1 := newChannels[0]
+					fmt.Printf("R is %d\n", r)
+					fmt.Printf("Adding channel in pos 0 with width %d, height %d\n", chpos1.size.Width, chpos1.size.Height)
+					ii++
 				}
 			}
 		} else if ms.transforms[i].tr == RCT {
@@ -282,6 +289,13 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			return nil, fmt.Errorf("illegal transform type %d", ms.transforms[i].tr)
 		}
 	}
+
+	// hack.. duplicate first element
+	// FIXME(kpfaulkner) just a hack to test issues...
+
+	mc := NewModularChannelFromChannel(*newChannels[0])
+	ms.channels = append([]*ModularChannel{mc}, newChannels...)
+
 	if !useGlobalTree {
 		tree, err := NewMATreeWithReader(reader)
 		if err != nil {

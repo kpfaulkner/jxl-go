@@ -10,6 +10,11 @@ import (
 
 var distPrefixTable = NewVLCTable(7, [][]int32{{10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {13, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}})
 
+var (
+	// just for some debugging
+	lastStateObj int32
+)
+
 type ANSSymbolDistribution struct {
 	SymbolDistributionBase
 	frequencies []int32
@@ -257,8 +262,19 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 			return 0, err
 		}
 		state = state | int32(data)
+		fmt.Printf("last data read %d\n", data)
+		fmt.Printf("last state %d\n", state)
 	}
 
+	//stateObj.State = 0xFFFFFFFF & uint64(state)
 	stateObj.State = state
+	if lastStateObj != stateObj.State {
+		fmt.Printf("last stateObj %d\n", stateObj.State)
+		lastStateObj = stateObj.State
+
+		if stateObj.State == 1245184 {
+			fmt.Printf("snoop\n")
+		}
+	}
 	return symbol, nil
 }
