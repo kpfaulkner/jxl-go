@@ -33,8 +33,8 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 	correlationWidth := int32((parent.size.Width + 7) / 8)
 	xFromY := NewModularChannelWithAllParams(correlationWidth, correlationHeight, 0, 0, false)
 	bFromY := NewModularChannelWithAllParams(correlationWidth, correlationHeight, 0, 0, false)
-	blockInfo := NewModularChannelWithAllParams(2, int32(hf.nbBlocks), 0, 0, false)
-	sharpness := NewModularChannelWithAllParams(int32(parent.size.Height), int32(parent.size.Width), 0, 0, false)
+	blockInfo := NewModularChannelWithAllParams(int32(hf.nbBlocks), 2, 0, 0, false)
+	sharpness := NewModularChannelWithAllParams(int32(parent.size.Width), int32(parent.size.Height), 0, 0, false)
 	hfStream, err := NewModularStreamWithStreamIndex(reader, frame, 1+2*int(frame.numLFGroups)+int(parent.lfGroupID), []ModularChannel{*xFromY, *bFromY, *blockInfo, *sharpness})
 	if err != nil {
 		return nil, err

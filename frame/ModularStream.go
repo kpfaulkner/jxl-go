@@ -282,6 +282,17 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 					ii++
 				}
 			}
+
+			// hack.. duplicate first element
+			// FIXME(kpfaulkner) just a hack to test issues...
+
+			if len(newChannels) > 0 {
+				mc := NewModularChannelFromChannel(*newChannels[0])
+				ms.channels = append([]*ModularChannel{mc}, newChannels...)
+			} else {
+				fmt.Printf("snoop\n")
+			}
+
 		} else if ms.transforms[i].tr == RCT {
 			//squeezeList = append(squeezeList, ms.transforms[i].sp...)
 			continue
@@ -289,12 +300,6 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			return nil, fmt.Errorf("illegal transform type %d", ms.transforms[i].tr)
 		}
 	}
-
-	// hack.. duplicate first element
-	// FIXME(kpfaulkner) just a hack to test issues...
-
-	mc := NewModularChannelFromChannel(*newChannels[0])
-	ms.channels = append([]*ModularChannel{mc}, newChannels...)
 
 	if !useGlobalTree {
 		tree, err := NewMATreeWithReader(reader)

@@ -21,8 +21,8 @@ type TransformType struct {
 }
 
 var (
-	DCT8       = NewTransformType("DCT 8x8", 0, 0, 8, 8, 8, 8, 8, 8, 0, 0)
-	HORNUSS    = NewTransformType("HORNUSS", 1, 0, 8, 8, 8, 8, 8, 8, 0, 0)
+	DCT8       = NewTransformType("DCT 8x8", 0, 0, 1, 1, 8, 8, 8, 8, 0, 0)
+	HORNUSS    = NewTransformType("Hornuss", 1, 1, 1, 1, 8, 8, 8, 8, 1, 3)
 	DCT2       = NewTransformType("DCT 2x2", 2, 2, 1, 1, 8, 8, 8, 8, 1, 1)
 	DCT4       = NewTransformType("DCT 4x4", 3, 3, 1, 1, 8, 8, 8, 8, 1, 2)
 	DCT16      = NewTransformType("DCT 16x16", 4, 4, 2, 2, 16, 16, 16, 16, 2, 0)
