@@ -21,14 +21,19 @@ var (
 		{764.3655248643528689, -0.92630200888366945, -0.9675229603596517, -0.27845290869168118},
 		{527.107573587542228, -1.4594385811273854, -1.450082094097871593, -1.5843722511996204}}
 
+	afvFreqs = []float64{0, 0, 0.8517778890324296, 5.37778436506804,
+		0, 0, 4.734747904497923, 5.449245381693219, 1.6598270267479331, 4, 7.275749096817861,
+		10.423227632456525, 2.662932286148962, 7.630657783650829, 8.962388608184032, 12.97166202570235}
+
 	seqA = []float64{-1.025, -0.78, -0.65012, -0.19041574084286472, -0.20819395464, -0.421064, -0.32733845535848671}
 	seqB = []float64{-0.3041958212306401, -0.3633036457487539, -0.35660379990111464, -0.3443074455424403, -0.33699592683512467, -0.30180866526242109, -0.27321683125358037}
 	seqC = []float64{-1.2, -1.2, -0.8, -0.7, -0.7, -0.4, -0.5}
 )
 
 type HFGlobal struct {
-	params  []DCTParam
-	weights [][][][]float32
+	params       []DCTParam
+	weights      [][][][]float32
+	numHFPresets int32
 }
 
 func init() {
@@ -231,6 +236,11 @@ func NewHFGlobalWithReader(reader *jxlio.Bitreader, frame *Frame) (*HFGlobal, er
 			return nil, err
 		}
 	}
+	numPresets, err := reader.ReadBits(uint32(util.CeilLog1p(frame.numGroups - 1)))
+	if err != nil {
+		return nil, err
+	}
+	hf.numHFPresets = 1 + int32(numPresets)
 	return hf, nil
 }
 
@@ -448,7 +458,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			hfg.weights[index][c] = w
 			break
 		case MODE_AFV:
-			hfg.weights = hfg.getAFVTransformationWeights(index, c)
+			hfg.weights = hfg.getAFVTransformWeights(index, c)
 			break
 		case MODE_RAW:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](tt.matrixHeight, tt.matrixWidth)
@@ -477,12 +487,102 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 	return nil
 }
 
+func quantMult(v float32) float32 {
+	if v >= 0 {
+		return 1 + v
+	}
+
+	return 1 / (1 - v)
+}
+
 func (hfg *HFGlobal) getDCTQuantWeights(height int32, width int32, params []float64) [][]float32 {
+
+	bands := make([]float32, len(params))
+	bands[0] = float32(params[0])
+	for i := 1; i < len(bands); i++ {
+		bands[i] = bands[i-1] * quantMult(float32(params[i]))
+	}
+
+	weights := util.MakeMatrix2D[float32](height, width)
+	scale := float32(len(bands)-1) / (math.Sqrt2 + 1e-6)
+	for y := int32(0); y < height; y++ {
+		dy := float32(y) * scale / float32(height-1)
+		dy2 := dy * dy
+		for x := int32(0); x < width; x++ {
+			dx := float32(x) * scale / float32(width-1)
+			dist := float32(math.Sqrt(float64(dx*dx + dy2)))
+			weights[y][x] = interpolate(dist, bands)
+		}
+	}
 
 	panic("not implemented")
 
 }
 
-func (hfg *HFGlobal) getAFVTransformationWeights(index int, c int) [][][][]float32 {
-	panic("not implemented")
+func interpolate(scaledPos float32, bands []float32) float32 {
+	l := len(bands) - 1
+	if l == 0 {
+		return bands[0]
+	}
+
+	scaledIndex := int(scaledPos)
+	fracIndex := scaledPos - float32(scaledIndex)
+	if scaledIndex+1 > l {
+		return bands[l]
+	}
+	a := bands[scaledIndex]
+	b := bands[scaledIndex+1]
+	return float32(a) * float32(math.Pow(float64(b/a), float64(fracIndex)))
+}
+
+func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, error) {
+
+	weights4x8 := hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
+	weights4x4 := hfg.getDCTQuantWeights(4, 4, hfg.params[index].params4x4[c])
+
+	low := 0.8517778890324296
+	high := 12.97166202570235
+
+	bands := make([]float32, 4)
+	bands[0] = hfg.params[index].param[c][5]
+	if bands[0] < 0 {
+		return nil, errors.New("Invalid band")
+	}
+	for i := 0; i < 4; i++ {
+		bands[i] = bands[i-1] * quantMult(hfg.params[index].param[c][i+5])
+		if bands[i] < 0 {
+			return nil, errors.New("Negative band value")
+		}
+	}
+	weight := util.MakeMatrix2D[float32](8, 8)
+	weight[0][0] = 1
+	weight[1][0] = hfg.params[index].param[c][0]
+	weight[0][1] = hfg.params[index].param[c][1]
+	weight[2][0] = hfg.params[index].param[c][2]
+	weight[0][2] = hfg.params[index].param[c][3]
+	weight[2][2] = hfg.params[index].param[c][4]
+
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 4; x++ {
+			if x < 2 && y < 2 {
+				continue
+			}
+			pos := (afvFreqs[y*4+x] - low) / (high - low)
+			weight[2*x][2*y] = interpolate(float32(pos), bands)
+		}
+		for x := 0; x < 8; x++ {
+			if x == 0 && y == 0 {
+				continue
+			}
+			weight[2*y+1][x] = weights4x8[y][x]
+		}
+		for x := 0; x < 4; x++ {
+			if x == 0 && y == 0 {
+				continue
+			}
+			weight[2*y+1][2*x+1] = weights4x4[y][x]
+		}
+	}
+
+	return weight, nil
 }
