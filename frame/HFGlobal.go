@@ -519,9 +519,7 @@ func (hfg *HFGlobal) getDCTQuantWeights(height int32, width int32, params []floa
 			weights[y][x] = interpolate(dist, bands)
 		}
 	}
-
-	panic("not implemented")
-
+	return weights
 }
 
 func interpolate(scaledPos float32, bands []float32) float32 {

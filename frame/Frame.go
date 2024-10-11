@@ -249,7 +249,6 @@ func (f *Frame) DecodeFrame(lfBuffer [][][]float32) error {
 
 	if f.Header.Encoding == VARDCT {
 		f.hfGlobal, err = NewHFGlobalWithReader(hfGlobalReader, f)
-		panic("VARDCT not implemented")
 	} else {
 		f.hfGlobal = nil
 	}
