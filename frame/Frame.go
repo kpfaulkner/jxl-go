@@ -249,6 +249,9 @@ func (f *Frame) DecodeFrame(lfBuffer [][][]float32) error {
 
 	if f.Header.Encoding == VARDCT {
 		f.hfGlobal, err = NewHFGlobalWithReader(hfGlobalReader, f)
+		if err != nil {
+			return err
+		}
 	} else {
 		f.hfGlobal = nil
 	}

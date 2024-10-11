@@ -458,6 +458,14 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			w[0][0] = 1.0
 			hfg.weights[index][c] = w
 			break
+		case MODE_DCT4_8:
+			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
+			w = hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
+			for y := 0; y < 8; y++ {
+				for x := 0; x < 8; x++ {
+					hfg.weights[index][c][y][x] = w[y/2][x/2]
+				}
+			}
 		case MODE_AFV:
 			afv, err := hfg.getAFVTransformWeights(index, c)
 			if err != nil {
@@ -551,7 +559,7 @@ func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, erro
 	if bands[0] < 0 {
 		return nil, errors.New("Invalid band")
 	}
-	for i := 0; i < 4; i++ {
+	for i := 1; i < 4; i++ {
 		bands[i] = bands[i-1] * quantMult(hfg.params[index].param[c][i+5])
 		if bands[i] < 0 {
 			return nil, errors.New("Negative band value")

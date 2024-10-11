@@ -2,6 +2,7 @@ package frame
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -18,7 +19,7 @@ type HFPass struct {
 func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32) (*HFPass, error) {
 	hfp := &HFPass{}
 	hfp.naturalOrder = util.MakeMatrix2D[util.Point](13, 0)
-
+	hfp.order = util.MakeMatrix3D[util.Point](13, 3, 0)
 	usedOrders, err := reader.ReadU32(05, 0, 19, 0, 0, 0, 0, 13)
 	if err != nil {
 		return nil, err
@@ -38,8 +39,12 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 			return nil, err
 		}
 		l := len(naturalOrder)
+		if b == 3 {
+			fmt.Printf("snoop\n")
+		}
+
 		for c := 0; c < 3; c++ {
-			if usedOrders&(1<<uint32(b)) == 0 {
+			if usedOrders&(1<<uint32(b)) != 0 {
 				hfp.order[b][c] = make([]util.Point, l)
 				perm, err := readPermutation(reader, stream, uint32(l), uint32(l/64))
 				if err != nil {
@@ -67,7 +72,7 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 }
 
 func (hfp *HFPass) getNaturalOrder(i int32) ([]util.Point, error) {
-	if hfp.naturalOrder[i] != nil {
+	if len(hfp.naturalOrder[i]) != 0 {
 		return hfp.naturalOrder[i], nil
 	}
 

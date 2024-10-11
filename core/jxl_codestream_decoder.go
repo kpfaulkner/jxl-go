@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"io"
 
@@ -102,15 +103,19 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			return nil, nil
 		}
 
-		_, err = jxl.bitReader.ShowBits(16)
+		var show uint64
+		show, err = jxl.bitReader.ShowBits(32)
+		fmt.Printf("show %d\n", show)
 		if err != nil {
 			return nil, err
 		}
+
 		level := int32(jxl.level)
 		imageHeader, err := bundle.ParseImageHeader(jxl.bitReader, level)
 		if err != nil {
 			return nil, err
 		}
+
 		jxl.imageHeader = imageHeader
 		if imageHeader.AnimationHeader != nil {
 			panic("dont care about animation for now")
