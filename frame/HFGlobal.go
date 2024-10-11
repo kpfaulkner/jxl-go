@@ -41,6 +41,7 @@ func init() {
 }
 
 func setupDefaultParams() {
+	defaultParams = make([]DCTParam, 17)
 	defaultParams[0] = DCTParam{
 		dctParam: [][]float64{{3150.0, 0.0, -0.4, -0.4, -0.4, -2.0},
 			{560.0, 0.0, -0.3, -0.3, -0.3, -0.3},
@@ -458,7 +459,11 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			hfg.weights[index][c] = w
 			break
 		case MODE_AFV:
-			hfg.weights = hfg.getAFVTransformWeights(index, c)
+			afv, err := hfg.getAFVTransformWeights(index, c)
+			if err != nil {
+				return err
+			}
+			hfg.weights[index][c] = afv
 			break
 		case MODE_RAW:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](tt.matrixHeight, tt.matrixWidth)
