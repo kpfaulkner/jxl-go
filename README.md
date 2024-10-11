@@ -6,6 +6,7 @@ JXL-Go is a Go library for reading of JPEG XL (JXL) images.
 Currently the focus is on reading lossless images but will expand to lossy images in the future.
 
 This is based off the JXL specs, JXL reference implementation (https://github.com/libjxl/libjxl) and the JXLatte ( https://github.com/Traneptora/jxlatte ) project
+(specifically look at JXLatte commit 0a435b2f441961f0afc48fd8af99e1cb241065b4 )
 
 Currently JXLatte takes about 397ms to decode test image where as JXL-Go is currently taking 650ms.
 

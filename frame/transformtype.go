@@ -1,12 +1,26 @@
 package frame
 
 import (
+	"errors"
+	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
+const (
+	MODE_LIBRARY = 0
+	MODE_HORNUSS = 1
+	MODE_DCT2    = 2
+	MODE_DCT4    = 3
+	MODE_DCT4_8  = 4
+	MODE_AFV     = 5
+	MODE_DCT     = 6
+	MODE_RAW     = 7
+)
+
 type TransformType struct {
+	parameterIndex  int32
 	dctSelectWidth  int32
 	dctSelectHeight int32
 	name            string
@@ -56,6 +70,7 @@ func NewTransformType(name string, transType int32, parameterIndex int32, dctSel
 	blockHeight int32, blockWidth int32, matrixHeight int32, matrixWidth int32, orderID int32, transformMethod int32) *TransformType {
 
 	tt := &TransformType{
+		parameterIndex:  parameterIndex,
 		dctSelectWidth:  dctSelectWidth,
 		dctSelectHeight: dctSelectHeight,
 		name:            name,
@@ -77,7 +92,38 @@ func NewTransformType(name string, transType int32, parameterIndex int32, dctSel
 	return tt
 }
 
+func (tt TransformType) isVertical() bool {
+	return tt.blockHeight > tt.blockWidth
+}
+
 func scaleF(c float64, b float64) float64 {
 	piSize := math.Pi * c
 	return (1.0 / math.Cos(piSize/(2*b)) * math.Cos(piSize/b) * math.Cos(2.0*piSize/(2.0*b)))
+}
+
+func validateIndex(index int32, mode int32) (bool, error) {
+	if mode < 0 || mode > 7 {
+		return false, errors.New("Invalid mode")
+	}
+	if mode == MODE_LIBRARY || mode == MODE_DCT || mode == MODE_RAW {
+		return true, nil
+	}
+
+	if index >= 0 && index <= 3 || index == 9 || index == 10 {
+		return true, nil
+	}
+
+	return false, errors.New(fmt.Sprintf("Invalid index %d for mode %d", index, mode))
+
+}
+
+func getHorizontalTransformType(index int32) (*TransformType, error) {
+
+	for _, tt := range allDCT {
+		if tt.parameterIndex == index && !tt.isVertical() {
+			return &tt, nil
+		}
+	}
+
+	return nil, errors.New("Unable to find horizontal transform type")
 }

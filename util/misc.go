@@ -42,6 +42,51 @@ func MakeMatrix4D[T any](a int, b int, c int, d int) [][][][]T {
 	return matrix
 }
 
+func CompareMatrix2D[T any](a [][]T, b [][]T, compare func(T, T) bool) bool {
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := 0; i < len(a); i++ {
+		if len(a[i]) != len(b[i]) {
+			return false
+		}
+		for j := 0; j < len(a[i]); j++ {
+			if !compare(a[i][j], b[i][j]) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func CompareMatrix3D[T any](a [][][]T, b [][][]T, compare func(T, T) bool) bool {
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := 0; i < len(a); i++ {
+		if len(a[i]) != len(b[i]) {
+			return false
+		}
+		for j := 0; j < len(a[i]); j++ {
+			if len(a[i][j]) != len(b[i][j]) {
+				return false
+			}
+			for k := 0; k < len(a[i][j]); k++ {
+				if !compare(a[i][j][k], b[i][j][k]) {
+					return false
+				}
+			}
+		}
+	}
+
+	return true
+}
+
 func FillFloat32(a []float32, fromIndex uint32, toIndex uint32, val float32) {
 	for i := fromIndex; i < toIndex; i++ {
 		a[i] = val
