@@ -831,3 +831,13 @@ func (f *Frame) getLFGroupForGroup(groupID int32) *LFGroup {
 	//idx := idx1*idx2 + idx3
 	return f.lfGroups[idx]
 }
+
+func (f *Frame) groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point {
+
+	gr := f.getGroupLocation(int32(groupID))
+	lf := f.getLFGroupLocation(lfGroupID)
+	gr2 := *gr
+	gr2.Y = gr.Y - lf.Y<<3
+	gr2.X = gr.X - lf.X<<3
+	return gr2
+}
