@@ -17,6 +17,14 @@ const (
 	MODE_AFV     = 5
 	MODE_DCT     = 6
 	MODE_RAW     = 7
+
+	METHOD_DCT     = 0
+	METHOD_DCT2    = 1
+	METHOD_DCT4    = 2
+	METHOD_HORNUSS = 3
+	METHOD_DCT8_4  = 4
+	METHOD_DCT4_8  = 5
+	METHOD_AFV     = 6
 )
 
 type TransformType struct {
@@ -94,6 +102,10 @@ func NewTransformType(name string, transType int32, parameterIndex int32, dctSel
 
 func (tt TransformType) isVertical() bool {
 	return tt.blockHeight > tt.blockWidth
+}
+
+func (tt TransformType) flip() bool {
+	return tt.blockHeight > tt.blockWidth || tt.transformMethod == METHOD_DCT && tt.blockHeight == tt.blockWidth
 }
 
 func scaleF(c float64, b float64) float64 {
