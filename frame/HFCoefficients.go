@@ -1,9 +1,26 @@
 package frame
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
+)
+
+var (
+	coeffFreqCtx = []int32{
+		-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+		15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22,
+		23, 23, 23, 23, 24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 26,
+		27, 27, 27, 27, 28, 28, 28, 28, 29, 29, 29, 29, 30, 30, 30, 30}
+	coeffNumNonzeroCtx = []int32{
+		-1, 0, 31, 62, 62, 93, 93, 93, 93, 123, 123, 123, 123, 152, 152,
+		152, 152, 152, 152, 152, 152, 180, 180, 180, 180, 180, 180, 180,
+		180, 180, 180, 180, 180, 206, 206, 206, 206, 206, 206, 206, 206,
+		206, 206, 206, 206, 206, 206, 206, 206, 206, 206, 206, 206, 206,
+		206, 206, 206, 206, 206, 206, 206, 206, 206, 206}
 )
 
 type HFCoefficients struct {
@@ -78,9 +95,75 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 			pixelGroupY := sGroupY << 3
 			pixelGroupX := sGroupX << 3
 			predicted := getPredictedNonZeros(nonZeros, c, sGroupY, sGroupX)
-			blockCtx := getBlockContext(c, tt.orderID, hfMult, lfIndex)
+			blockCtx := hf.getBlockContext(c, tt.orderID, hfMult, lfIndex)
+			nonZeroCtx := offset + hf.getNonZeroContext(predicted, blockCtx)
+			nonZero, err := hf.stream.ReadSymbol(reader, int(nonZeroCtx))
+			if err != nil {
+				return nil, err
+			}
+			nz := nonZeros[c]
+			for iy := int32(0); iy < tt.dctSelectHeight; iy++ {
+				for ix := int32(0); ix < tt.dctSelectWidth; ix++ {
+					nz[sGroupY+iy][sGroupX+ix] = (nonZero + numBlocks - 1) / numBlocks
+				}
+			}
+
+			// TODO(kpfaulkner) check this...  taken from JXLatte
+			if nonZero <= 0 {
+				continue
+			}
+			orderSize := int32(len(hfPass.order[tt.orderID][c]))
+			ucoeff := make([]int32, orderSize-numBlocks)
+			histCtx := offset + 458*blockCtx + 37*hf.hfctx.numClusters
+			for k := int32(0); i < len(ucoeff); k++ {
+				var prev int32
+				if k == 0 {
+					if nonZero > orderSize/16 {
+						prev = 0
+					} else {
+						prev = 1
+					}
+				} else {
+					if ucoeff[k-1] != 0 {
+						prev = 1
+					} else {
+						prev = 0
+					}
+				}
+				ctx := histCtx + hf.getCoefficientContext(k+numBlocks, nonZero, numBlocks, prev)
+				uc, err := hf.stream.ReadSymbol(reader, int(ctx))
+				if err != nil {
+					return nil, err
+				}
+				ucoeff[k] = uc
+				order := hfPass.order[tt.orderID][c][k+numBlocks]
+				posY := pixelGroupY
+				posX := pixelGroupX
+				if flip {
+					posY = order.X
+					posX = order.Y
+				} else {
+					posY = order.Y
+					posX = order.X
+				}
+				hf.quantizedCoeffs[c][posY][posX] = jxlio.UnpackSigned(uint32(ucoeff[k])) << shift
+				if ucoeff[k] != 0 {
+					nonZero--
+					if nonZero == 0 {
+						break
+					}
+				}
+			}
+
+			// TODO(kpfaulkner) check this...  taken from JXLatte
+			if nonZero != 0 {
+				return nil, errors.New("nonZero != 0")
+			}
 		}
 
+	}
+	if !hf.stream.ValidateFinalState() {
+		return nil, errors.New(fmt.Sprintf("Illegal final state in passgroup pass %d : group %d", pass, group))
 	}
 	return nil, nil
 }
@@ -102,6 +185,23 @@ func (hf *HFCoefficients) getBlockContext(c int, orderID int32, hfMult int32, lf
 	}
 	idx *= int(hf.hfctx.numLFContexts)
 	return int32(hf.hfctx.clusterMap[int32(idx)+lfIndex])
+}
+
+func (hf *HFCoefficients) getNonZeroContext(predicted int32, ctx int32) int32 {
+
+	if predicted > 64 {
+		predicted = 64
+	}
+	if predicted < 8 {
+		return ctx + hf.hfctx.numClusters*predicted
+	}
+	return ctx + hf.hfctx.numClusters*(4+predicted/2)
+}
+
+func (hf *HFCoefficients) getCoefficientContext(k int32, nonZeros int32, numBlocks int32, prev int32) int32 {
+	nonZeros = (nonZeros + numBlocks - 1) / numBlocks
+	k /= numBlocks
+	return (coeffNumNonzeroCtx[nonZeros]+coeffFreqCtx[k])*2 + prev
 }
 
 func getPredictedNonZeros(nonZeros [][][]int32, c int, y int32, x int32) int32 {

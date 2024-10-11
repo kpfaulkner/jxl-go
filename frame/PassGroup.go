@@ -10,7 +10,7 @@ type PassGroup struct {
 	frame                  *Frame
 	groupID                uint32
 	passID                 uint32
-	hfCoefficients         []HFCoefficients
+	hfCoefficients         *HFCoefficients
 	lfg                    *LFGroup
 }
 
@@ -21,12 +21,12 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 	pg.groupID = group
 	pg.passID = pass
 	if frame.Header.Encoding == VARDCT {
-		panic("VARDCT not implemented")
 		coeff, err := NewHFCoefficientsWithReader(reader, frame, pass, group)
 		if err != nil {
 			return nil, err
 		}
 		pg.hfCoefficients = coeff
+		panic("VARDCT not implemented")
 	} else {
 		pg.hfCoefficients = nil
 	}
