@@ -3,7 +3,6 @@ package frame
 import (
 	"bytes"
 	"errors"
-	"sync"
 
 	"golang.org/x/sync/errgroup"
 
@@ -166,8 +165,15 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 		temp = append(temp, uint32(i))
 	}
 
-	for i, index := range lehmer {
-		permutation[i] = temp[index]
+	//for i, index := range lehmer {
+	//	permutation[i] = temp[index]
+	//}
+
+	for i := 0; i < int(size); i++ {
+		index := lehmer[i]
+		val := temp[index]
+		temp = append(temp[:index], temp[index+1:]...)
+		permutation[i] = val
 	}
 
 	return permutation, nil
@@ -592,18 +598,19 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		iGroup int
 	}
 	inputChan := make(chan Inp, numPasses*numGroups)
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 
-	numberOfWorkers := 40
-	for i := 0; i < numberOfWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			for inp := range inputChan {
-				f.doProcessing(inp.iPass, inp.iGroup, passGroups)
-			}
-			defer wg.Done()
-		}()
-	}
+	//numberOfWorkers := 1
+	//for i := 0; i < numberOfWorkers; i++ {
+	//	wg.Add(1)
+	//	go func() {
+	//		for inp := range inputChan {
+	//			f.doProcessing(inp.iPass, inp.iGroup, passGroups)
+	//		}
+	//		defer wg.Done()
+	//	}()
+	//}
+
 	for pass0 := 0; pass0 < numPasses; pass0++ {
 		pass := pass0
 
@@ -614,35 +621,63 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			}
 		}
 	}
-	close(inputChan)
-	wg.Wait()
+	//close(inputChan)
+	//wg.Wait()
 
-	var eg errgroup.Group
+	for inp := range inputChan {
+		err := f.doProcessing(inp.iPass, inp.iGroup, passGroups)
+		if err != nil {
+			return err
+		}
+	}
+
+	//var eg errgroup.Group
+
+	//for pass := 0; pass < numPasses; pass++ {
+	//	j := 0
+	//	for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+	//		ii := i
+	//		jj := j
+	//		eg.Go(func() error {
+	//			channel := f.LfGlobal.gModular.Stream.channels[ii]
+	//			channel.allocate()
+	//			for group := 0; group < int(f.numGroups); group++ {
+	//				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
+	//				buff := newChannelInfo.buffer
+	//				for y := 0; y < len(buff); y++ {
+	//					idx := y + int(newChannelInfo.origin.Y)
+	//					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+	//				}
+	//			}
+	//			return nil
+	//		})
+	//		j++
+	//	}
+	//	if err := eg.Wait(); err != nil {
+	//		return err
+	//	}
+	//}
 
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
 			ii := i
 			jj := j
-			eg.Go(func() error {
-				channel := f.LfGlobal.gModular.Stream.channels[ii]
-				channel.allocate()
-				for group := 0; group < int(f.numGroups); group++ {
-					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
-					buff := newChannelInfo.buffer
-					for y := 0; y < len(buff); y++ {
-						idx := y + int(newChannelInfo.origin.Y)
-						copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
-					}
+			channel := f.LfGlobal.gModular.Stream.channels[ii]
+			channel.allocate()
+			for group := 0; group < int(f.numGroups); group++ {
+				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
+				buff := newChannelInfo.buffer
+				for y := 0; y < len(buff); y++ {
+					idx := y + int(newChannelInfo.origin.Y)
+					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 				}
-				return nil
-			})
+			}
+			return nil
 			j++
 		}
-		if err := eg.Wait(); err != nil {
-			return err
-		}
 	}
+
 	if f.Header.Encoding == VARDCT {
 		panic("VARDCT not implemented")
 	}
@@ -840,4 +875,19 @@ func (f *Frame) groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point {
 	gr2.Y = gr.Y - lf.Y<<3
 	gr2.X = gr.X - lf.X<<3
 	return gr2
+}
+
+func (f *Frame) getGroupSize(groupID int32) (util.Dimension, error) {
+
+	pos := f.getGroupLocation(groupID)
+	paddedSize, err := f.GetPaddedFrameSize()
+	if err != nil {
+		return util.Dimension{}, err
+	}
+	height := util.Min(f.Header.groupDim, paddedSize.Height-uint32(pos.Y)*f.Header.groupDim)
+	width := util.Min(f.Header.groupDim, paddedSize.Width-uint32(pos.X)*f.Header.groupDim)
+	return util.Dimension{
+		Height: height,
+		Width:  width,
+	}, nil
 }

@@ -52,7 +52,7 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 	header := frame.Header
 	shift := header.passes.shift[pass]
 	hfPass := hf.frame.passes[pass].hfPass
-	size, err := hf.frame.getLFGroupSize(int32(hf.groupID))
+	size, err := hf.frame.getGroupSize(int32(hf.groupID))
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +92,10 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 				continue
 			}
 
+			if i == 256 && c == 1 {
+				fmt.Printf("snoop\n")
+			}
+
 			pixelGroupY := sGroupY << 3
 			pixelGroupX := sGroupX << 3
 			predicted := getPredictedNonZeros(nonZeros, c, sGroupY, sGroupX)
@@ -115,7 +119,7 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 			orderSize := int32(len(hfPass.order[tt.orderID][c]))
 			ucoeff := make([]int32, orderSize-numBlocks)
 			histCtx := offset + 458*blockCtx + 37*hf.hfctx.numClusters
-			for k := int32(0); i < len(ucoeff); k++ {
+			for k := int32(0); k < int32(len(ucoeff)); k++ {
 				var prev int32
 				if k == 0 {
 					if nonZero > orderSize/16 {
@@ -155,6 +159,9 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 				}
 			}
 
+			if i == 256 && c == 1 {
+				fmt.Printf("snoop\n")
+			}
 			// TODO(kpfaulkner) check this...  taken from JXLatte
 			if nonZero != 0 {
 				return nil, errors.New("nonZero != 0")

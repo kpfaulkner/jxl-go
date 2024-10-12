@@ -262,19 +262,12 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 			return 0, err
 		}
 		state = state | int32(data)
-		fmt.Printf("last data read %d\n", data)
-		fmt.Printf("last state %d\n", state)
 	}
 
 	//stateObj.State = 0xFFFFFFFF & uint64(state)
 	stateObj.State = state
 	if lastStateObj != stateObj.State {
-		fmt.Printf("last stateObj %d\n", stateObj.State)
 		lastStateObj = stateObj.State
-
-		if stateObj.State == 1245184 {
-			fmt.Printf("snoop\n")
-		}
 	}
 	return symbol, nil
 }
