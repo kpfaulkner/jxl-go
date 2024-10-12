@@ -92,10 +92,6 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 				continue
 			}
 
-			if i == 256 && c == 1 {
-				fmt.Printf("snoop\n")
-			}
-
 			pixelGroupY := sGroupY << 3
 			pixelGroupX := sGroupX << 3
 			predicted := getPredictedNonZeros(nonZeros, c, sGroupY, sGroupX)
@@ -159,9 +155,6 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 				}
 			}
 
-			if i == 256 && c == 1 {
-				fmt.Printf("snoop\n")
-			}
 			// TODO(kpfaulkner) check this...  taken from JXLatte
 			if nonZero != 0 {
 				return nil, errors.New("nonZero != 0")

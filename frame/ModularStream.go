@@ -354,7 +354,6 @@ func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) e
 
 func (ms *ModularStream) applyTransforms() error {
 
-	// HERE  20240921
 	if ms.transformed {
 		return nil
 	}
@@ -362,8 +361,13 @@ func (ms *ModularStream) applyTransforms() error {
 	var err error
 	for i := len(ms.transforms) - 1; i >= 0; i-- {
 		if ms.transforms[i].tr == SQUEEZE {
+			fmt.Printf("orig channel length %d\n", len(ms.channels))
 			spa := ms.squeezeMap[i]
 			for j := len(spa) - 1; j >= 0; j-- {
+
+				if j == 3 {
+					fmt.Printf("snoop\n")
+				}
 				sp := spa[j]
 				begin := sp.beginC
 				end := begin + sp.numC - 1
@@ -387,7 +391,7 @@ func (ms *ModularStream) applyTransforms() error {
 					} else {
 
 						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Width), int32(ch.size.Height+residu.size.Height), ch.hshift, ch.vshift-1, false)
-						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
+						output, err = inverseVerticalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
 						}
@@ -398,6 +402,7 @@ func (ms *ModularStream) applyTransforms() error {
 					ms.channels = append(ms.channels[:offset], ms.channels[offset+1:]...)
 				}
 			}
+			fmt.Printf("channel length %d\n", len(ms.channels))
 		} else if ms.transforms[i].tr == RCT {
 
 			// HERE... need to implement
@@ -548,16 +553,21 @@ func (ms *ModularStream) applyTransforms() error {
 
 func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {
 
-	if channel.size.Height != orig.size.Height+res.size.Height ||
-		(orig.size.Height != res.size.Height && orig.size.Height != 1+res.size.Height) ||
-		channel.size.Width != orig.size.Width || res.size.Width != orig.size.Width {
+	//if channel.size.Height != orig.size.Height+res.size.Height ||
+	//	(orig.size.Height != res.size.Height && orig.size.Height != 1+res.size.Height) ||
+	//	channel.size.Width != orig.size.Width || res.size.Width != orig.size.Width {
+	//	return nil, errors.New("Corrupted squeeze transform")
+	//}
+	if channel.size.Width != orig.size.Width+res.size.Width ||
+		(orig.size.Width != res.size.Width && orig.size.Width != 1+res.size.Width) ||
+		channel.size.Height != orig.size.Height || res.size.Height != orig.size.Height {
 		return nil, errors.New("Corrupted squeeze transform")
 	}
 
 	channel.allocate()
 
 	for y := uint32(0); y < channel.size.Height; y++ {
-		for x := uint32(0); x < channel.size.Width; x++ {
+		for x := uint32(0); x < res.size.Width; x++ {
 			avg := orig.buffer[y][x]
 			residu := res.buffer[y][x]
 			var nextAvg int32
@@ -568,7 +578,7 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 			}
 			var left int32
 			if x > 0 {
-				left = orig.buffer[y][2*x-1]
+				left = channel.buffer[y][2*x-1]
 			} else {
 				nextAvg = avg
 			}
@@ -583,6 +593,55 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 		for y := uint32(0); y < channel.size.Height; y++ {
 			channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
 		}
+	}
+
+	return channel, nil
+}
+
+func inverseVerticalSqueeze(channel *ModularChannel, orig *ModularChannel, res *ModularChannel) (*ModularChannel, error) {
+
+	if channel.size.Height != orig.size.Height+res.size.Height ||
+		(orig.size.Height != res.size.Height && orig.size.Height != 1+res.size.Height) ||
+		channel.size.Width != orig.size.Width || res.size.Width != orig.size.Width {
+		return nil, errors.New("Corrupted squeeze transform")
+	}
+
+	channel.allocate()
+
+	for y := uint32(0); y < res.size.Height; y++ {
+		for x := uint32(0); x < channel.size.Width; x++ {
+			avg := orig.buffer[y][x]
+			residu := res.buffer[y][x]
+			var nextAvg int32
+			if y+1 < orig.size.Height {
+				nextAvg = orig.buffer[y+1][x]
+			} else {
+				nextAvg = avg
+			}
+			var top int32
+			if y > 0 {
+				top = channel.buffer[2*y-1][x]
+			} else {
+				nextAvg = avg
+			}
+			diff := residu + tendancy(top, avg, nextAvg)
+			first := avg + diff/2
+			channel.buffer[2*y][x] = first
+			channel.buffer[2*y+1][x] = first - diff
+		}
+	}
+	if orig.size.Height > res.size.Height {
+		//xs := 2 * res.size.Width
+		//for y := uint32(0); y < channel.size.Height; y++ {
+		//	channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
+		//}
+		//copy(channel.buffer[2*res.size.Height], orig.buffer[res.size.Height])
+
+		xs := 2 * res.size.Width
+		for y := uint32(0); y < channel.size.Height; y++ {
+			channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
+		}
+
 	}
 
 	return channel, nil

@@ -3,6 +3,7 @@ package frame
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"golang.org/x/sync/errgroup"
 
@@ -442,6 +443,7 @@ func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
 		for j := 0; j < len(lfReplacementChannelIndicies); j++ {
 			index := lfReplacementChannelIndicies[j]
 			channel := f.LfGlobal.gModular.Stream.channels[index]
+			channel.allocate()
 			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
 			newChannel := newChannelInfo.buffer
 			for y := 0; y < len(newChannel); y++ {
@@ -562,8 +564,11 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 
 	replaced := []ModularChannel{}
 	for _, r := range f.passes[iPass].replacedChannels {
-		mc := NewModularChannelFromChannel(r)
-		replaced = append(replaced, *mc)
+		// remove any replacedChannels that are nil/empty
+		if r.size.Width != 0 && r.size.Height != 0 {
+			mc := NewModularChannelFromChannel(r)
+			replaced = append(replaced, *mc)
+		}
 	}
 	for i := 0; i < len(replaced); i++ {
 		info := replaced[i]
@@ -621,7 +626,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			}
 		}
 	}
-	//close(inputChan)
+	close(inputChan)
 	//wg.Wait()
 
 	for inp := range inputChan {
@@ -661,6 +666,9 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+			if f.passes[pass].replacedChannels[i].size.Width == 0 || f.passes[pass].replacedChannels[i].size.Height == 0 {
+				continue
+			}
 			ii := i
 			jj := j
 			channel := f.LfGlobal.gModular.Stream.channels[ii]
@@ -670,15 +678,25 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
 					idx := y + int(newChannelInfo.origin.Y)
+					//copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+					if y == 8 {
+						fmt.Printf("snoop\n")
+					}
 					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 				}
 			}
-			return nil
 			j++
 		}
 	}
 
 	if f.Header.Encoding == VARDCT {
+		// TODO(kpfaulkner) 20241013
+
+		// get floating point version of frame buffer
+		buffers := util.MakeMatrix3D[float32](3, 0, 0)
+		for c := 0; c < 3; c++ {
+
+		}
 		panic("VARDCT not implemented")
 	}
 

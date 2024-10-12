@@ -26,7 +26,6 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 			return nil, err
 		}
 		pg.hfCoefficients = coeff
-		panic("VARDCT not implemented")
 	} else {
 		pg.hfCoefficients = nil
 	}

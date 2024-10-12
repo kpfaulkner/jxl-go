@@ -64,8 +64,19 @@ func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vsh
 }
 
 func (mc *ModularChannel) allocate() {
+	if mc.buffer != nil && len(mc.buffer) != 0 {
+		return
+	}
+
+	fmt.Printf("ModularChannel allocate width %d height %d\n", mc.size.Width, mc.size.Height)
+
+	if mc.size.Width == 62135 && mc.size.Height == 2 {
+		fmt.Printf("snoop\n")
+	}
+
 	if mc.size.Height == 0 || mc.size.Width == 0 {
-		mc.buffer = make([][]int32, 0)
+		//mc.buffer = make([][]int32, 0)
+		mc.buffer = util.MakeMatrix2D[int32](0, 0)
 	} else {
 		mc.buffer = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
 	}
@@ -418,7 +429,6 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		mc.weight = make([]int32, 4)
 	}
 
-	zeroCount := 0
 	var err error
 	for y0 := uint32(0); y0 < mc.size.Height; y0++ {
 		y := int32(y0)
@@ -444,11 +454,6 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			diff, err := stream.ReadSymbolWithMultiplier(reader, int(leafNode.context), distMultiplier)
 			if err != nil {
 				return err
-			}
-			if diff != 0 {
-				fmt.Printf("X %d : Y %d : symbol %d\n", x, y, diff)
-			} else {
-				zeroCount++
 			}
 
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
