@@ -35,10 +35,11 @@ type Frame struct {
 	tocLengths       []uint32
 
 	lfGroups []*LFGroup
-	// unsure about this
-	buffers    [][]uint8
-	decoded    bool
-	LfGlobal   *LFGlobal
+	buffers  [][]uint8
+	decoded  bool
+	LfGlobal *LFGlobal
+
+	// for final image? channel/y/x ?
 	Buffer     [][][]float32
 	globalTree *MATree
 	hfGlobal   *HFGlobal
@@ -165,10 +166,6 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 	for i := 0; i < int(size); i++ {
 		temp = append(temp, uint32(i))
 	}
-
-	//for i, index := range lehmer {
-	//	permutation[i] = temp[index]
-	//}
 
 	for i := 0; i < int(size); i++ {
 		index := lehmer[i]
@@ -690,17 +687,23 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	}
 
 	if f.Header.Encoding == VARDCT {
-		// TODO(kpfaulkner) 20241013
-
-		// get floating point version of frame buffer
-		buffers := util.MakeMatrix3D[float32](3, 0, 0)
-		for c := 0; c < 3; c++ {
-
-		}
+		//// TODO(kpfaulkner) 20241013
+		//
+		//// get floating point version of frame buffer
+		//buffers := util.MakeMatrix3D[float32](3, 0, 0)
+		//for c := 0; c < 3; c++ {
+		//	buffers[c] = castToFloatBuffer(f.Buffer[c])
+		//}
 		panic("VARDCT not implemented")
 	}
 
 	return nil
+}
+
+// convert
+func castToFloatBuffer(buffer [][]float32) [][]float32 {
+
+	return buffer
 }
 
 func (f *Frame) invertSubsampling() {
