@@ -204,6 +204,10 @@ func (hf *HFCoefficients) getCoefficientContext(k int32, nonZeros int32, numBloc
 	return (coeffNumNonzeroCtx[nonZeros]+coeffFreqCtx[k])*2 + prev
 }
 
+func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
+	panic("not implemented")
+}
+
 func getPredictedNonZeros(nonZeros [][][]int32, c int, y int32, x int32) int32 {
 	if x == 0 && y == 0 {
 		return 32

@@ -9,6 +9,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
+	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -40,7 +41,7 @@ type Frame struct {
 	LfGlobal *LFGlobal
 
 	// for final image? channel/y/x ?
-	Buffer     [][][]float32
+	Buffer     []image.ImageBuffer
 	globalTree *MATree
 	hfGlobal   *HFGlobal
 	passes     []Pass
@@ -208,7 +209,7 @@ func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
 	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), index), nil
 }
 
-func (f *Frame) DecodeFrame(lfBuffer [][][]float32) error {
+func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 
 	if f.decoded {
 		return nil
@@ -229,16 +230,29 @@ func (f *Frame) DecodeFrame(lfBuffer [][][]float32) error {
 		return err
 	}
 
-	f.Buffer = make([][][]float32, f.GetColorChannelCount()+len(f.globalMetadata.ExtraChannelInfo))
+	numColours := f.GetColorChannelCount()
+	f.Buffer = make([]image.ImageBuffer, numColours+len(f.globalMetadata.ExtraChannelInfo))
+
 	for c := 0; c < len(f.Buffer); c++ {
-		if c < 3 && c < f.GetColorChannelCount() {
-			//shiftedSize := paddedSize.ShiftRightWithIntPoint(f.Header.jpegUpsampling[c])
-			shiftedHeight := paddedSize.Height >> f.Header.jpegUpsamplingY[c]
-			shiftedWidth := paddedSize.Width >> f.Header.jpegUpsamplingX[c]
-			f.Buffer[c] = util.MakeMatrix2D[float32](int(shiftedHeight), int(shiftedWidth))
-		} else {
-			f.Buffer[c] = util.MakeMatrix2D[float32](int(paddedSize.Height), int(paddedSize.Width))
+		channelSize := util.Dimension{
+			Width:  paddedSize.Width,
+			Height: paddedSize.Height,
 		}
+		if c < 3 && c < f.GetColorChannelCount() {
+			channelSize.Height >>= f.Header.jpegUpsamplingY[c]
+			channelSize.Width >>= f.Header.jpegUpsamplingX[c]
+		}
+		var isFloat bool
+		if c < f.GetColorChannelCount() {
+			isFloat = f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT ||
+				f.globalMetadata.BitDepth.ExpBits != 0
+		} else {
+			isFloat = f.globalMetadata.ExtraChannelInfo[c-numColours].BitDepth.ExpBits != 0
+		}
+		if isFloat {
+
+		}
+		f.Buffer[c] = *image.NewImageBuffer(channelSize.Height, channelSize.Width)
 	}
 
 	err = f.decodeLFGroups(lfBuffer)
@@ -305,32 +319,25 @@ func (f *Frame) DecodeFrame(lfBuffer [][][]float32) error {
 			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.ExtraChannelInfo[ecIndex].BitDepth.BitsPerSample))
 		}
 
-		cOutSection := f.Buffer[cOut]
-
-		// Have tried getting local references to commonly refered arrays (eg modularBufferCin := modularBuffer[cIn])
-		// but had negative performance... unsure why.
 		if isModularXYB && cIn == 2 {
-			for y := uint32(0); y < f.height; y++ {
+			outBuffer := f.Buffer[cOut].FloatBuffer
+			for y := uint32(0); y < f.bounds.Size.Height; y++ {
+				for x := uint32(0); x < f.bounds.Size.Width; x++ {
+					outBuffer[y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+				}
+			}
+		} else if f.Buffer[cOut].IsFloat() {
 
-				// get reference to sub slices to do not have to repeat lookups.
-				row := cOutSection[y]
-				for x := uint32(0); x < f.width; x++ {
-					row[x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+			outBuffer := f.Buffer[cOut].FloatBuffer
+			for y := uint32(0); y < f.bounds.Size.Height; y++ {
+				for x := uint32(0); x < f.bounds.Size.Width; x++ {
+					outBuffer[y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
 				}
 			}
 		} else {
-			// FIXME(kpfaulkner) change Matrices to be 1D slice with helper functions
-			// NOTE: have tried using goroutine pool to process each row concurrently, didn't really make a
-			// noticeable difference, so have reverted back to simple embedded loops.
-			height := f.bounds.Size.Height
-			for y := uint32(0); y < height; y++ {
-				modularBufferY := modularBuffer[cIn][y]
-				width := f.bounds.Size.Width
-				// get reference to sub slices to do not have to repeat lookups.
-				row := cOutSection[y]
-				for x := uint32(0); x < width; x++ {
-					row[x] = scaleFactor * float32(modularBufferY[x])
-				}
+			outBuffer := f.Buffer[cOut].IntBuffer
+			for y := uint32(0); y < f.bounds.Size.Height; y++ {
+				copy(outBuffer[y], modularBuffer[cIn][y])
 			}
 		}
 	}
@@ -387,7 +394,7 @@ func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
 	}
 }
 
-func (f *Frame) decodeLFGroups(lfBuffer [][][]float32) error {
+func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 
 	lfReplacementChannels := []*ModularChannel{}
 	lfReplacementChannelIndicies := []int{}
@@ -687,23 +694,29 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	}
 
 	if f.Header.Encoding == VARDCT {
-		//// TODO(kpfaulkner) 20241013
-		//
-		//// get floating point version of frame buffer
-		//buffers := util.MakeMatrix3D[float32](3, 0, 0)
-		//for c := 0; c < 3; c++ {
-		//	buffers[c] = castToFloatBuffer(f.Buffer[c])
-		//}
-		panic("VARDCT not implemented")
+
+		// get floating point version of frame buffer
+		buffers := util.MakeMatrix3D[float32](3, 0, 0)
+		for c := 0; c < 3; c++ {
+			f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+			buffers[c] = f.Buffer[c].FloatBuffer
+		}
+
+		for pass := 0; pass < numPasses; pass++ {
+			for group := 0; group < numGroups; group++ {
+				passGroup := passGroups[pass][group]
+				var prev *PassGroup
+				if pass > 0 {
+					prev = &passGroups[pass-1][group]
+				} else {
+					prev = nil
+				}
+				passGroup.invertVarDCT(buffers, prev)
+			}
+		}
 	}
 
 	return nil
-}
-
-// convert
-func castToFloatBuffer(buffer [][]float32) [][]float32 {
-
-	return buffer
 }
 
 func (f *Frame) invertSubsampling() {

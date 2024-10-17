@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 
+	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -14,7 +15,7 @@ type LFCoefficients struct {
 	frame          *Frame
 }
 
-func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Frame, lfBuffer [][][]float32) (*LFCoefficients, error) {
+func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Frame, lfBuffer []image.ImageBuffer) (*LFCoefficients, error) {
 	lf := &LFCoefficients{}
 
 	lf.frame = frame
@@ -41,9 +42,11 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame
 		pX := pos.X << 8
 		lf.dequantLFCoeff = dequantLFCoeff
 		for c := 0; c < 3; c++ {
+			lfBuffer[c].CastToFloatIfInt(^(^0 << frame.globalMetadata.BitDepth.BitsPerSample))
+			b := lfBuffer[c].FloatBuffer
 			for y := int32(0); y < int32(len(dequantLFCoeff[c])); y++ {
 				for x, d := pX, 0; x < pX+int32(len(dequantLFCoeff[c][y])); x, d = x+1, d+1 {
-					dequantLFCoeff[c][y][d] = lfBuffer[c][pY+y][x]
+					dequantLFCoeff[c][y][d] = b[pY+y][x]
 				}
 			}
 		}

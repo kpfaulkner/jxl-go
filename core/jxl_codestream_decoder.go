@@ -9,6 +9,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/frame"
+	image2 "github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -31,6 +32,9 @@ type JXLCodestreamDecoder struct {
 	level          int
 	imageHeader    *bundle.ImageHeader
 	options        options.JXLOptions
+	reference      [][]image2.ImageBuffer
+	lfBuffer       [][]image2.ImageBuffer
+	canvas         []image2.ImageBuffer
 }
 
 func NewJXLCodestreamDecoder(br *jxlio.Bitreader, options *options.JXLOptions) *JXLCodestreamDecoder {
@@ -130,9 +134,9 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		frameCount := 0
-		reference := make([][][][]float32, 4)
+		//reference := make([][][][]float32, 4)
 		header := frame.FrameHeader{}
-		lfBuffer := make([][][][]float32, 5)
+		//lfBuffer := make([][][][]float32, 5)
 
 		var matrix *color.OpsinInverseMatrix
 		if imageHeader.XybEncoded {
@@ -143,7 +147,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			}
 		}
 
-		var canvas [][][]float32
+		var canvas []image2.ImageBuffer
 		if !jxl.options.ParseOnly {
 			canvas = util.MakeMatrix3D[float32](imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo), int(imageHeader.Size.Height), int(imageHeader.Size.Width))
 		}
@@ -158,7 +162,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			}
 			frameCount++
 
-			if lfBuffer[header.LfLevel] == nil && header.Flags&frame.USE_LF_FRAME != 0 {
+			if jxl.lfBuffer[header.LfLevel] == nil && header.Flags&frame.USE_LF_FRAME != 0 {
 				return nil, errors.New("LF level too large")
 			}
 
@@ -171,13 +175,13 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 				imgFrame.SkipFrameData()
 				continue
 			}
-			err = imgFrame.DecodeFrame(lfBuffer[header.LfLevel])
+			err = imgFrame.DecodeFrame(jxl.lfBuffer[header.LfLevel])
 			if err != nil {
 				return nil, err
 			}
 
 			if header.LfLevel > 0 {
-				lfBuffer[header.LfLevel-1] = imgFrame.Buffer
+				jxl.lfBuffer[header.LfLevel-1] = imgFrame.Buffer
 			}
 			save := (header.SaveAsReference != 0 || header.Duration == 0) && !header.IsLast && header.FrameType != frame.LF_FRAME
 			if imgFrame.IsVisible() {
@@ -197,10 +201,10 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			}
 
 			if save && header.SaveBeforeCT {
-				reference[header.SaveAsReference] = imgFrame.Buffer
+				jxl.reference[header.SaveAsReference] = imgFrame.Buffer
 			}
 
-			err = jxl.computePatches(reference, imgFrame)
+			err = jxl.computePatches(imgFrame)
 			if err != nil {
 				return nil, err
 			}
@@ -227,7 +231,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			if header.FrameType == frame.REGULAR_FRAME || header.FrameType == frame.SKIP_PROGRESSIVE {
 				found := false
 				for i := uint32(0); i < 4; i++ {
-					if util.Matrix3Equal(reference[i], canvas) && i != header.SaveAsReference {
+					if image2.ImageBufferEquals(jxl.reference[i], canvas) && i != header.SaveAsReference {
 						found = true
 						break
 					}
@@ -296,7 +300,7 @@ func (jxl *JXLCodestreamDecoder) readSignatureAndBoxes() error {
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) computePatches(references [][][][]float32, frame *frame.Frame) error {
+func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 
 	header := frame.Header
 	frameBuffer := frame.Buffer
@@ -308,7 +312,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(references [][][][]float32, fram
 		if patch.Ref > 3 {
 			return errors.New("patch out of range")
 		}
-		refBuffer := references[patch.Ref]
+		refBuffer := jxl.reference[patch.Ref]
 		if refBuffer == nil || len(refBuffer) == 0 {
 			continue
 		}
@@ -468,7 +472,7 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference [][][][]float32, imgFrame *frame.Frame) error {
+func (jxl *JXLCodestreamDecoder) blendFrame(canvas [][][]float32, reference []image2.ImageBuffer, imgFrame *frame.Frame) error {
 
 	width := jxl.imageHeader.Size.Width
 	height := jxl.imageHeader.Size.Height

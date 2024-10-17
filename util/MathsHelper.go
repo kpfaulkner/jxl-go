@@ -309,3 +309,7 @@ func DeepCopy3[T comparable](a [][][]T) [][][]T {
 	}
 	return matrixCopy
 }
+
+func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, size Dimension, scratchSpace0 [][]float32, scratchSpace1 [][]float32, transposed bool) {
+	panic("not implemented")
+}

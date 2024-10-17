@@ -1,6 +1,7 @@
 package frame
 
 import (
+	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -15,7 +16,7 @@ type LFGroup struct {
 	modularLFGroup *ModularStream
 }
 
-func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []ModularChannel, lfBuffer [][][]float32) (*LFGroup, error) {
+func NewLFGroup(reader *jxlio.Bitreader, parent *Frame, index int32, replaced []ModularChannel, lfBuffer []image.ImageBuffer) (*LFGroup, error) {
 	lfg := &LFGroup{
 		frame:     parent,
 		lfGroupID: index,

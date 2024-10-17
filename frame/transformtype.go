@@ -108,6 +108,14 @@ func (tt TransformType) flip() bool {
 	return tt.blockHeight > tt.blockWidth || tt.transformMethod == METHOD_DCT && tt.blockHeight == tt.blockWidth
 }
 
+func (tt TransformType) getPixelSize() util.Dimension {
+	return util.Dimension{
+		Width:  uint32(tt.blockWidth),
+		Height: uint32(tt.blockHeight),
+	}
+
+}
+
 func scaleF(c float64, b float64) float64 {
 	piSize := math.Pi * c
 	return (1.0 / math.Cos(piSize/(2*b)) * math.Cos(piSize/b) * math.Cos(2.0*piSize/(2.0*b)))
