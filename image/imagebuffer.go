@@ -22,6 +22,13 @@ func NewImageBuffer(t int, height int32, width int32) *ImageBuffer {
 	panic("not implemented")
 }
 
+func NewImageBufferFromInts(buffer [][]int32) *ImageBuffer {
+	panic("not implemented")
+}
+func NewImageBufferFromFloats(buffer [][]float32) *ImageBuffer {
+	panic("not implemented")
+}
+
 // Equals compares two ImageBuffers and returns true if they are equal.
 func (ib *ImageBuffer) Equals(other ImageBuffer) bool {
 

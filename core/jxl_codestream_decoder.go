@@ -119,8 +119,9 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		jxl.imageHeader = imageHeader
+
+		jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
 		if imageHeader.AnimationHeader != nil {
 			panic("dont care about animation for now")
 		}
@@ -134,9 +135,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		frameCount := 0
-		//reference := make([][][][]float32, 4)
 		header := frame.FrameHeader{}
-		//lfBuffer := make([][][][]float32, 5)
 
 		var matrix *color.OpsinInverseMatrix
 		if imageHeader.XybEncoded {
@@ -148,9 +147,6 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		var canvas []image2.ImageBuffer
-		if !jxl.options.ParseOnly {
-			canvas = util.MakeMatrix3D[float32](imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo), int(imageHeader.Size.Height), int(imageHeader.Size.Width))
-		}
 		invisibleFrames := int64(0)
 		visibleFrames := 0
 
@@ -236,20 +232,21 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 						break
 					}
 				}
+
 				if found {
-					canvas = util.DeepCopy3[float32](canvas)
+					// unsure if we really need a copy of the canvas?  TODO(kpfaulkner) check this!
 				}
-				err = jxl.blendFrame(canvas, reference, imgFrame)
+				err = jxl.blendFrame(canvas, imgFrame)
 				if err != nil {
 					return nil, err
 				}
 			}
 
 			if save && !header.SaveBeforeCT {
-				reference[header.SaveAsReference] = canvas
+				jxl.reference[header.SaveAsReference] = canvas
 			}
 
-			if header.IsLast {
+			if header.IsLast && header.Duration == 0 {
 				break
 			}
 		}
@@ -265,7 +262,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		orientation := imageHeader.Orientation
-		orientedCanvas := util.MakeMatrix3D[float32](len(canvas), 0, 0)
+		orientedCanvas := make([]image2.ImageBuffer, len(canvas))
 		for i := 0; i < len(orientedCanvas); i++ {
 			orientedCanvas[i], err = jxl.transposeBuffer(canvas[i], orientation)
 			if err != nil {
@@ -599,34 +596,12 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 
 		switch info.Mode {
 		case frame.BLEND_ADD:
-			for y := int32(0); y < frameHeight; y++ {
-				cy := y + frameStartY
-				for x := int32(0); x < frameWidth; x++ {
-					cx := x + frameStartX
-					canvas[c][cy][cx] = ref[cy][cx] + frameBuffer[y][x]
-				}
-			}
+			panic("not implemented")
 			break
 		case frame.BLEND_MULT:
-			for y := int32(0); y < frameHeight; y++ {
-				cy := y + frameStartY
-				if ref != nil {
-					for x := int32(0); x < frameWidth; x++ {
-						cx := x + frameStartX
-						newSample := frameBuffer[y][x]
-						if info.Clamp {
-							newSample = util.Clamp3Float32(newSample, 0.0, 1.0)
-						}
-						canvas[c][cy][cx] = newSample * ref[cy][cx]
-					}
-				} else {
-					util.FillFloat32(canvas[c][cy], uint32(frameStartX), uint32(frameWidth), 0.0)
-				}
-			}
+			panic("not implemented")
 			break
 		case frame.BLEND_BLEND:
-			var oaf [][]float32
-			var naf [][]float32
 			if hasAlpha {
 				oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
 				naf = frameBuffers[frameColours+int(info.AlphaChannel)].FloatBuffer
@@ -635,10 +610,10 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 				naf = nil
 			}
 
-			for y := 0; y < frameHeight; y++ {
+			for y := int32(0); y < frameHeight; y++ {
 				cy := y + frameStartY
 				fy := y + frameOffsetY
-				for x := 0; x < frameWidth; x++ {
+				for x := int32(0); x < frameWidth; x++ {
 					cx := x + frameStartX
 					fx := x + frameOffsetX
 					var oldAlpha float32
@@ -657,10 +632,62 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 							newAlpha = 1
 						}
 					}
-					alpha := 1
+					alpha := float32(1)
 					oldSample := rf[cy][cx]
 					newSample := ff[fy][fx]
+					if isAlpha || hasAlpha && !premult {
+						alpha = oldAlpha + newAlpha*(1-oldAlpha)
+					}
+					if isAlpha {
+						cf[cy][cx] = alpha
+					} else if !hasAlpha || premult {
+						cf[cy][cx] = newSample + oldSample*(1-newAlpha)
+					} else {
+						cf[cy][cx] = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / alpha
+					}
+				}
+			}
+			break
+		case frame.BLEND_MULADD:
+			if hasAlpha {
+				oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
+				naf = frameBuffers[frameColours+int(info.AlphaChannel)].FloatBuffer
+			} else {
+				oaf = nil
+				naf = nil
+			}
 
+			for y := int32(0); y < frameHeight; y++ {
+				cy := y + frameStartY
+				fy := y + frameOffsetY
+				for x := int32(0); x < frameWidth; x++ {
+					cx := x + frameStartX
+					fx := x + frameOffsetX
+					var oldAlpha float32
+					var newAlpha float32
+					if hasAlpha {
+						oldAlpha = oaf[cy][cx]
+						newAlpha = naf[fy][fx]
+					} else {
+						oldAlpha = 1.0
+						newAlpha = 1.0
+					}
+					if info.Clamp {
+						if newAlpha < 0 {
+							newAlpha = 0
+						} else if newAlpha > 1 {
+							newAlpha = 1
+						}
+					}
+					oldSample := rf[cy][cx]
+					newSample := ff[fy][fx]
+					alpha := float32(0)
+					if isAlpha {
+						alpha = oldAlpha
+					} else {
+						alpha = oldSample + newAlpha*newSample
+					}
+					cf[cy][cx] = alpha
 				}
 			}
 			break
@@ -692,7 +719,98 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas *image2.ImageBuffer, start 
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) transposeBuffer(src [][]float32, orientation uint32) ([][]float32, error) {
+func (jxl *JXLCodestreamDecoder) transposeBuffer(src image2.ImageBuffer, orientation uint32) (image2.ImageBuffer, error) {
+	if src.IsInt() {
+		ints, err := jxl.transposeBufferInt(src.IntBuffer, orientation)
+		if err != nil {
+			return image2.ImageBuffer{}, err
+		}
+		return *image2.NewImageBufferFromInts(ints), nil
+	} else {
+		floats, err := jxl.transposeBufferFloat(src.FloatBuffer, orientation)
+		if err != nil {
+			return image2.ImageBuffer{}, err
+		}
+		return *image2.NewImageBufferFromFloats(floats), nil
+	}
+
+	return image2.ImageBuffer{}, errors.New("unable to transpose buffer")
+}
+
+func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation uint32) ([][]int32, error) {
+
+	srcHeight := len(src)
+	srcWidth := len(src[0])
+	srcH1 := srcHeight - 1
+	srcW1 := srcWidth - 1
+
+	var dest [][]int32
+	if orientation > 4 {
+		dest = util.MakeMatrix2D[int32](srcWidth, srcHeight)
+	} else if orientation > 1 {
+		dest = util.MakeMatrix2D[int32](srcHeight, srcWidth)
+	} else {
+		dest = nil
+	}
+
+	switch orientation {
+	case 1:
+		return src, nil
+	case 2:
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[y][srcW1-x] = src[y][x]
+			}
+		}
+		return dest, nil
+	case 3:
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[srcH1-y][srcW1-x] = src[y][x]
+			}
+		}
+		return dest, nil
+	case 4:
+		for y := 0; y < srcHeight; y++ {
+			copy(dest[srcH1-y], src[y])
+		}
+		return dest, nil
+	case 5:
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[x][y] = src[y][x]
+			}
+		}
+		return dest, nil
+	case 6:
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[x][srcH1-y] = src[y][x]
+			}
+		}
+		return dest, nil
+	case 7:
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[srcW1-x][srcH1-y] = src[y][x]
+			}
+		}
+		return dest, nil
+	case 8:
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[srcW1-x][y] = src[y][x]
+			}
+		}
+		return dest, nil
+	default:
+		return nil, errors.New("Invalid orientation")
+
+	}
+	return nil, nil
+}
+
+func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientation uint32) ([][]float32, error) {
 
 	size := util.IntPointSizeOf(src)
 	var dest [][]float32

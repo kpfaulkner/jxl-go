@@ -815,17 +815,6 @@ func (f *Frame) InitializeNoise(seed0 int64) error {
 	//}
 }
 
-func (f *Frame) GetImageSample(c int32, x int32, y int32) float32 {
-
-	frameY := y - f.bounds.Origin.Y
-	frameX := x - f.bounds.Origin.X
-
-	if frameY < 0 || frameX < 0 || frameY >= int32(f.bounds.Size.Height) || frameX >= int32(f.bounds.Size.Width) {
-		return 0
-	}
-	return f.Buffer[c][frameY][frameX]
-}
-
 func (f *Frame) Upsample() error {
 	var err error
 	for c := 0; c < len(f.Buffer); c++ {
@@ -842,7 +831,7 @@ func (f *Frame) Upsample() error {
 	return nil
 }
 
-func (f *Frame) performUpsampling(buffer [][]float32, c int) ([][]float32, error) {
+func (f *Frame) performUpsampling(buffer image.ImageBuffer, c int) (image.ImageBuffer, error) {
 
 	colour := f.GetColorChannelCount()
 	var k uint32
