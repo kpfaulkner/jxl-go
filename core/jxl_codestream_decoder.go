@@ -41,7 +41,7 @@ func NewJXLCodestreamDecoder(br *jxlio.Bitreader, options *options.JXLOptions) *
 	jxl := &JXLCodestreamDecoder{}
 	jxl.bitReader = br
 	jxl.foundSignature = false
-
+	jxl.lfBuffer = make([][]image2.ImageBuffer, 5)
 	if options != nil {
 		jxl.options = *options
 	}
@@ -771,7 +771,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 			continue
 		}
 
-		if refBuffer[c] == nil {
+		// check if just the zero value. Think dimension being 0 should be ok.
+		if refBuffer[c].Width == 0 && refBuffer[c].Height == 0 {
 			refBuffer[c] = *image2.NewImageBuffer(frameBuffer.BufferType, canvas[c].Height, canvas[c].Width)
 		}
 		ref := refBuffer[c]
@@ -779,7 +780,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		if hasAlpha && (info.Mode == frame.BLEND_BLEND || info.Mode == frame.BLEND_MULADD) {
 			depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
 			alphaIdx := imageColours + int(info.AlphaChannel)
-			if refBuffer[alphaIdx] == nil {
+			if refBuffer[alphaIdx].Width == 0 && refBuffer[alphaIdx].Height == 0 {
 				refBuffer[alphaIdx] = *image2.NewImageBuffer(image2.TYPE_FLOAT, canvas[c].Height, canvas[c].Width)
 			}
 			if !refBuffer[alphaIdx].IsFloat() {
