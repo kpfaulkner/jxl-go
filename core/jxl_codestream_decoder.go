@@ -421,7 +421,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 						break
 					}
 					for y := 0; y < int(patch.Bounds.Size.Height); y++ {
-						copy(frameBufferF[y+int(patch.Bounds.Origin.Y)][int(patch.Bounds.Origin.X):], refBufferF[y0+y][x0:])
+						copy(frameBufferF[y+int(patch.Bounds.Origin.Y)][int(patch.Bounds.Origin.X):], refBufferF[int(y0)+y][x0:])
 					}
 					break
 				case 2:
@@ -658,12 +658,26 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 }
 
 func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInverseMatrix, frame *frame.Frame) error {
-	frameBuffer := frame.Buffer
-	if matrix != nil {
-		err := matrix.InvertXYB(frameBuffer, jxl.imageHeader.ToneMapping.GetIntensityTarget())
-		if err != nil {
-			return err
+
+	if matrix == nil && !frame.Header.DoYCbCr {
+		return nil
+	}
+
+	buffer := frame.Buffer
+	buffers := util.MakeMatrix3D[float32](3, 0, 0)
+	depth := jxl.imageHeader.BitDepth.BitsPerSample
+	for c := 0; c < 3; c++ {
+		if buffer[c].IsInt() {
+			if err := buffer[c].CastToFloatIfInt(^(^0 << depth)); err != nil {
+				return err
+			}
 		}
+		buffers[c] = buffer[c].FloatBuffer
+	}
+
+	err := matrix.InvertXYB(buffers, jxl.imageHeader.ToneMapping.GetIntensityTarget())
+	if err != nil {
+		return err
 	}
 
 	if frame.Header.DoYCbCr {
@@ -673,12 +687,12 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 		}
 		for y := uint32(0); y < size.Height; y++ {
 			for x := uint32(0); x < size.Width; x++ {
-				cb := frameBuffer[0][y][x]
-				yh := frameBuffer[1][y][x] + 0.50196078431372549019
-				cr := frameBuffer[2][y][x]
-				frameBuffer[0][y][x] = yh + 1.402*cr
-				frameBuffer[1][y][x] = yh - 0.34413628620102214650*cb - 0.71413628620102214650*cr
-				frameBuffer[2][y][x] = yh + 1.772*cb
+				cb := buffers[0][y][x]
+				yh := buffers[1][y][x] + 0.50196078431372549019
+				cr := buffers[2][y][x]
+				buffers[0][y][x] = yh + 1.402*cr
+				buffers[1][y][x] = yh - 0.34413628620102214650*cb - 0.71413628620102214650*cr
+				buffers[2][y][x] = yh + 1.772*cb
 			}
 		}
 	}
