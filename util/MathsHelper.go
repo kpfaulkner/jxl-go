@@ -24,7 +24,7 @@ func generateCosineLUT() [][][]float32 {
 	for l := 0; l < len(tempCosineLUT); l++ {
 		s := 1 << l
 		tempCosineLUT[l] = MakeMatrix2D[float32](s-1, s)
-		for n := 0; n < len(tempCosineLUT); n++ {
+		for n := 0; n < len(tempCosineLUT[l]); n++ {
 			for k := 0; k < len(tempCosineLUT[l][n]); k++ {
 				tempCosineLUT[l][n][k] = float32(root2 * math.Cos(float64(math.Pi*(float32(n)+1.0)*(float32(k)+0.5)/float32(s))))
 			}
