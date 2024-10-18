@@ -9,8 +9,28 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+var (
+	cosineLUT = generateCosineLUT()
+)
+
 type signedInts interface {
 	int8 | int16 | int32 | int64
+}
+
+func generateCosineLUT() [][][]float32 {
+
+	tempCosineLUT := MakeMatrix3D[float32](9, 0, 0)
+	root2 := math.Sqrt(2.0)
+	for l := 0; l < len(tempCosineLUT); l++ {
+		s := 1 << l
+		tempCosineLUT[l] = MakeMatrix2D[float32](s-1, s)
+		for n := 0; n < len(tempCosineLUT); n++ {
+			for k := 0; k < len(tempCosineLUT[l][n]); k++ {
+				tempCosineLUT[l][n][k] = float32(root2 * math.Cos(float64(math.Pi*(float32(n)+1.0)*(float32(k)+0.5)/float32(s))))
+			}
+		}
+	}
+	return tempCosineLUT
 }
 
 func SignedPow(base float32, exponent float32) float32 {
@@ -257,11 +277,11 @@ func TransposeMatrix(matrix [][]float32, inSize IntPoint) [][]float32 {
 		return nil
 	}
 	dest := make([][]float32, inSize.X)
-	transposeMatrixInto(matrix, dest, ZERO, ZERO, inSize)
+	TransposeMatrixInto(matrix, dest, ZERO, ZERO, inSize)
 	return dest
 }
 
-func transposeMatrixInto(src [][]float32, dest [][]float32, srcStart IntPoint, destStart IntPoint, srcSize IntPoint) {
+func TransposeMatrixInto(src [][]float32, dest [][]float32, srcStart IntPoint, destStart IntPoint, srcSize IntPoint) {
 	for y := uint32(0); y < srcSize.Y; y++ {
 		srcY := src[y+srcStart.Y]
 		for x := uint32(0); x < srcSize.X; x++ {
@@ -312,4 +332,45 @@ func DeepCopy3[T comparable](a [][][]T) [][][]T {
 
 func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, size Dimension, scratchSpace0 [][]float32, scratchSpace1 [][]float32, transposed bool) {
 	panic("not implemented")
+}
+
+func ForwardDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, length Dimension,
+	scratchSpace0 [][]float32, scratchSpace1 [][]float32, b bool) error {
+
+	yLogLength := CeilLog2(length.Height)
+	xLogLength := CeilLog2(length.Width)
+	for y := int32(0); y < int32(length.Height); y++ {
+		if err := forwardDCTHorizontal(src[y+startIn.Y], scratchSpace0[y], startIn.X, 0, xLogLength, int32(length.Width)); err != nil {
+			return err
+		}
+	}
+	TransposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, IntPoint{X: length.Width, Y: length.Height})
+	for x := int32(0); x < int32(length.Width); x++ {
+		if err := forwardDCTHorizontal(scratchSpace1[x], scratchSpace0[x], 0, 0, yLogLength, int32(length.Height)); err != nil {
+			return err
+		}
+	}
+
+	TransposeMatrixInto(scratchSpace0, dest, ZERO, ZERO, IntPoint{X: length.Height, Y: length.Width})
+	return nil
+}
+
+func forwardDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartOut int32, xLogLength int, xLength int32) error {
+
+	invLength := 1.0 / float32(xLength)
+	d2 := src[xStartIn]
+	for x := int32(1); x < xLength; x++ {
+		d2 += src[xStartIn+x]
+	}
+	dest[xStartOut] = d2 * invLength
+	for k := int32(1); k < xLength; k++ {
+		lut := cosineLUT[xLogLength][k-1]
+		d2 = src[xStartIn] * lut[0]
+		for n := int32(1); n < xLength; n++ {
+			d2 += src[xStartIn+n] * lut[n]
+		}
+		dest[xStartOut+k] = d2 * invLength
+	}
+
+	return nil
 }

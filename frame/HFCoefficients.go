@@ -347,7 +347,46 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 }
 
 func (hf *HFCoefficients) finalizeLLF() error {
-	panic("not implemented")
+
+	scratchBlock := util.MakeMatrix3D[float32](2, 32, 32)
+	header := hf.frame.Header
+	for i := 0; i < len(hf.blocks); i++ {
+		posInLfg := hf.blocks[i]
+		if posInLfg.X == 0 && posInLfg.Y == 0 {
+			continue
+		}
+		tt := hf.lfg.hfMetadata.dctSelect[posInLfg.Y][posInLfg.X]
+		groupY := posInLfg.Y - hf.groupPos.Y
+		groupX := posInLfg.X - hf.groupPos.X
+		for c := 0; c < 3; c++ {
+			sGroupY := groupY >> header.jpegUpsamplingY[c]
+			sGroupX := groupX >> header.jpegUpsamplingX[c]
+			if groupY != sGroupY<<header.jpegUpsamplingY[c] ||
+				groupX != sGroupX<<header.jpegUpsamplingX[c] {
+				continue
+			}
+			pixelGroupY := sGroupY << 3
+			pixelGroupX := sGroupX << 3
+			sLfgY := posInLfg.Y << header.jpegUpsamplingY[c]
+			sLfgX := posInLfg.X << header.jpegUpsamplingX[c]
+			dqlf := hf.lfg.lfCoeff.dequantLFCoeff[c]
+			dq := hf.dequantHFCoeff[c]
+			if err := util.ForwardDCT2D(dqlf, dq, util.Point{X: sLfgX, Y: sLfgY},
+				util.Point{X: pixelGroupX, Y: pixelGroupY},
+				tt.getDctSelectSize(), scratchBlock[0], scratchBlock[1], false); err != nil {
+				return err
+			}
+
+			for y := int32(0); y < tt.dctSelectHeight; y++ {
+				dqy := dq[y+pixelGroupY]
+				llfy := tt.llfScale[y]
+				for x := int32(0); x < tt.dctSelectWidth; x++ {
+					dqy[x+pixelGroupX] *= llfy[x]
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

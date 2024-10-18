@@ -116,6 +116,13 @@ func (tt TransformType) getPixelSize() util.Dimension {
 
 }
 
+func (tt TransformType) getDctSelectSize() util.Dimension {
+	return util.Dimension{
+		Width:  uint32(tt.dctSelectWidth),
+		Height: uint32(tt.dctSelectHeight),
+	}
+}
+
 func scaleF(c float64, b float64) float64 {
 	piSize := math.Pi * c
 	return (1.0 / math.Cos(piSize/(2*b)) * math.Cos(piSize/b) * math.Cos(2.0*piSize/(2.0*b)))
