@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -207,7 +208,7 @@ func (hf *HFCoefficients) getCoefficientContext(k int32, nonZeros int32, numBloc
 
 func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
 
-	if err := hf.dequantizeHRCoefficients(); err != nil {
+	if err := hf.dequantizeHFCoefficients(); err != nil {
 		return err
 	}
 	if err := hf.chromaFromLuma(); err != nil {
@@ -221,7 +222,7 @@ func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
 	return nil
 }
 
-func (hf *HFCoefficients) dequantizeHRCoefficients() error {
+func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 	matrix := hf.frame.globalMetadata.OpsinInverseMatrix
 	header := hf.frame.Header
 	globalScale := 65536.0 / float32(hf.frame.LfGlobal.globalScale)
@@ -257,7 +258,7 @@ func (hf *HFCoefficients) dequantizeHRCoefficients() error {
 			}
 
 			w3 := w2[c]
-			sfc := scaleFactor[c] / hf.lfg.hfMetadata.hfMultiplier[pos.Y][pos.X]
+			sfc := scaleFactor[c] / float32(hf.lfg.hfMetadata.hfMultiplier[pos.Y][pos.X])
 			pixelGroupY := sGroupY << 3
 			pixelGroupX := sGroupX << 3
 			qbc := qbclut[c]
@@ -291,7 +292,57 @@ func (hf *HFCoefficients) dequantizeHRCoefficients() error {
 }
 
 func (hf *HFCoefficients) chromaFromLuma() error {
-	panic("not implemented")
+
+	header := hf.frame.Header
+	xMatch := slices.ContainsFunc(header.jpegUpsamplingX, func(x int32) bool { return x != 0 })
+	yMatch := slices.ContainsFunc(header.jpegUpsamplingY, func(y int32) bool { return y != 0 })
+	if !xMatch || !yMatch {
+		return nil
+	}
+
+	lfc := hf.frame.LfGlobal.lfChanCorr
+	xFactorHF := hf.lfg.hfMetadata.hfStreamBuffer[0]
+	bFactorHF := hf.lfg.hfMetadata.hfStreamBuffer[1]
+	xFactors := util.MakeMatrix2D[float32](len(xFactorHF), len(xFactorHF[0]))
+	bFactors := util.MakeMatrix2D[float32](len(bFactorHF), len(bFactorHF[0]))
+
+	for i := 0; i < len(hf.blocks); i++ {
+		pos := hf.blocks[i]
+		if pos.X == 0 && pos.Y == 0 {
+			continue
+		}
+		tt := hf.lfg.hfMetadata.dctSelect[pos.Y][pos.X]
+		pPosY := pos.Y << 3
+		pPosX := pos.X << 3
+		for iy := int32(0); iy < tt.blockHeight; iy++ {
+			y := pPosY + iy
+			fy := y >> 6
+			by := fy<<6 == y
+			xF := xFactors[fy]
+			bF := bFactors[fy]
+			hfX := xFactorHF[fy]
+			hfB := bFactorHF[fy]
+			for ix := int32(0); ix < tt.blockWidth; ix++ {
+				x := pPosX + ix
+				fx := x >> 6
+				var kX float32
+				var kB float32
+				if by && fx<<6 == x {
+					kX = lfc.baseCorrelationX + float32(hfX[fx])/float32(lfc.colorFactor)
+					kB = lfc.baseCorrelationB + float32(hfB[fx])/float32(lfc.colorFactor)
+					xF[fx] = kX
+					bF[fx] = kB
+				} else {
+					kX = xF[fx]
+					kB = bF[fx]
+				}
+				dequantY := hf.dequantHFCoeff[1][y&0xFF][x&0xFF]
+				hf.dequantHFCoeff[0][y&0xFF][x&0xFF] += kX * dequantY
+				hf.dequantHFCoeff[2][y&0xFF][x&0xFF] += kB * dequantY
+			}
+		}
+	}
+
 	return nil
 }
 
