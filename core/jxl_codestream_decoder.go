@@ -304,6 +304,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 	colourChannels := jxl.imageHeader.GetColourChannelCount()
 	extraChannels := len(jxl.imageHeader.ExtraChannelInfo)
 	patches := frame.LfGlobal.Patches
+	hasAlpha := jxl.imageHeader.HasAlpha()
 	for i := 0; i < len(patches); i++ {
 		patch := patches[i]
 		if patch.Ref > 3 {
@@ -313,7 +314,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 		if refBuffer == nil || len(refBuffer) == 0 {
 			continue
 		}
-		if patch.Height+int32(patch.Origin.Y) > int32(len(refBuffer[0])) || patch.Width+int32(patch.Origin.X) > int32(len(refBuffer[0][0])) {
+		lowerCorner := patch.Bounds.ComputeLowerCorner()
+		if lowerCorner.Y > refBuffer[0].Height || lowerCorner.X > refBuffer[0].Width {
 			return errors.New("patch too large")
 		}
 		for j := 0; i < len(patch.Positions); j++ {
@@ -323,7 +325,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 				return errors.New("patch size out of bounds")
 			}
 
-			if patch.Height+int32(y0) > int32(header.Height) || patch.Width+int32(x0) > int32(header.Width) {
+			if patch.Bounds.Size.Height+y0 > header.Bounds.Size.Height ||
+				patch.Bounds.Size.Width+x0 > header.Bounds.Size.Width {
 				return errors.New("patch size out of bounds")
 			}
 
@@ -348,93 +351,306 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 				if info.Mode > 0 && header.Upsampling > 1 && c > 0 && header.EcUpsampling[c-1]<<jxl.imageHeader.ExtraChannelInfo[c-1].DimShift != header.Upsampling {
 					return errors.New("Alpha channel upsampling mismatch during patches")
 				}
-				for y := int32(0); y < patch.Height; y++ {
-					for x := int32(0); x < patch.Width; x++ {
-						oldX := x + int32(x0)
-						oldY := y + int32(y0)
-						newX := x + int32(patch.Origin.X)
-						newY := y + int32(patch.Origin.Y)
-						oldSample := frameBuffer[d][oldY][oldX]
-						newSample := refBuffer[d][newY][newX]
-						alpha := float32(0.0)
-						newAlpha := float32(0.0)
-						oldAlpha := float32(0.0)
-						if info.Mode > 3 {
-							if jxl.imageHeader.HasAlpha() {
-								oldAlpha = frameBuffer[uint32(colourChannels)+info.AlphaChannel][oldY][oldX]
-							} else {
-								oldAlpha = 1.0
-							}
-							if jxl.imageHeader.HasAlpha() {
-								newAlpha = refBuffer[uint32(colourChannels)+info.AlphaChannel][newY][newX]
-							} else {
-								newAlpha = 1.0
-							}
-							if info.Clamp {
-								newAlpha = util.Clamp3Float32(newAlpha, 0.0, 1.0)
-							}
-							if info.Mode < 6 || !isAlpha || !premult {
-								alpha = oldAlpha + newAlpha*(1-oldAlpha)
-							}
 
-							var sample float32
-							switch info.Mode {
-							case 0:
-								sample = oldSample
-								break
-							case 1:
-								sample = newSample
-								break
-							case 2:
-								sample = oldSample + newSample
-								break
-							case 3:
-								sample = oldSample * newSample
-								break
-							case 4:
-								if isAlpha {
-									sample = float32(alpha)
-								} else {
-									if premult {
-										sample = newSample + oldSample*(1-newAlpha)
-									} else {
-										sample = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / float32(alpha)
-									}
-								}
-								break
-							case 5:
-								if isAlpha {
-									sample = float32(alpha)
-								} else {
-									if premult {
-										sample = oldSample + newSample*(1-newAlpha)
-									} else {
-										sample = (oldSample*newAlpha + newSample*oldAlpha*(1-newAlpha)) / float32(alpha)
-									}
-								}
-								break
-							case 6:
-								if isAlpha {
-									sample = newAlpha
-								} else {
-									sample = oldSample + float32(alpha)*newSample
-								}
-								break
-							case 7:
-								if isAlpha {
-									sample = oldAlpha
-								} else {
-									sample = newSample + float32(alpha)*oldSample
-								}
-								break
-							default:
-								return errors.New("Challenge complete how did we get here")
-							}
-							frameBuffer[d][oldY][oldX] = sample
+				toFloat := true
+				switch info.Mode {
+				case 1:
+					if refBuffer[0].IsInt() && frameBuffer[d].IsInt() {
+						refBufferI := refBuffer[d].IntBuffer
+						frameBufferI := frameBuffer[d].IntBuffer
+						for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
+							copy(frameBufferI[y+uint32(patch.Bounds.Origin.Y)][patch.Bounds.Origin.X:], refBufferI[y0+y][x0:])
 						}
+						toFloat = false
 					}
+					break
+				case 2:
+					if refBuffer[0].IsInt() && frameBuffer[d].IsInt() {
+						refBufferI := refBuffer[d].IntBuffer
+						frameBufferI := frameBuffer[d].IntBuffer
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								frameBufferI[int32(y0)+y][int32(x0)+x] += refBufferI[patch.Bounds.Origin.Y+y][patch.Bounds.Origin.X+x]
+							}
+						}
+						toFloat = false
+					}
+					break
 				}
 
+				if toFloat {
+					var depth uint32
+					if c == 0 {
+						depth = jxl.imageHeader.BitDepth.BitsPerSample
+					} else {
+						depth = jxl.imageHeader.ExtraChannelInfo[c-1].BitDepth.BitsPerSample
+					}
+					max := ^(^int32(0) << depth)
+					refBuffer[d].CastToFloatIfInt(max)
+					frameBuffer[d].CastToFloatIfInt(max)
+				}
+				var refBufferF [][]float32
+				var frameBufferF [][]float32
+				if toFloat {
+					refBufferF = refBuffer[d].FloatBuffer
+					frameBufferF = frameBuffer[d].FloatBuffer
+				} else {
+					refBufferF = nil
+					frameBufferF = nil
+				}
+				var alphaBufferOld [][]float32
+				var alphaBufferNew [][]float32
+				if info.Mode > 3 && hasAlpha {
+					depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
+					if err := frameBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfInt(^(^0 << depth)); err != nil {
+						return err
+					}
+					if err := refBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfInt(^(^0 << depth)); err != nil {
+						return err
+					}
+					alphaBufferOld = frameBuffer[colourChannels+int(info.AlphaChannel)].FloatBuffer
+					alphaBufferNew = refBuffer[colourChannels+int(info.AlphaChannel)].FloatBuffer
+				} else {
+					alphaBufferOld = nil
+					alphaBufferNew = nil
+				}
+
+				switch info.Mode {
+				case 1:
+					if !toFloat {
+						break
+					}
+					for y := 0; y < int(patch.Bounds.Size.Height); y++ {
+						copy(frameBufferF[y+int(patch.Bounds.Origin.Y)][int(patch.Bounds.Origin.X):], refBufferF[y0+y][x0:])
+					}
+					break
+				case 2:
+					if !toFloat {
+						break
+					}
+					for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
+						for x := uint32(0); x < patch.Bounds.Size.Width; x++ {
+							frameBufferF[y0+y][x0+x] += refBufferF[uint32(patch.Bounds.Origin.Y)+y][uint32(patch.Bounds.Origin.X)+x]
+						}
+					}
+					break
+				case 3:
+					for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
+						for x := uint32(0); x < patch.Bounds.Size.Width; x++ {
+							frameBufferF[y0+y][x0+x] *= refBufferF[uint32(patch.Bounds.Origin.Y)+y][uint32(patch.Bounds.Origin.X)+x]
+						}
+					}
+					break
+				case 4:
+					if isAlpha {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								oldX := x + int32(x0)
+								newX := x + patch.Bounds.Origin.X
+								newAlpha := alphaBufferNew[newY][newX]
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else if newAlpha > 1 {
+										newAlpha = 1
+									}
+								}
+								frameBufferF[oldY][oldX] = alphaBufferOld[oldY][oldY] +
+									newAlpha*(1-alphaBufferOld[oldY][oldX])
+							}
+						}
+					} else if premult {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								newX := x + patch.Bounds.Origin.X
+								oldX := x + int32(x0)
+								newAlpha := alphaBufferNew[newY][newX]
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else if newAlpha > 1 {
+										newAlpha = 1
+									}
+								}
+								frameBufferF[oldY][oldX] = refBufferF[newY][newX] + frameBufferF[oldY][oldX]*(1-newAlpha)
+							}
+						}
+					} else {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								newX := x + patch.Bounds.Origin.X
+								oldX := x + int32(x0)
+								var oldAlpha float32
+								var newAlpha float32
+								if hasAlpha {
+									oldAlpha = alphaBufferOld[oldY][oldX]
+									newAlpha = alphaBufferNew[newY][newX]
+								} else {
+									oldAlpha = 1
+									newAlpha = 1
+								}
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else {
+										if newAlpha > 1 {
+											newAlpha = 1
+										}
+									}
+								}
+								alpha := oldAlpha + newAlpha*(1-oldAlpha)
+								frameBufferF[oldY][oldX] = (refBufferF[newY][newX]*newAlpha + frameBufferF[oldY][oldX]*oldAlpha*(1-newAlpha)) / alpha
+							}
+						}
+					}
+					break
+				case 5:
+					if isAlpha {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								oldX := x + int32(x0)
+								newX := x + patch.Bounds.Origin.X
+								frameBufferF[oldY][oldX] = alphaBufferOld[oldY][oldY] +
+									alphaBufferNew[newY][newX]*(1-alphaBufferOld[oldY][oldX])
+							}
+						}
+					} else if premult {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								newX := x + patch.Bounds.Origin.X
+								oldX := x + int32(x0)
+								newAlpha := alphaBufferNew[newY][newX]
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else if newAlpha > 1 {
+										newAlpha = 1
+									}
+								}
+								frameBufferF[oldY][oldX] = frameBufferF[oldY][oldX] + refBufferF[newY][newX]*(1-newAlpha)
+							}
+						}
+					} else {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								newX := x + patch.Bounds.Origin.X
+								oldX := x + int32(x0)
+								var oldAlpha float32
+								var newAlpha float32
+								if hasAlpha {
+									oldAlpha = alphaBufferOld[oldY][oldX]
+									newAlpha = alphaBufferNew[newY][newX]
+								} else {
+									oldAlpha = 1
+									newAlpha = 1
+								}
+								alpha := oldAlpha + newAlpha*(1-oldAlpha)
+								frameBufferF[oldY][oldX] = (frameBufferF[oldY][oldX]*newAlpha + refBufferF[newY][newX]*oldAlpha*(1-newAlpha)) / alpha
+							}
+						}
+					}
+					break
+				case 6:
+					if isAlpha {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								oldX := x + int32(x0)
+								newX := x + patch.Bounds.Origin.X
+								newAlpha := alphaBufferNew[newY][newX]
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else if newAlpha > 1 {
+										newAlpha = 1
+									}
+								}
+								v := float32(1.0)
+								if !hasAlpha {
+									v = newAlpha
+								}
+								frameBufferF[oldY][oldX] = v
+							}
+						}
+					} else {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								newX := x + patch.Bounds.Origin.X
+								oldX := x + int32(x0)
+								newAlpha := alphaBufferNew[newY][newX]
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else if newAlpha > 1 {
+										newAlpha = 1
+									}
+								}
+								frameBufferF[oldY][oldX] += refBufferF[newY][newX]
+							}
+						}
+					}
+					break
+				case 7:
+					if isAlpha {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								oldX := x + int32(x0)
+
+								v := float32(1.0)
+								if !hasAlpha {
+									v = alphaBufferOld[oldY][oldX]
+								}
+								frameBufferF[oldY][oldX] = v
+							}
+						}
+					} else {
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							newY := y + patch.Bounds.Origin.Y
+							oldY := y + int32(y0)
+							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+								newX := x + patch.Bounds.Origin.X
+								oldX := x + int32(x0)
+								var oldAlpha float32
+								var newAlpha float32
+								if hasAlpha {
+									oldAlpha = alphaBufferOld[oldY][oldX]
+									newAlpha = alphaBufferNew[newY][newX]
+								} else {
+									oldAlpha = 1
+									newAlpha = 1
+								}
+								if info.Clamp {
+									if newAlpha < 0 {
+										newAlpha = 0
+									} else if newAlpha > 1 {
+										newAlpha = 1
+									}
+								}
+								alpha := oldAlpha + newAlpha*(1-oldAlpha)
+								frameBufferF[oldY][oldX] = refBufferF[newY][newX] + alpha*frameBufferF[oldY][oldX]
+							}
+						}
+					}
+					break
+				default:
+					return errors.New("unknown blending mode")
+				}
 			}
 		}
 	}

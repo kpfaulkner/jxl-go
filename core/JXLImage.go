@@ -5,6 +5,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
+	image2 "github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
@@ -65,23 +66,30 @@ func NewJXLImageWithBuffer(buffer [][][]float32, header bundle.ImageHeader) (*JX
 }
 
 // NewImage generates a standard go image.Image from the JXL image.
-func NewImage(buffer [][][]float32, header bundle.ImageHeader) (image.Image, error) {
+func NewImage(buffer []image2.ImageBuffer, header bundle.ImageHeader) (image.Image, error) {
 
 	// default to NRGBA for now. Will need to detect properly later.
 	// TODO(kpfaulkner) get right image type
-	jxl := image.NewRGBA(image.Rect(0, 0, len(buffer[0][0]), len(buffer[0])))
+	jxl := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 
+	// case to int image..
+	for c := 0; c < len(buffer); c++ {
+		if buffer[c].IsInt() {
+			// convert to float
+			buffer[c].CastToFloatIfInt(255)
+		}
+	}
 	pix := jxl.Pix
 	dx := jxl.Bounds().Dx()
 	dy := jxl.Bounds().Dy()
 	pos := 0
 	for y := 0; y < dy; y++ {
 		for x := 0; x < dx; x++ {
-			pix[pos] = uint8(buffer[0][y][x] * 255)
+			pix[pos] = uint8(buffer[0].IntBuffer[y][x] * 255)
 			pos++
-			pix[pos] = uint8(buffer[1][y][x] * 255)
+			pix[pos] = uint8(buffer[1].IntBuffer[y][x] * 255)
 			pos++
-			pix[pos] = uint8(buffer[2][y][x] * 255)
+			pix[pos] = uint8(buffer[2].IntBuffer[y][x] * 255)
 			pos++
 
 			// FIXME(kpfaulkner) deal with alpha channels properly
