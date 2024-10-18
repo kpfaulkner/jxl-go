@@ -249,10 +249,11 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		} else {
 			isFloat = f.globalMetadata.ExtraChannelInfo[c-numColours].BitDepth.ExpBits != 0
 		}
+		typeToUse := image.TYPE_INT
 		if isFloat {
-
+			typeToUse = image.TYPE_FLOAT
 		}
-		f.Buffer[c] = *image.NewImageBuffer(channelSize.Height, channelSize.Width)
+		f.Buffer[c] = *image.NewImageBuffer(typeToUse, int32(channelSize.Height), int32(channelSize.Width))
 	}
 
 	err = f.decodeLFGroups(lfBuffer)
@@ -725,8 +726,11 @@ func (f *Frame) invertSubsampling() {
 		yShift := f.Header.jpegUpsamplingY[c]
 		for xShift > 0 {
 			xShift--
-			oldChannel := f.Buffer[c]
-			newChannel := util.MakeMatrix2D[float32](len(oldChannel), 0)
+			oldBuffer := f.Buffer[c]
+			oldBuffer.CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+			oldChannel := oldBuffer.FloatBuffer
+			newBuffer := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height, oldBuffer.Width*2)
+			newChannel := newBuffer.FloatBuffer
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
 				newRow := make([]float32, len(oldRow)*2)
@@ -745,12 +749,15 @@ func (f *Frame) invertSubsampling() {
 				}
 				newChannel[y] = newRow
 			}
-			f.Buffer[c] = newChannel
+			f.Buffer[c] = *newBuffer
 		}
 		for yShift > 0 {
 			yShift--
-			oldChannel := f.Buffer[c]
-			newChannel := util.MakeMatrix2D[float32](len(oldChannel)*2, 0)
+			oldBuffer := f.Buffer[c]
+			oldBuffer.CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+			oldChannel := oldBuffer.FloatBuffer
+			newBuffer := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height*2, oldBuffer.Width)
+			newChannel := newBuffer.FloatBuffer
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
 				xx := 0
@@ -773,7 +780,7 @@ func (f *Frame) invertSubsampling() {
 				newChannel[2*y] = firstNewRow
 				newChannel[2*y+1] = secondNewRow
 			}
-			f.Buffer[c] = newChannel
+			f.Buffer[c] = *newBuffer
 		}
 	}
 }

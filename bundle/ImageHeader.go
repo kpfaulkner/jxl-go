@@ -302,8 +302,8 @@ func (h *ImageHeader) GetColourChannelCount() int {
 	return 3
 }
 
-func (h *ImageHeader) GetSize() (uint32, uint32) {
-	return h.Size.Width, h.Size.Height
+func (h *ImageHeader) GetSize() util.Dimension {
+	return h.Size
 }
 
 func (h *ImageHeader) GetColourModel() int32 {

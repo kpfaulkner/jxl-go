@@ -6,7 +6,10 @@ const (
 )
 
 type ImageBuffer struct {
+	Width      int32
+	Height     int32
 	bufferType int
+	BufferType int
 
 	// image data can be either float or int based. Keep separate buffers and just
 	// reference each one as required. If conversion will be required then that might get
@@ -15,7 +18,7 @@ type ImageBuffer struct {
 	IntBuffer   [][]int32
 }
 
-func NewImageBuffer(height uint32, width uint32) *ImageBuffer {
+func NewImageBuffer(t int, height int32, width int32) *ImageBuffer {
 	panic("not implemented")
 }
 
