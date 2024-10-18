@@ -812,12 +812,16 @@ func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation u
 
 func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientation uint32) ([][]float32, error) {
 
-	size := util.IntPointSizeOf(src)
+	srcHeight := len(src)
+	srcWidth := len(src[0])
+	srcH1 := srcHeight - 1
+	srcW1 := srcWidth - 1
+
 	var dest [][]float32
 	if orientation > 4 {
-		dest = util.MakeMatrix2D[float32](int(size.X), int(size.Y))
+		dest = util.MakeMatrix2D[float32](srcWidth, srcHeight)
 	} else if orientation > 1 {
-		dest = util.MakeMatrix2D[float32](int(size.Y), int(size.X))
+		dest = util.MakeMatrix2D[float32](srcHeight, srcWidth)
 	} else {
 		dest = nil
 	}
@@ -826,72 +830,55 @@ func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientati
 	case 1:
 		return src, nil
 	case 2:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[y][srcW1-x] = src[y][x]
 			}
-			dest[p.Y][size.X-1-p.X] = src[p.X][p.Y]
 		}
+		return dest, nil
 	case 3:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[srcH1-y][srcW1-x] = src[y][x]
 			}
-			dest[size.Y-1-p.Y][size.X-1-p.X] = src[p.X][p.Y]
 		}
+		return dest, nil
 	case 4:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
-			}
-			dest[size.Y-1-p.Y][p.X] = src[p.X][p.Y]
+		for y := 0; y < srcHeight; y++ {
+			copy(dest[srcH1-y], src[y])
 		}
+		return dest, nil
 	case 5:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[x][y] = src[y][x]
 			}
-			dest[p.X][p.Y] = src[p.Y][p.X]
 		}
+		return dest, nil
 	case 6:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[x][srcH1-y] = src[y][x]
 			}
-			dest[p.X][size.Y-1-p.Y] = src[p.Y][p.X]
 		}
+		return dest, nil
 	case 7:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[srcW1-x][srcH1-y] = src[y][x]
 			}
-			dest[size.X-1-p.X][size.Y-1-p.Y] = src[p.Y][p.X]
 		}
+		return dest, nil
 	case 8:
-		transposeIter := util.RangeIteratorWithIntPoint(size)
-		for {
-			p, err := transposeIter()
-			if err == io.EOF {
-				break
+		for y := 0; y < srcHeight; y++ {
+			for x := 0; x < srcWidth; x++ {
+				dest[srcW1-x][y] = src[y][x]
 			}
-			dest[size.X-1-p.X][p.Y] = src[p.Y][p.X]
 		}
+		return dest, nil
 	default:
 		return nil, errors.New("Invalid orientation")
 
 	}
-
 	return nil, nil
 }
