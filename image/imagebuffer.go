@@ -1,5 +1,11 @@
 package image
 
+import (
+	"errors"
+
+	"github.com/kpfaulkner/jxl-go/util"
+)
+
 const (
 	TYPE_INT   = 0
 	TYPE_FLOAT = 1
@@ -18,22 +24,71 @@ type ImageBuffer struct {
 	IntBuffer   [][]int32
 }
 
-func NewImageBuffer(t int, height int32, width int32) *ImageBuffer {
-	panic("not implemented")
+func NewImageBuffer(bufferType int, height int32, width int32) *ImageBuffer {
+
+	if bufferType != TYPE_INT && bufferType != TYPE_FLOAT {
+		panic("Invalid buffer type")
+	}
+	if height < 0 || height > (1<<30) || width < 0 || width > (1<<30) {
+		panic("Invalid height/width")
+	}
+
+	ib := &ImageBuffer{
+		Width:      width,
+		Height:     height,
+		bufferType: bufferType,
+	}
+
+	if bufferType == TYPE_INT {
+		ib.IntBuffer = util.MakeMatrix2D[int32](height, width)
+	} else {
+		ib.FloatBuffer = util.MakeMatrix2D[float32](height, width)
+	}
+	return ib
 }
 
 func NewImageBufferFromInts(buffer [][]int32) *ImageBuffer {
-	panic("not implemented")
+	ib := &ImageBuffer{}
+	ib.IntBuffer = buffer
+	ib.BufferType = TYPE_INT
+	ib.Height = int32(len(buffer))
+	ib.Width = int32(len(buffer[0]))
+	return ib
 }
+
 func NewImageBufferFromFloats(buffer [][]float32) *ImageBuffer {
-	panic("not implemented")
+	ib := &ImageBuffer{}
+	ib.FloatBuffer = buffer
+	ib.BufferType = TYPE_FLOAT
+	ib.Height = int32(len(buffer))
+	ib.Width = int32(len(buffer[0]))
+	return ib
 }
 
 // Equals compares two ImageBuffers and returns true if they are equal.
 func (ib *ImageBuffer) Equals(other ImageBuffer) bool {
 
-	panic("not implemented")
-	return true
+	if ib.Width != other.Width || ib.Height != other.Height {
+		return false
+	}
+
+	if ib.BufferType != other.BufferType {
+		return false
+	}
+
+	if ib.BufferType == TYPE_INT {
+		return util.CompareMatrix2D(ib.IntBuffer, other.IntBuffer, func(aa int32, bb int32) bool {
+			return aa == bb
+		})
+	}
+
+	if ib.BufferType == TYPE_FLOAT {
+		return util.CompareMatrix2D(ib.FloatBuffer, other.FloatBuffer, func(aa float32, bb float32) bool {
+			return aa == bb
+		})
+	}
+
+	return false
 }
 
 func (ib *ImageBuffer) IsFloat() bool {
@@ -45,10 +100,84 @@ func (ib *ImageBuffer) IsInt() bool {
 }
 
 func (ib *ImageBuffer) CastToFloatIfInt(maxValue int32) error {
-	panic("not implemented")
+	if ib.bufferType == TYPE_FLOAT {
+		return nil
+	}
+	return ib.castToFloatBuffer(maxValue)
 }
 
-func ImageBufferEquals(a []ImageBuffer, b []ImageBuffer) bool {
-	panic("not implemented")
+func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
+
+	if ib.BufferType == TYPE_FLOAT {
+		return errors.New("Already a float buffer")
+	}
+	if maxValue < 1 {
+		return errors.New("Invalid maxValue")
+	}
+	oldBuffer := ib.IntBuffer
+	newBuffer := util.MakeMatrix2D[float32](ib.Height, ib.Width)
+	scaleFactor := 1.0 / float32(maxValue)
+	for y := 0; y < int(ib.Height); y++ {
+		for x := 0; x < int(ib.Width); x++ {
+			newBuffer[y][x] = float32(oldBuffer[y][x]) * scaleFactor
+		}
+	}
+	return nil
+}
+
+func (ib *ImageBuffer) CastToIntIfFloat(maxValue int32) error {
+	if ib.bufferType == TYPE_INT {
+		return nil
+	}
+	return ib.castToIntBuffer(maxValue)
+}
+
+func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
+
+	if ib.BufferType == TYPE_INT {
+		return errors.New("Already a int buffer")
+	}
+	if maxValue < 1 {
+		return errors.New("Invalid maxValue")
+	}
+
+	oldBuffer := ib.FloatBuffer
+	newBuffer := util.MakeMatrix2D[int32](ib.Height, ib.Width)
+	scaleFactor := float32(maxValue)
+	for y := 0; y < int(ib.Height); y++ {
+		for x := 0; x < int(ib.Width); x++ {
+			v := int32(oldBuffer[y][x]*scaleFactor + 0.5)
+			var vv int32
+			if v < 0 {
+				vv = 0
+			} else if v > maxValue {
+				vv = maxValue
+			} else {
+				vv = v
+			}
+			newBuffer[y][x] = vv
+		}
+	}
+	return nil
+}
+
+// Equals compares two ImageBuffer slices and returns true if they are equal.
+// Need to have:
+//   - same size
+//   - expected that in same order.
+//   - each ImageBuffer has same buffer type
+//   - each ImageBuffer has same width/height
+//   - each ImageBuffer has same buffer values
+func ImageBufferSliceEquals(a []ImageBuffer, b []ImageBuffer) bool {
+
+	if len(a) != len(b) {
+		return false
+	}
+
+	for i := 0; i < len(a); i++ {
+		if !a[i].Equals(b[i]) {
+			return false
+		}
+	}
 	return true
 }

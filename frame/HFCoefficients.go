@@ -3,6 +3,7 @@ package frame
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -205,7 +206,98 @@ func (hf *HFCoefficients) getCoefficientContext(k int32, nonZeros int32, numBloc
 }
 
 func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
+
+	if err := hf.dequantizeHRCoefficients(); err != nil {
+		return err
+	}
+	if err := hf.chromaFromLuma(); err != nil {
+		return err
+	}
+
+	if err := hf.finalizeLLF(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (hf *HFCoefficients) dequantizeHRCoefficients() error {
+	matrix := hf.frame.globalMetadata.OpsinInverseMatrix
+	header := hf.frame.Header
+	globalScale := 65536.0 / float32(hf.frame.LfGlobal.globalScale)
+	scaleFactor := [3]float32{
+		globalScale * float32(math.Pow(0.8, float64(header.xqmScale-2))),
+		globalScale,
+		globalScale * float32(math.Pow(1.25, float64(2-header.bqmScale))),
+	}
+	weights := hf.frame.hfGlobal.weights
+	qbclut := [][]float32{
+		{-matrix.QuantBias[0], 0.0, matrix.QuantBias[0]},
+		{-matrix.QuantBias[1], 0.0, matrix.QuantBias[1]},
+		{-matrix.QuantBias[2], 0.0, matrix.QuantBias[2]},
+	}
+
+	for i := 0; i < len(hf.blocks); i++ {
+		pos := hf.blocks[i]
+		if pos.X == 0 && pos.Y == 0 {
+			continue
+		}
+
+		tt := hf.lfg.hfMetadata.dctSelect[pos.Y][pos.X]
+		groupY := pos.Y - hf.groupPos.Y
+		groupX := pos.X - hf.groupPos.X
+		flip := tt.flip()
+		w2 := weights[tt.parameterIndex]
+		for c := 0; c < 3; c++ {
+			sGroupY := groupY >> header.jpegUpsamplingY[c]
+			sGroupX := groupX >> header.jpegUpsamplingX[c]
+			if groupY != sGroupY<<header.jpegUpsamplingY[c] ||
+				groupX != sGroupX<<header.jpegUpsamplingX[c] {
+				continue
+			}
+
+			w3 := w2[c]
+			sfc := scaleFactor[c] / hf.lfg.hfMetadata.hfMultiplier[pos.Y][pos.X]
+			pixelGroupY := sGroupY << 3
+			pixelGroupX := sGroupX << 3
+			qbc := qbclut[c]
+			for y := int32(0); y < tt.blockHeight; y++ {
+				for x := int32(0); x < tt.blockWidth; x++ {
+					if y < tt.dctSelectHeight && x < tt.dctSelectWidth {
+						continue
+					}
+					pY := pixelGroupY + y
+					pX := pixelGroupX + x
+					coeff := hf.quantizedCoeffs[c][pY][pX]
+					var quant float32
+					if coeff > -2 && coeff < 2 {
+						quant = qbc[coeff+1]
+					} else {
+						quant = float32(coeff) - matrix.QuantBiasNumerator/float32(coeff)
+					}
+					var wy int32
+					if flip {
+						wy = x
+					} else {
+						wy = y
+					}
+					wx := x ^ y ^ wy
+					hf.dequantHFCoeff[c][pY][pX] = quant * sfc * w3[wy][wx]
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (hf *HFCoefficients) chromaFromLuma() error {
 	panic("not implemented")
+	return nil
+}
+
+func (hf *HFCoefficients) finalizeLLF() error {
+	panic("not implemented")
+	return nil
 }
 
 func getPredictedNonZeros(nonZeros [][][]int32, c int, y int32, x int32) int32 {

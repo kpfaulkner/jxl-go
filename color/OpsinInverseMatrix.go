@@ -20,8 +20,8 @@ var (
 type OpsinInverseMatrix struct {
 	matrix             [][]float32
 	opsinBias          []float32
-	quantBias          []float32
-	quantBiasNumerator float32
+	QuantBias          []float32
+	QuantBiasNumerator float32
 	primaries          CIEPrimaries
 	whitePoint         CIEXY
 	cbrtOpsinBias      []float32
@@ -42,8 +42,8 @@ func NewOpsinInverseMatrixAllParams(
 	oim := &OpsinInverseMatrix{}
 	oim.matrix = matrix
 	oim.opsinBias = opsinBias
-	oim.quantBias = quantBias
-	oim.quantBiasNumerator = quantBiasNumerator
+	oim.QuantBias = quantBias
+	oim.QuantBiasNumerator = quantBiasNumerator
 	oim.primaries = primaries
 	oim.whitePoint = whitePoint
 	oim.bakeCbrtBias()
@@ -56,8 +56,8 @@ func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) *OpsinInverseMatri
 	if reader.MustReadBool() {
 		oim.matrix = DEFAULT_MATRIX
 		oim.opsinBias = DEFAULT_OPSIN_BIAS
-		oim.quantBias = DEFAULT_QUANT_BIAS
-		oim.quantBiasNumerator = DEFAULT_QBIAS_NUMERATOR
+		oim.QuantBias = DEFAULT_QUANT_BIAS
+		oim.QuantBiasNumerator = DEFAULT_QBIAS_NUMERATOR
 	} else {
 		oim.matrix = util.MakeMatrix2D[float32](3, 3)
 		for i := 0; i < 3; i++ {
@@ -69,11 +69,11 @@ func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) *OpsinInverseMatri
 		for i := 0; i < 3; i++ {
 			oim.opsinBias[i] = reader.MustReadF16()
 		}
-		oim.quantBias = make([]float32, 3)
+		oim.QuantBias = make([]float32, 3)
 		for i := 0; i < 3; i++ {
-			oim.quantBias[i] = reader.MustReadF16()
+			oim.QuantBias[i] = reader.MustReadF16()
 		}
-		oim.quantBiasNumerator = reader.MustReadF16()
+		oim.QuantBiasNumerator = reader.MustReadF16()
 	}
 	oim.primaries = *CM_PRI_SRGB
 	oim.whitePoint = *CM_WP_D65
@@ -99,7 +99,7 @@ func (oim *OpsinInverseMatrix) GetMatrix(prim *CIEPrimaries, white *CIEXY) (*Ops
 		return nil, err
 	}
 
-	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.opsinBias, oim.quantBias, oim.quantBiasNumerator), nil
+	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.opsinBias, oim.QuantBias, oim.QuantBiasNumerator), nil
 }
 
 func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget float32) error {

@@ -227,7 +227,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			if header.FrameType == frame.REGULAR_FRAME || header.FrameType == frame.SKIP_PROGRESSIVE {
 				found := false
 				for i := uint32(0); i < 4; i++ {
-					if image2.ImageBufferEquals(jxl.reference[i], canvas) && i != header.SaveAsReference {
+					if image2.ImageBufferSliceEquals(jxl.reference[i], canvas) && i != header.SaveAsReference {
 						found = true
 						break
 					}

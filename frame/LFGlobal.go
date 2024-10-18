@@ -15,11 +15,15 @@ type LFGlobal struct {
 	hfBlockCtx      *HFBlockContext
 	lfChanCorr      *LFChannelCorrelation
 	gModular        *GlobalModular
+	globalScale     int32
+	quantLF         int32
+	scaledDequant   []float32
 }
 
 func NewLFGlobal() *LFGlobal {
 	lf := &LFGlobal{}
 	lf.lfDequant = []float32{1.0 / 4096.0, 1.0 / 512.0, 1.0 / 256.0}
+	lf.scaledDequant = make([]float32, 3)
 	return lf
 }
 
@@ -72,9 +76,22 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 
 	var err error
 	if lf.frame.Header.Encoding == VARDCT {
-		lf.quantizer, err = NewQuantizerWithReader(reader, lf.lfDequant)
+		//lf.quantizer, err = NewQuantizerWithReader(reader, lf.lfDequant)
+		//if err != nil {
+		//	return nil, err
+		//}
+		globalScale, err := reader.ReadU32(1, 11, 2049, 11, 4097, 12, 8193, 1)
 		if err != nil {
 			return nil, err
+		}
+		lf.globalScale = int32(globalScale)
+		quantLF, err := reader.ReadU32(16, 0, 1, 5, 1, 8, 1, 16)
+		if err != nil {
+			return nil, err
+		}
+		lf.quantLF = int32(quantLF)
+		for i := 0; i < 3; i++ {
+			lf.scaledDequant[i] = (1 << 16) * lf.lfDequant[i] / float32(lf.globalScale*lf.quantLF)
 		}
 		lf.hfBlockCtx, err = NewHFBlockContextWithReader(reader)
 		if err != nil {
