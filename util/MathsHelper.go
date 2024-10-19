@@ -272,7 +272,7 @@ func CeilDiv(numerator uint32, denominator uint32) uint32 {
 	return ((numerator - 1) / denominator) + 1
 }
 
-func TransposeMatrix(matrix [][]float32, inSize IntPoint) [][]float32 {
+func TransposeMatrix(matrix [][]float32, inSize Point) [][]float32 {
 	if inSize.X == 0 || inSize.Y == 0 {
 		return nil
 	}
@@ -281,10 +281,10 @@ func TransposeMatrix(matrix [][]float32, inSize IntPoint) [][]float32 {
 	return dest
 }
 
-func TransposeMatrixInto(src [][]float32, dest [][]float32, srcStart IntPoint, destStart IntPoint, srcSize IntPoint) {
-	for y := uint32(0); y < srcSize.Y; y++ {
+func TransposeMatrixInto(src [][]float32, dest [][]float32, srcStart Point, destStart Point, srcSize Point) {
+	for y := int32(0); y < srcSize.Y; y++ {
 		srcY := src[y+srcStart.Y]
-		for x := uint32(0); x < srcSize.X; x++ {
+		for x := int32(0); x < srcSize.X; x++ {
 			dest[destStart.Y+x][destStart.X+y] = srcY[srcStart.X+x]
 		}
 	}
@@ -330,7 +330,44 @@ func DeepCopy3[T comparable](a [][][]T) [][][]T {
 	return matrixCopy
 }
 
-func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, size Dimension, scratchSpace0 [][]float32, scratchSpace1 [][]float32, transposed bool) {
+func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, size Dimension, scratchSpace0 [][]float32, scratchSpace1 [][]float32, transposed bool) error {
+
+	logHeight := CeilLog2(size.Height)
+	logWidth := CeilLog2(size.Width)
+	if transposed {
+		for y := int32(0); y < int32(size.Height); y++ {
+			if err := inverseDCTHorizontal(src[startIn.Y+y], scratchSpace1[y], startIn.X, 0, logWidth, size.Width); err != nil {
+				return err
+			}
+		}
+		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Width), Y: int32(size.Height)})
+		for y := int32(0); y < int32(size.Width); y++ {
+			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y], 0, startOut.X, logHeight, size.Height); err != nil {
+				return err
+			}
+		}
+	} else {
+		TransposeMatrixInto(src, scratchSpace0, startIn, ZERO, Point{X: int32(size.Width), Y: int32(size.Height)})
+		for y := int32(0); y < int32(size.Width); y++ {
+			if err := inverseDCTHorizontal(scratchSpace0[y], scratchSpace1[y],
+				0, 0, logHeight, size.Height); err != nil {
+				return err
+			}
+		}
+		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Height), Y: int32(size.Width)})
+		for y := int32(0); y < int32(size.Width); y++ {
+			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y],
+				0, startOut.X, logWidth, size.Width); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func inverseDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartOut int32, xLogLength int,
+	xLength uint32) error {
+
 	panic("not implemented")
 }
 
@@ -344,14 +381,14 @@ func ForwardDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 			return err
 		}
 	}
-	TransposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, IntPoint{X: length.Width, Y: length.Height})
+	TransposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, Point{X: int32(length.Width), Y: int32(length.Height)})
 	for x := int32(0); x < int32(length.Width); x++ {
 		if err := forwardDCTHorizontal(scratchSpace1[x], scratchSpace0[x], 0, 0, yLogLength, int32(length.Height)); err != nil {
 			return err
 		}
 	}
 
-	TransposeMatrixInto(scratchSpace0, dest, ZERO, ZERO, IntPoint{X: length.Height, Y: length.Width})
+	TransposeMatrixInto(scratchSpace0, dest, ZERO, ZERO, Point{X: int32(length.Height), Y: int32(length.Width)})
 	return nil
 }
 

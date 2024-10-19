@@ -11,8 +11,8 @@ type Patch struct {
 	Height        int32
 	Bounds        util.Rectangle
 	Ref           int32
-	Origin        util.IntPoint
-	Positions     []util.IntPoint
+	Origin        util.Point
+	Positions     []util.Point
 	BlendingInfos [][]BlendingInfo
 }
 

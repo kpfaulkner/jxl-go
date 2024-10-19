@@ -167,7 +167,7 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 	if !hf.stream.ValidateFinalState() {
 		return nil, errors.New(fmt.Sprintf("Illegal final state in passgroup pass %d : group %d", pass, group))
 	}
-	return nil, nil
+	return hf, nil
 }
 
 func (hf *HFCoefficients) getBlockContext(c int, orderID int32, hfMult int32, lfIndex int32) int32 {

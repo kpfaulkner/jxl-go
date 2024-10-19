@@ -69,7 +69,7 @@ func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) ([][]float32, error) {
 		return nil, errors.New("invalid argument")
 	}
 	primariesTr := [][]float32{r, g, b}
-	primariesMatrix := util.TransposeMatrix(primariesTr, util.NewIntPoint(3))
+	primariesMatrix := util.TransposeMatrix(primariesTr, *util.NewPoint(3, 3))
 	inversePrimaries := util.InvertMatrix3x3(primariesMatrix)
 	w, err := GetXYZ(*wp)
 	if err != nil {

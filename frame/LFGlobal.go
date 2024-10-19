@@ -11,7 +11,6 @@ type LFGlobal struct {
 	splines         []SplinesBundle
 	noiseParameters []NoiseParameters
 	lfDequant       []float32
-	quantizer       *Quantizer
 	hfBlockCtx      *HFBlockContext
 	lfChanCorr      *LFChannelCorrelation
 	gModular        *GlobalModular
@@ -102,7 +101,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 			return nil, err
 		}
 	} else {
-		lf.quantizer = nil
+		lf.quantLF = 0
 		lf.hfBlockCtx = nil
 		lf.lfChanCorr, err = NewLFChannelCorrelation()
 		if err != nil {

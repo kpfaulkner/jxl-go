@@ -66,7 +66,7 @@ func NewLFCoefficientsWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame
 		return nil, err
 	}
 	lfQuant := lfQuantStream.getDecodedBuffer()
-	scaledDequant := frame.LfGlobal.quantizer.scaledDequant
+	scaledDequant := frame.LfGlobal.scaledDequant
 	for i := 0; i < 3; i++ {
 		c := cMap[i]
 		xx := 1 << extraPrecision

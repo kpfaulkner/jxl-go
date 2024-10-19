@@ -19,7 +19,7 @@ type ModularChannel struct {
 	//Height  int32
 	hshift  int32
 	vshift  int32
-	origin  util.IntPoint
+	origin  util.Point
 	forceWP bool
 	size    util.Dimension
 

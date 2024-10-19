@@ -1,5 +1,9 @@
 package util
 
+var (
+	ZERO = *NewPoint(0, 0)
+)
+
 type Point struct {
 	X int32
 	Y int32

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/image"
@@ -432,10 +430,10 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 		for i, info := range replaced {
 			lfHeight := frameSize.Height >> info.vshift
 			lfWidth := frameSize.Width >> info.hshift
-			info.origin.Y = uint32(lfGroupPos.Y) * info.size.Height
-			info.origin.X = uint32(lfGroupPos.X) * info.size.Width
-			info.size.Height = util.Min(info.size.Height, lfHeight-info.origin.Y)
-			info.size.Width = util.Min(info.size.Width, lfWidth-info.origin.X)
+			info.origin.Y = lfGroupPos.Y * int32(info.size.Height)
+			info.origin.X = lfGroupPos.X * int32(info.size.Width)
+			info.size.Height = util.Min(info.size.Height, lfHeight-uint32(info.origin.Y))
+			info.size.Width = util.Min(info.size.Width, lfWidth-uint32(info.origin.X))
 			replaced[i] = info
 		}
 		f.lfGroups[lfGroupID], err = NewLFGroup(reader, f, int32(lfGroupID), replaced, lfBuffer)
@@ -452,7 +450,7 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
 			newChannel := newChannelInfo.buffer
 			for y := 0; y < len(newChannel); y++ {
-				copy(channel.buffer[uint32(y)+newChannelInfo.origin.Y], newChannel[y])
+				copy(channel.buffer[int32(y)+newChannelInfo.origin.Y], newChannel[y])
 			}
 		}
 	}
@@ -477,88 +475,88 @@ func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 	return nil
 }
 
-func (f *Frame) decodePassGroupsSerial() error {
-	numPasses := len(f.passes)
-	numGroups := int(f.numGroups)
-	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
-
-	var eg errgroup.Group
-	for pass0 := 0; pass0 < numPasses; pass0++ {
-		pass := pass0
-
-		for group0 := 0; group0 < numGroups; group0++ {
-
-			iPass := pass0
-			iGroup := group0
-			eg.Go(func() error {
-				group := iGroup
-				br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + group)
-				if err != nil {
-					return err
-				}
-
-				replaced := []ModularChannel{}
-				for _, r := range f.passes[pass].replacedChannels {
-					mc := NewModularChannelFromChannel(r)
-					replaced = append(replaced, *mc)
-				}
-				for i := 0; i < len(replaced); i++ {
-					info := replaced[i]
-					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-					passGroupSize := util.NewIntPoint(int(f.Header.groupDim)).ShiftRightWithIntPoint(shift)
-					rowStride := util.CeilDiv(uint32(info.size.Width), passGroupSize.X)
-					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-					chanSize := util.NewIntPointWithXY(uint32(info.size.Width), uint32(info.size.Height))
-					info.origin = pos
-					size := passGroupSize.Min(chanSize.Minus(info.origin))
-					info.size.Width = size.X
-					info.size.Height = size.Y
-					replaced[i] = info
-				}
-
-				pg, err := NewPassGroupWithReader(br, f, uint32(iPass), uint32(group), replaced)
-				if err != nil {
-					return err
-				}
-				passGroups[pass][group] = *pg
-				return nil
-			})
-		}
-		if err := eg.Wait(); err != nil {
-			return err
-		}
-	}
-
-	for pass := 0; pass < numPasses; pass++ {
-		j := 0
-		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-			ii := i
-			jj := j
-			eg.Go(func() error {
-				channel := f.LfGlobal.gModular.Stream.channels[ii]
-				channel.allocate()
-				for group := 0; group < int(f.numGroups); group++ {
-					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
-					buff := newChannelInfo.buffer
-					for y := 0; y < len(buff); y++ {
-						idx := y + int(newChannelInfo.origin.Y)
-						copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
-					}
-				}
-				return nil
-			})
-			j++
-		}
-		if err := eg.Wait(); err != nil {
-			return err
-		}
-	}
-	if f.Header.Encoding == VARDCT {
-		panic("VARDCT not implemented")
-	}
-
-	return nil
-}
+//func (f *Frame) decodePassGroupsSerial() error {
+//	numPasses := len(f.passes)
+//	numGroups := int(f.numGroups)
+//	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
+//
+//	var eg errgroup.Group
+//	for pass0 := 0; pass0 < numPasses; pass0++ {
+//		pass := pass0
+//
+//		for group0 := 0; group0 < numGroups; group0++ {
+//
+//			iPass := pass0
+//			iGroup := group0
+//			eg.Go(func() error {
+//				group := iGroup
+//				br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + group)
+//				if err != nil {
+//					return err
+//				}
+//
+//				replaced := []ModularChannel{}
+//				for _, r := range f.passes[pass].replacedChannels {
+//					mc := NewModularChannelFromChannel(r)
+//					replaced = append(replaced, *mc)
+//				}
+//				for i := 0; i < len(replaced); i++ {
+//					info := replaced[i]
+//					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
+//					passGroupSize := util.NewIntPoint(int(f.Header.groupDim)).ShiftRightWithIntPoint(shift)
+//					rowStride := util.CeilDiv(uint32(info.size.Width), passGroupSize.X)
+//					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
+//					chanSize := util.NewIntPointWithXY(uint32(info.size.Width), uint32(info.size.Height))
+//					info.origin = pos
+//					size := passGroupSize.Min(chanSize.Minus(info.origin))
+//					info.size.Width = size.X
+//					info.size.Height = size.Y
+//					replaced[i] = info
+//				}
+//
+//				pg, err := NewPassGroupWithReader(br, f, uint32(iPass), uint32(group), replaced)
+//				if err != nil {
+//					return err
+//				}
+//				passGroups[pass][group] = *pg
+//				return nil
+//			})
+//		}
+//		if err := eg.Wait(); err != nil {
+//			return err
+//		}
+//	}
+//
+//	for pass := 0; pass < numPasses; pass++ {
+//		j := 0
+//		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+//			ii := i
+//			jj := j
+//			eg.Go(func() error {
+//				channel := f.LfGlobal.gModular.Stream.channels[ii]
+//				channel.allocate()
+//				for group := 0; group < int(f.numGroups); group++ {
+//					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
+//					buff := newChannelInfo.buffer
+//					for y := 0; y < len(buff); y++ {
+//						idx := y + int(newChannelInfo.origin.Y)
+//						copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+//					}
+//				}
+//				return nil
+//			})
+//			j++
+//		}
+//		if err := eg.Wait(); err != nil {
+//			return err
+//		}
+//	}
+//	if f.Header.Encoding == VARDCT {
+//		panic("VARDCT not implemented")
+//	}
+//
+//	return nil
+//}
 
 func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) error {
 
@@ -577,15 +575,13 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 	}
 	for i := 0; i < len(replaced); i++ {
 		info := replaced[i]
-		shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-		passGroupSize := util.NewIntPoint(int(f.Header.groupDim)).ShiftRightWithIntPoint(shift)
-		rowStride := util.CeilDiv(uint32(info.size.Width), passGroupSize.X)
-		pos := util.Coordinates(uint32(iGroup), rowStride).TimesWithIntPoint(passGroupSize)
-		chanSize := util.NewIntPointWithXY(uint32(info.size.Width), uint32(info.size.Height))
-		info.origin = pos
-		size := passGroupSize.Min(chanSize.Minus(info.origin))
-		info.size.Width = size.X
-		info.size.Height = size.Y
+		groupHeight := f.Header.groupDim >> info.vshift
+		groupWidth := f.Header.groupDim >> info.hshift
+		rowStride := util.CeilDiv(info.size.Width, groupWidth)
+		info.origin.Y = int32((uint32(iGroup) / rowStride) * groupHeight)
+		info.origin.X = int32((uint32(iGroup) % rowStride) * groupWidth)
+		info.size.Height = util.Min[uint32](info.size.Height-uint32(info.origin.Y), uint32(groupHeight))
+		info.size.Width = util.Min[uint32](info.size.Width-uint32(info.origin.X), uint32(groupWidth))
 		replaced[i] = info
 	}
 

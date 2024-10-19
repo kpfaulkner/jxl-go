@@ -325,8 +325,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 				return errors.New("patch size out of bounds")
 			}
 
-			if patch.Bounds.Size.Height+y0 > header.Bounds.Size.Height ||
-				patch.Bounds.Size.Width+x0 > header.Bounds.Size.Width {
+			if patch.Bounds.Size.Height+uint32(y0) > header.Bounds.Size.Height ||
+				patch.Bounds.Size.Width+uint32(x0) > header.Bounds.Size.Width {
 				return errors.New("patch size out of bounds")
 			}
 
@@ -359,7 +359,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 						refBufferI := refBuffer[d].IntBuffer
 						frameBufferI := frameBuffer[d].IntBuffer
 						for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
-							copy(frameBufferI[y+uint32(patch.Bounds.Origin.Y)][patch.Bounds.Origin.X:], refBufferI[y0+y][x0:])
+							copy(frameBufferI[y+uint32(patch.Bounds.Origin.Y)][patch.Bounds.Origin.X:], refBufferI[y0+int32(y)][x0:])
 						}
 						toFloat = false
 					}
@@ -428,16 +428,16 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 					if !toFloat {
 						break
 					}
-					for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
-						for x := uint32(0); x < patch.Bounds.Size.Width; x++ {
-							frameBufferF[y0+y][x0+x] += refBufferF[uint32(patch.Bounds.Origin.Y)+y][uint32(patch.Bounds.Origin.X)+x]
+					for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+						for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+							frameBufferF[y0+y][x0+x] += refBufferF[patch.Bounds.Origin.Y+y][patch.Bounds.Origin.X+x]
 						}
 					}
 					break
 				case 3:
 					for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
 						for x := uint32(0); x < patch.Bounds.Size.Width; x++ {
-							frameBufferF[y0+y][x0+x] *= refBufferF[uint32(patch.Bounds.Origin.Y)+y][uint32(patch.Bounds.Origin.X)+x]
+							frameBufferF[uint32(y0)+y][uint32(x0)+x] *= refBufferF[uint32(patch.Bounds.Origin.Y)+y][uint32(patch.Bounds.Origin.X)+x]
 						}
 					}
 					break
