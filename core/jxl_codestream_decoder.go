@@ -45,6 +45,7 @@ func NewJXLCodestreamDecoder(br *jxlio.Bitreader, options *options.JXLOptions) *
 	if options != nil {
 		jxl.options = *options
 	}
+	jxl.reference = make([][]image2.ImageBuffer, 4)
 	return jxl
 }
 
@@ -120,7 +121,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			return nil, err
 		}
 		jxl.imageHeader = imageHeader
-
+		size := imageHeader.Size
 		jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
 		if imageHeader.AnimationHeader != nil {
 			panic("dont care about animation for now")
@@ -146,7 +147,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			}
 		}
 
-		var canvas []image2.ImageBuffer
+		//var canvas []image2.ImageBuffer
 		invisibleFrames := int64(0)
 		visibleFrames := 0
 
@@ -224,10 +225,15 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 				panic("VARDCT not implemented yet")
 			}
 
+			if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
+				for c := 0; c < len(jxl.canvas); c++ {
+					jxl.canvas[c] = *image2.NewImageBuffer(imgFrame.Buffer[0].BufferType, int32(size.Height), int32(size.Width))
+				}
+			}
 			if header.FrameType == frame.REGULAR_FRAME || header.FrameType == frame.SKIP_PROGRESSIVE {
 				found := false
 				for i := uint32(0); i < 4; i++ {
-					if image2.ImageBufferSliceEquals(jxl.reference[i], canvas) && i != header.SaveAsReference {
+					if image2.ImageBufferSliceEquals(jxl.reference[i], jxl.canvas) && i != header.SaveAsReference {
 						found = true
 						break
 					}
@@ -236,14 +242,14 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 				if found {
 					// unsure if we really need a copy of the canvas?  TODO(kpfaulkner) check this!
 				}
-				err = jxl.blendFrame(canvas, imgFrame)
+				err = jxl.blendFrame(jxl.canvas, imgFrame)
 				if err != nil {
 					return nil, err
 				}
 			}
 
 			if save && !header.SaveBeforeCT {
-				jxl.reference[header.SaveAsReference] = canvas
+				jxl.reference[header.SaveAsReference] = jxl.canvas
 			}
 
 			if header.IsLast && header.Duration == 0 {
@@ -262,9 +268,9 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		orientation := imageHeader.Orientation
-		orientedCanvas := make([]image2.ImageBuffer, len(canvas))
+		orientedCanvas := make([]image2.ImageBuffer, len(jxl.canvas))
 		for i := 0; i < len(orientedCanvas); i++ {
-			orientedCanvas[i], err = jxl.transposeBuffer(canvas[i], orientation)
+			orientedCanvas[i], err = jxl.transposeBuffer(jxl.canvas[i], orientation)
 			if err != nil {
 				return nil, err
 			}
@@ -940,7 +946,7 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas *image2.ImageBuffer, start 
 
 	if canvas.IsInt() {
 		for y := uint32(0); y < size.Height; y++ {
-			copy(canvas.IntBuffer[y+uint32(start.X)][off.X:], frameBuffer.IntBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
+			copy(canvas.IntBuffer[y+uint32(start.Y)][start.X:], frameBuffer.IntBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 		}
 	} else {
 		for y := uint32(0); y < size.Height; y++ {

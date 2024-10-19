@@ -85,11 +85,11 @@ func NewImage(buffer []image2.ImageBuffer, header bundle.ImageHeader) (image.Ima
 	pos := 0
 	for y := 0; y < dy; y++ {
 		for x := 0; x < dx; x++ {
-			pix[pos] = uint8(buffer[0].IntBuffer[y][x] * 255)
+			pix[pos] = uint8(buffer[0].IntBuffer[y][x])
 			pos++
-			pix[pos] = uint8(buffer[1].IntBuffer[y][x] * 255)
+			pix[pos] = uint8(buffer[1].IntBuffer[y][x])
 			pos++
-			pix[pos] = uint8(buffer[2].IntBuffer[y][x] * 255)
+			pix[pos] = uint8(buffer[2].IntBuffer[y][x])
 			pos++
 
 			// FIXME(kpfaulkner) deal with alpha channels properly

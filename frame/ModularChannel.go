@@ -2,7 +2,6 @@ package frame
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -66,12 +65,6 @@ func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vsh
 func (mc *ModularChannel) allocate() {
 	if mc.buffer != nil && len(mc.buffer) != 0 {
 		return
-	}
-
-	fmt.Printf("ModularChannel allocate width %d height %d\n", mc.size.Width, mc.size.Height)
-
-	if mc.size.Width == 62135 && mc.size.Height == 2 {
-		fmt.Printf("snoop\n")
 	}
 
 	if mc.size.Height == 0 || mc.size.Width == 0 {
