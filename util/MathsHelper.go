@@ -355,7 +355,7 @@ func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 			}
 		}
 		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Height), Y: int32(size.Width)})
-		for y := int32(0); y < int32(size.Width); y++ {
+		for y := int32(0); y < int32(size.Height); y++ {
 			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y],
 				0, startOut.X, logWidth, int32(size.Width)); err != nil {
 				return err

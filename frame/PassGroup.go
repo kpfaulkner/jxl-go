@@ -212,7 +212,10 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				}
 				break
 			case METHOD_DCT2:
-				panic("not implemented")
+				g.auxDCT2(coeffs[c], scratchBlock[0], ppg, util.ZERO, 2)
+				g.auxDCT2(scratchBlock[0], scratchBlock[1], util.ZERO, util.ZERO, 4)
+				g.auxDCT2(scratchBlock[1], frameBuffer[c], util.ZERO, ppf, 8)
+				break
 			case METHOD_HORNUSS:
 				panic("not implemented")
 			case METHOD_DCT4:
@@ -325,4 +328,32 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 		}
 	}
 	return nil
+}
+
+func (g *PassGroup) auxDCT2(coeffs [][]float32, result [][]float32, p util.Point, ps util.Point, s int32) {
+	g.layBlock(coeffs, result, p, ps, util.Dimension{Height: 8, Width: 8})
+
+	num := s / 2
+	for iy := int32(0); iy < num; iy++ {
+		for ix := int32(0); ix < num; ix++ {
+			c00 := coeffs[p.Y+iy][p.X+ix]
+			c01 := coeffs[p.Y+iy][p.X+ix+num]
+			c10 := coeffs[p.Y+iy+num][p.X+ix]
+			c11 := coeffs[p.Y+iy+num][p.X+ix+num]
+			r00 := c00 + c01 + c10 + c11
+			r01 := c00 + c01 - c10 - c11
+			r10 := c00 - c01 + c10 - c11
+			r11 := c00 - c01 - c10 + c11
+			result[ps.Y+iy*2][ps.X+ix*2] = r00
+			result[ps.Y+iy*2][ps.X+ix*2+1] = r01
+			result[ps.Y+iy*2+1][ps.X+ix*2] = r10
+			result[ps.Y+iy*2+1][ps.X+ix*2+1] = r11
+		}
+	}
+}
+
+func (g *PassGroup) layBlock(block [][]float32, buffer [][]float32, inPos util.Point, outPos util.Point, inSize util.Dimension) {
+	for y := int32(0); y < int32(inSize.Height); y++ {
+		copy(buffer[y+outPos.Y][outPos.X:outPos.X+int32(inSize.Width)], block[y+inPos.Y][inPos.X:inPos.X+int32(inSize.Width)])
+	}
 }
