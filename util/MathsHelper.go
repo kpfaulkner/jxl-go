@@ -336,13 +336,13 @@ func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 	logWidth := CeilLog2(size.Width)
 	if transposed {
 		for y := int32(0); y < int32(size.Height); y++ {
-			if err := inverseDCTHorizontal(src[startIn.Y+y], scratchSpace1[y], startIn.X, 0, logWidth, size.Width); err != nil {
+			if err := inverseDCTHorizontal(src[startIn.Y+y], scratchSpace1[y], startIn.X, 0, logWidth, int32(size.Width)); err != nil {
 				return err
 			}
 		}
 		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Width), Y: int32(size.Height)})
 		for y := int32(0); y < int32(size.Width); y++ {
-			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y], 0, startOut.X, logHeight, size.Height); err != nil {
+			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y], 0, startOut.X, logHeight, int32(size.Height)); err != nil {
 				return err
 			}
 		}
@@ -350,14 +350,14 @@ func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 		TransposeMatrixInto(src, scratchSpace0, startIn, ZERO, Point{X: int32(size.Width), Y: int32(size.Height)})
 		for y := int32(0); y < int32(size.Width); y++ {
 			if err := inverseDCTHorizontal(scratchSpace0[y], scratchSpace1[y],
-				0, 0, logHeight, size.Height); err != nil {
+				0, 0, logHeight, int32(size.Height)); err != nil {
 				return err
 			}
 		}
 		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Height), Y: int32(size.Width)})
 		for y := int32(0); y < int32(size.Width); y++ {
 			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y],
-				0, startOut.X, logWidth, size.Width); err != nil {
+				0, startOut.X, logWidth, int32(size.Width)); err != nil {
 				return err
 			}
 		}
@@ -366,9 +366,23 @@ func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 }
 
 func inverseDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartOut int32, xLogLength int,
-	xLength uint32) error {
+	xLength int32) error {
 
-	panic("not implemented")
+	// fill dest with initial data
+	for i, _ := range dest[xStartIn : xStartIn+xLength] {
+		dest[i] = src[xStartIn]
+	}
+
+	lutX := cosineLUT[xLogLength]
+	for n := int32(1); n < xLength; n++ {
+		lut := lutX[n-1]
+		s2 := src[xStartIn+n]
+		for k := int32(0); k < xLength; k++ {
+			dest[xStartOut+k] += s2 * lut[k]
+		}
+	}
+
+	return nil
 }
 
 func ForwardDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, length Dimension,
