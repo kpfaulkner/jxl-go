@@ -364,10 +364,6 @@ func (ms *ModularStream) applyTransforms() error {
 			fmt.Printf("orig channel length %d\n", len(ms.channels))
 			spa := ms.squeezeMap[i]
 			for j := len(spa) - 1; j >= 0; j-- {
-
-				if j == 3 {
-					fmt.Printf("snoop\n")
-				}
 				sp := spa[j]
 				begin := sp.beginC
 				end := begin + sp.numC - 1

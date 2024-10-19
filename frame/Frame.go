@@ -782,7 +782,67 @@ func (f *Frame) invertSubsampling() {
 }
 
 func (f *Frame) performGabConvolution() error {
-	panic("not implemented")
+
+	colours := f.getColourChannelCount()
+	normGabBase := make([]float32, colours)
+	normGabAdj := make([]float32, colours)
+	normGabDiag := make([]float32, colours)
+	for c := int32(0); c < colours; c++ {
+		gabW1 := f.Header.restorationFilter.gab1Weights[c]
+		gabW2 := f.Header.restorationFilter.gab2Weights[c]
+		mult := 1.0 / (1.0 + 4.0*(gabW1+gabW2))
+		normGabBase[c] = mult
+		normGabAdj[c] = gabW1 * mult
+		normGabDiag[c] = gabW2 * mult
+	}
+
+	for c := int32(0); c < colours; c++ {
+		f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+		height := f.Buffer[c].Height
+		width := f.Buffer[c].Width
+		buffC := f.Buffer[c].FloatBuffer
+		newBuffer := image.NewImageBuffer(image.TYPE_FLOAT, height, width)
+		newBufferF := newBuffer.FloatBuffer
+		for y := int32(0); y < height; y++ {
+			var north int32
+			if y == 0 {
+				north = 0
+			} else {
+				north = y - 1
+			}
+			var south int32
+			if y+1 == height {
+				south = height - 1
+			} else {
+				south = y + 1
+			}
+
+			buffR := buffC[y]
+			buffN := buffC[north]
+			buffS := buffC[south]
+			newBuffR := newBufferF[y]
+
+			for x := int32(0); x < height; x++ {
+				var west int32
+				if x == 0 {
+					west = 0
+				} else {
+					west = x - 1
+				}
+				var east int32
+				if x+1 == width {
+					east = width - 1
+				} else {
+					east = x + 1
+				}
+				adj := buffR[west] + buffR[east] + buffN[x] + buffS[x]
+				diag := buffN[west] + buffN[east] + buffS[west] + buffS[east]
+				newBuffR[x] = normGabBase[c]*buffR[x] + normGabAdj[c]*adj + normGabDiag[c]*diag
+			}
+		}
+		f.Buffer[c] = *newBuffer
+	}
+	return nil
 }
 
 func (f *Frame) performEdgePreservingFilter() error {
@@ -916,4 +976,11 @@ func (f *Frame) getGroupSize(groupID int32) (util.Dimension, error) {
 		Height: height,
 		Width:  width,
 	}, nil
+}
+
+func (f *Frame) getColourChannelCount() int32 {
+	if f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
+		return 3
+	}
+	return int32(f.globalMetadata.GetColourChannelCount())
 }
