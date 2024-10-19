@@ -200,7 +200,7 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 					}
 					ppf2.Y += y << 2
 					if err := util.InverseDCT2D(scratchBlock[0], frameBuffer[c], util.ZERO, ppf2,
-						util.Dimension{Height: 4, Width: 8}, scratchBlock[1], scratchBlock[2], true); err != nil {
+						util.Dimension{Height: 4, Width: 8}, scratchBlock[1], scratchBlock[2], false); err != nil {
 						return err
 					}
 				}
