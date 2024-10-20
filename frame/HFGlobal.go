@@ -2,6 +2,7 @@ package frame
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -53,9 +54,10 @@ func setupDefaultParams() {
 	}
 	defaultParams[1] = DCTParam{
 		dctParam: nil,
-		param: [][]float32{{3150.0, 0.0, -0.4, -0.4, -0.4, -2.0},
-			{560.0, 0.0, -0.3, -0.3, -0.3, -0.3},
-			{512.0, -2.0, -1.0, 0.0, -1.0, -2.0}},
+		param: [][]float32{
+			{280.0, 3160.0, 3160.0},
+			{60.0, 864.0, 864.0},
+			{18.0, 200.0, 200.0}},
 		mode:        MODE_HORNUSS,
 		denominator: 1,
 		params4x4:   nil,
@@ -76,7 +78,7 @@ func setupDefaultParams() {
 			{1.0, 1.0}},
 		mode:        MODE_DCT4,
 		denominator: 1,
-		params4x4:   nil,
+		params4x4:   dct4x4params,
 	}
 	defaultParams[4] = DCTParam{
 		dctParam: [][]float64{
@@ -466,6 +468,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 					hfg.weights[index][c][y][x] = w[y/2][x/2]
 				}
 			}
+			break
 		case MODE_AFV:
 			afv, err := hfg.getAFVTransformWeights(index, c)
 			if err != nil {
@@ -485,10 +488,13 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			return errors.New("Invalid mode")
 		}
 	}
-	if hfg.params[index].mode == MODE_RAW {
+	if hfg.params[index].mode != MODE_RAW {
 		for c := 0; c < 3; c++ {
 			for y := int32(0); y < tt.matrixHeight; y++ {
 				for x := int32(0); x < tt.matrixWidth; x++ {
+					if index == 1 && c == 0 && x == 1 && y == 1 {
+						fmt.Printf("snoop\n")
+					}
 					if hfg.weights[index][c][y][x] < 0 || math.IsInf(float64(hfg.weights[index][c][y][x]), 0) {
 						return errors.New("Invalid weight")
 					}

@@ -950,7 +950,7 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas *image2.ImageBuffer, start 
 		}
 	} else {
 		for y := uint32(0); y < size.Height; y++ {
-			copy(canvas.FloatBuffer[y+uint32(start.X)][off.X:], frameBuffer.FloatBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
+			copy(canvas.FloatBuffer[y+uint32(start.Y)][start.X:], frameBuffer.FloatBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 		}
 	}
 	return nil

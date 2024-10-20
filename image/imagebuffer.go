@@ -14,7 +14,6 @@ const (
 type ImageBuffer struct {
 	Width      int32
 	Height     int32
-	bufferType int
 	BufferType int
 
 	// image data can be either float or int based. Keep separate buffers and just
@@ -36,7 +35,7 @@ func NewImageBuffer(bufferType int, height int32, width int32) *ImageBuffer {
 	ib := &ImageBuffer{
 		Width:      width,
 		Height:     height,
-		bufferType: bufferType,
+		BufferType: bufferType,
 	}
 
 	if bufferType == TYPE_INT {
@@ -92,15 +91,15 @@ func (ib *ImageBuffer) Equals(other ImageBuffer) bool {
 }
 
 func (ib *ImageBuffer) IsFloat() bool {
-	return ib.bufferType == TYPE_FLOAT
+	return ib.BufferType == TYPE_FLOAT
 }
 
 func (ib *ImageBuffer) IsInt() bool {
-	return ib.bufferType == TYPE_INT
+	return ib.BufferType == TYPE_INT
 }
 
 func (ib *ImageBuffer) CastToFloatIfInt(maxValue int32) error {
-	if ib.bufferType == TYPE_FLOAT {
+	if ib.BufferType == TYPE_FLOAT {
 		return nil
 	}
 	return ib.castToFloatBuffer(maxValue)
@@ -122,11 +121,13 @@ func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
 			newBuffer[y][x] = float32(oldBuffer[y][x]) * scaleFactor
 		}
 	}
+	ib.BufferType = TYPE_FLOAT
+	ib.FloatBuffer = newBuffer
 	return nil
 }
 
 func (ib *ImageBuffer) CastToIntIfFloat(maxValue int32) error {
-	if ib.bufferType == TYPE_INT {
+	if ib.BufferType == TYPE_INT {
 		return nil
 	}
 	return ib.castToIntBuffer(maxValue)

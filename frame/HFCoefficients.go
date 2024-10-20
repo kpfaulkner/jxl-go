@@ -229,7 +229,7 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 	scaleFactor := [3]float32{
 		globalScale * float32(math.Pow(0.8, float64(header.xqmScale-2))),
 		globalScale,
-		globalScale * float32(math.Pow(1.25, float64(2-header.bqmScale))),
+		globalScale * float32(math.Pow(0.8, float64(header.bqmScale-2))),
 	}
 	weights := hf.frame.hfGlobal.weights
 	qbclut := [][]float32{
@@ -395,7 +395,7 @@ func getPredictedNonZeros(nonZeros [][][]int32, c int, y int32, x int32) int32 {
 		return 32
 	}
 	if x == 0 {
-		return nonZeros[c][y-1][x]
+		return nonZeros[c][y-1][0]
 	}
 
 	if y == 0 {

@@ -291,6 +291,8 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
+	// NOTE: 20241020 note, the below is where (in JXLatte) the buffer values shift from
+	// 0 to-6.748587E-4 . But here it doesn't. Need to check.
 	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
@@ -947,14 +949,14 @@ func (f *Frame) performEdgePreservingFilter() error {
 				for _, cross := range crossList {
 					var dist float32
 					if i == 2 {
-						dist = epfDistance2(inputBuffers, colours, y, x, cross, paddedSize)
+						dist = f.epfDistance2(inputBuffers, colours, y, x, cross, paddedSize)
 					} else {
-						dist = epfDistance1(inputBuffers, colours, y, x, cross, paddedSize)
+						dist = f.epfDistance1(inputBuffers, colours, y, x, cross, paddedSize)
 					}
-					weight := epfWeight(sigmaScale, dist, s, y, x)
+					weight := f.epfWeight(sigmaScale, dist, s, y, x)
 					sumWeights += weight
-					mY := util.MirrorCoordinate(y+cross.Y, paddedSize.Height)
-					mX := util.MirrorCoordinate(x+cross.X, paddedSize.Width)
+					mY := util.MirrorCoordinate(y+cross.Y, int32(paddedSize.Height))
+					mX := util.MirrorCoordinate(x+cross.X, int32(paddedSize.Width))
 					for c := int32(0); c < colours; c++ {
 						sumChannels[c] += inputBuffers[c][mY][mX] * weight
 					}
@@ -973,16 +975,46 @@ func (f *Frame) performEdgePreservingFilter() error {
 	return nil
 }
 
-func epfWeight(sigmaScale float32, distance float32, inverseSigma float32, refY int32, refX int32) float32 {
+func (f *Frame) epfWeight(sigmaScale float32, distance float32, inverseSigma float32, refY int32, refX int32) float32 {
 
+	modY := refY & 0b111
+	modX := refX & 0b111
+	if modY == 0 || modY == 7 || modX == 0 || modX == 7 {
+		distance *= f.Header.restorationFilter.epfBorderSadMul
+	}
+	v := 1.0 - distance*sigmaScale*inverseSigma
+	if v < 0 {
+		return 0
+	}
+	return v
 }
 
-func epfDistance1(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
-
+func (f *Frame) epfDistance1(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, dCross util.Point, frameSize util.Dimension) float32 {
+	dist := float32(0)
+	for c := int32(0); c < colours; c++ {
+		buffC := buffer[c]
+		scale := f.Header.restorationFilter.epfChannelScale[c]
+		for _, cross := range epfCross {
+			pY := util.MirrorCoordinate(basePosY+cross.Y, int32(frameSize.Height))
+			pX := util.MirrorCoordinate(basePosX+cross.X, int32(frameSize.Width))
+			dY := util.MirrorCoordinate(basePosY+dCross.Y+cross.Y, int32(frameSize.Height))
+			dX := util.MirrorCoordinate(basePosX+dCross.X+cross.X, int32(frameSize.Width))
+			dist += float32(math.Abs(float64(buffC[pY][pX]-buffC[dY][dX]))) * scale
+		}
+	}
+	return dist
 }
 
-func epfDistance2(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
+func (f *Frame) epfDistance2(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
+	dist := float32(0)
+	for c := int32(0); c < colours; c++ {
+		buffC := buffer[c]
 
+		dY := util.MirrorCoordinate(basePosY+cross.Y, int32(frameSize.Height))
+		dX := util.MirrorCoordinate(basePosX+cross.X, int32(frameSize.Width))
+		dist += float32(math.Abs(float64(buffC[basePosY][basePosX]-buffC[dY][dX]))) * f.Header.restorationFilter.epfChannelScale[c]
+	}
+	return dist
 }
 
 func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) [][][]float32 {

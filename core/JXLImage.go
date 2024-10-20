@@ -83,18 +83,35 @@ func NewImage(buffer []image2.ImageBuffer, header bundle.ImageHeader) (image.Ima
 	dx := jxl.Bounds().Dx()
 	dy := jxl.Bounds().Dy()
 	pos := 0
-	for y := 0; y < dy; y++ {
-		for x := 0; x < dx; x++ {
-			pix[pos] = uint8(buffer[0].IntBuffer[y][x])
-			pos++
-			pix[pos] = uint8(buffer[1].IntBuffer[y][x])
-			pos++
-			pix[pos] = uint8(buffer[2].IntBuffer[y][x])
-			pos++
+	if buffer[0].IsFloat() {
+		for y := 0; y < dy; y++ {
+			for x := 0; x < dx; x++ {
+				pix[pos] = uint8(buffer[0].FloatBuffer[y][x] * 255)
+				pos++
+				pix[pos] = uint8(buffer[1].FloatBuffer[y][x] * 255)
+				pos++
+				pix[pos] = uint8(buffer[2].FloatBuffer[y][x] * 255)
+				pos++
 
-			// FIXME(kpfaulkner) deal with alpha channels properly
-			pix[pos] = 255
-			pos++
+				// FIXME(kpfaulkner) deal with alpha channels properly
+				pix[pos] = 255
+				pos++
+			}
+		}
+	} else {
+		for y := 0; y < dy; y++ {
+			for x := 0; x < dx; x++ {
+				pix[pos] = uint8(buffer[0].IntBuffer[y][x])
+				pos++
+				pix[pos] = uint8(buffer[1].IntBuffer[y][x])
+				pos++
+				pix[pos] = uint8(buffer[2].IntBuffer[y][x])
+				pos++
+
+				// FIXME(kpfaulkner) deal with alpha channels properly
+				pix[pos] = 255
+				pos++
+			}
 		}
 	}
 
