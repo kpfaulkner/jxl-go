@@ -425,3 +425,7 @@ func forwardDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartO
 
 	return nil
 }
+
+func MirrorCoordinate(coordinate int32, size uint32) int32 {
+
+}

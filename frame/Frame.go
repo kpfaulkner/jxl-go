@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -15,6 +16,18 @@ import (
 
 var (
 	cMap = []int{1, 0, 2}
+
+	SQRT_H = math.Sqrt(0.5)
+
+	epfCross = []util.Point{
+		{Y: 0, X: 0},
+		{Y: 0, X: -1}, {Y: 0, X: 1},
+		{Y: -1, X: 0}, {Y: 1, X: 0}}
+
+	epfDoubleCross = []util.Point{{X: 0, Y: 0},
+		{X: 0, Y: -1}, {X: 0, Y: 1}, {X: -1, Y: 0}, {X: 1, Y: 0},
+		{X: -1, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1},
+		{X: 0, Y: -2}, {X: 0, Y: 2}, {X: 2, Y: 0}, {X: -2, Y: 0}}
 )
 
 type Frame struct {
@@ -846,7 +859,140 @@ func (f *Frame) performGabConvolution() error {
 }
 
 func (f *Frame) performEdgePreservingFilter() error {
-	panic("not implemented")
+
+	stepMultiplier := float32(1.65) * 4 * float32(1-SQRT_H)
+	paddedSize, err := f.GetPaddedFrameSize()
+	if err != nil {
+		return err
+	}
+	blockHeight := (paddedSize.Height + 7) >> 3
+	blockWidth := (paddedSize.Width + 7) >> 3
+	inverseSigma := util.MakeMatrix2D[float32](blockHeight, blockWidth)
+	colours := f.getColourChannelCount()
+	if f.Header.Encoding == MODULAR {
+		inv := 1.0 / f.Header.restorationFilter.epfSigmaForModular
+		for y := 0; y < int(blockHeight); y++ {
+			for i := 0; i < len(inverseSigma); i++ {
+				inverseSigma[y][i] = inv
+			}
+		}
+	} else {
+		globalScale := float32(65536.0) / float32(f.LfGlobal.globalScale)
+		for y := int32(0); y < int32(blockHeight); y++ {
+			lfY := y >> 8
+			bY := y - (lfY << 8)
+			lfR := lfY * int32(f.lfGroupRowStride)
+			for x := int32(0); x < int32(blockWidth); x++ {
+				lfX := x >> 8
+				bX := x - (lfX << 8)
+				lfg := f.lfGroups[lfR+lfX]
+				hf := lfg.hfMetadata.hfMultiplier[bY][bX]
+				sharpness := lfg.hfMetadata.hfStreamBuffer[3][bY][bX]
+				if sharpness < 0 || sharpness > 7 {
+					return errors.New("sharpness value out of range")
+				}
+				for c := 0; c < 3; c++ {
+					sigma := globalScale * float32(f.Header.restorationFilter.epfSharpLut[sharpness]) / float32(hf)
+					inverseSigma[y][x] = 1.0 / sigma
+				}
+			}
+		}
+	}
+
+	outputBuffer := make([]image.ImageBuffer, colours)
+	for c := int32(0); c < colours; c++ {
+		f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+		outputBuffer[c] = *image.NewImageBuffer(image.TYPE_FLOAT, int32(paddedSize.Height), int32(paddedSize.Width))
+	}
+
+	for i := 0; i < 3; i++ {
+		if i == 0 && f.Header.restorationFilter.epfIterations < 3 {
+			continue
+		}
+		if i == 2 && f.Header.restorationFilter.epfIterations < 2 {
+			break
+		}
+
+		// copy first 3 (well number of colours we have) buffers
+		inputBuffers := copyFloatBuffers(f.Buffer, colours)
+		outputBuffers := copyFloatBuffers(outputBuffer, colours)
+		var sigmaScale float32
+		if i == 0 {
+			sigmaScale = stepMultiplier * f.Header.restorationFilter.epfPass0SigmaScale
+		} else if i == 2 {
+			sigmaScale = stepMultiplier * f.Header.restorationFilter.epfPass2SigmaScale
+		} else {
+			sigmaScale = stepMultiplier
+		}
+		var crossList []util.Point
+		if i == 0 {
+			crossList = epfDoubleCross
+		} else {
+			crossList = epfCross
+		}
+		sumChannels := make([]float32, colours)
+		for y := int32(0); y < int32(paddedSize.Height); y++ {
+			for x := int32(0); x < int32(paddedSize.Width); x++ {
+				s := inverseSigma[y>>3][x>>3]
+				if s > (1.0 / 0.3) {
+					for c := 0; c < len(outputBuffers); c++ {
+						outputBuffers[c][y][x] = inputBuffers[c][y][x]
+					}
+					continue
+				}
+				sumWeights := float32(0)
+				for ff, _ := range sumChannels {
+					sumChannels[ff] = 0
+				}
+				for _, cross := range crossList {
+					var dist float32
+					if i == 2 {
+						dist = epfDistance2(inputBuffers, colours, y, x, cross, paddedSize)
+					} else {
+						dist = epfDistance1(inputBuffers, colours, y, x, cross, paddedSize)
+					}
+					weight := epfWeight(sigmaScale, dist, s, y, x)
+					sumWeights += weight
+					mY := util.MirrorCoordinate(y+cross.Y, paddedSize.Height)
+					mX := util.MirrorCoordinate(x+cross.X, paddedSize.Width)
+					for c := int32(0); c < colours; c++ {
+						sumChannels[c] += inputBuffers[c][mY][mX] * weight
+					}
+				}
+				for c := 0; c < len(outputBuffers); c++ {
+					outputBuffers[c][y][x] = sumChannels[c] / sumWeights
+				}
+			}
+		}
+
+		for c := 0; c < int(colours); c++ {
+			f.Buffer[c], outputBuffer[c] = outputBuffer[c], f.Buffer[c]
+		}
+
+	}
+	return nil
+}
+
+func epfWeight(sigmaScale float32, distance float32, inverseSigma float32, refY int32, refX int32) float32 {
+
+}
+
+func epfDistance1(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
+
+}
+
+func epfDistance2(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
+
+}
+
+func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) [][][]float32 {
+	data := util.MakeMatrix3D[float32](int(colours), int(buffer[0].Height), int(buffer[0].Width))
+	for c := int32(0); c < colours; c++ {
+		for y := int32(0); y < buffer[c].Height; y++ {
+			copy(data[c][y], buffer[c].FloatBuffer[y])
+		}
+	}
+	return data
 }
 
 func (f *Frame) InitializeNoise(seed0 int64) error {
