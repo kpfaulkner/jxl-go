@@ -94,7 +94,7 @@ func NewImage(buffer []image2.ImageBuffer, header bundle.ImageHeader) (image.Ima
 				pos++
 
 				// FIXME(kpfaulkner) deal with alpha channels properly
-				pix[pos] = 255
+				pix[pos] = 255 // uint8(buffer[3].FloatBuffer[y][x] * 255)
 				pos++
 			}
 		}
@@ -109,7 +109,7 @@ func NewImage(buffer []image2.ImageBuffer, header bundle.ImageHeader) (image.Ima
 				pos++
 
 				// FIXME(kpfaulkner) deal with alpha channels properly
-				pix[pos] = 255
+				pix[pos] = uint8(buffer[3].IntBuffer[y][x])
 				pos++
 			}
 		}

@@ -148,13 +148,8 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 					posY += order.Y
 					posX += order.X
 				}
-				if c == 1 && posY == 100 && posX == 242 {
-					//fmt.Printf("snoop\n")
-				}
-				//fmt.Printf("BEFORE quantizedCoeff c %d posY %d posX %d value %d\n", c, posY, posX, hf.quantizedCoeffs[c][posY][posX])
-				//fmt.Printf("uccoeff[%d] is %d\n", k, ucoeff[k])
+
 				hf.quantizedCoeffs[c][posY][posX] = jxlio.UnpackSigned(uint32(ucoeff[k])) << shift
-				fmt.Printf("quantizedCoeff c %d posY %d posX %d value %d\n", c, posY, posX, hf.quantizedCoeffs[c][posY][posX])
 				if ucoeff[k] != 0 {
 					nonZero--
 					if nonZero == 0 {

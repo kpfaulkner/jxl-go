@@ -3,7 +3,9 @@ package frame
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math"
+	"strings"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -290,13 +292,16 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
-	// NOTE: 20241020 note, the below is where (in JXLatte) the buffer values shift from
-	// 0 to-6.748587E-4 . But here it doesn't. Need to check.
+	sig0 := f.generateSignaturesForBuffer(0)
+	fmt.Printf("sig0 %s\n", strings.Join(sig0, ","))
+
 	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
 	}
 
+	sig1 := f.generateSignaturesForBuffer(0)
+	fmt.Printf("sig1 %s\n", strings.Join(sig1, ","))
 	err = f.LfGlobal.gModular.Stream.applyTransforms()
 	if err != nil {
 		return err
@@ -321,23 +326,6 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		} else {
 			scaleFactor = 1.0
 		}
-
-		//ecIndex := c
-		//if f.Header.Encoding == MODULAR {
-		//	ecIndex -= f.globalMetadata.GetColourChannelCount()
-		//}
-		//if isModularXYB {
-		//	scaleFactor = f.LfGlobal.lfDequant[cOut]
-		//} else if isModularColour && f.globalMetadata.BitDepth.ExpBits != 0 {
-		//	scaleFactor = 1.0
-		//} else if isModularColour {
-		//	step1 := f.globalMetadata.BitDepth.BitsPerSample
-		//	step2 := ^int32(0) << step1
-		//	step3 := ^step2
-		//	scaleFactor = 1.0 / float32(step3)
-		//} else {
-		//	scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.ExtraChannelInfo[ecIndex].BitDepth.BitsPerSample))
-		//}
 
 		if isModularXYB && cIn == 2 {
 			outBuffer := f.Buffer[cOut].FloatBuffer
@@ -496,89 +484,6 @@ func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 	return nil
 }
 
-//func (f *Frame) decodePassGroupsSerial() error {
-//	numPasses := len(f.passes)
-//	numGroups := int(f.numGroups)
-//	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
-//
-//	var eg errgroup.Group
-//	for pass0 := 0; pass0 < numPasses; pass0++ {
-//		pass := pass0
-//
-//		for group0 := 0; group0 < numGroups; group0++ {
-//
-//			iPass := pass0
-//			iGroup := group0
-//			eg.Go(func() error {
-//				group := iGroup
-//				br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + group)
-//				if err != nil {
-//					return err
-//				}
-//
-//				replaced := []ModularChannel{}
-//				for _, r := range f.passes[pass].replacedChannels {
-//					mc := NewModularChannelFromChannel(r)
-//					replaced = append(replaced, *mc)
-//				}
-//				for i := 0; i < len(replaced); i++ {
-//					info := replaced[i]
-//					shift := util.NewIntPointWithXY(uint32(info.hshift), uint32(info.vshift))
-//					passGroupSize := util.NewIntPoint(int(f.Header.groupDim)).ShiftRightWithIntPoint(shift)
-//					rowStride := util.CeilDiv(uint32(info.size.Width), passGroupSize.X)
-//					pos := util.Coordinates(uint32(group), rowStride).TimesWithIntPoint(passGroupSize)
-//					chanSize := util.NewIntPointWithXY(uint32(info.size.Width), uint32(info.size.Height))
-//					info.origin = pos
-//					size := passGroupSize.Min(chanSize.Minus(info.origin))
-//					info.size.Width = size.X
-//					info.size.Height = size.Y
-//					replaced[i] = info
-//				}
-//
-//				pg, err := NewPassGroupWithReader(br, f, uint32(iPass), uint32(group), replaced)
-//				if err != nil {
-//					return err
-//				}
-//				passGroups[pass][group] = *pg
-//				return nil
-//			})
-//		}
-//		if err := eg.Wait(); err != nil {
-//			return err
-//		}
-//	}
-//
-//	for pass := 0; pass < numPasses; pass++ {
-//		j := 0
-//		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-//			ii := i
-//			jj := j
-//			eg.Go(func() error {
-//				channel := f.LfGlobal.gModular.Stream.channels[ii]
-//				channel.allocate()
-//				for group := 0; group < int(f.numGroups); group++ {
-//					newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
-//					buff := newChannelInfo.buffer
-//					for y := 0; y < len(buff); y++ {
-//						idx := y + int(newChannelInfo.origin.Y)
-//						copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
-//					}
-//				}
-//				return nil
-//			})
-//			j++
-//		}
-//		if err := eg.Wait(); err != nil {
-//			return err
-//		}
-//	}
-//	if f.Header.Encoding == VARDCT {
-//		panic("VARDCT not implemented")
-//	}
-//
-//	return nil
-//}
-
 func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) error {
 
 	br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + iGroup)
@@ -625,18 +530,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		iGroup int
 	}
 	inputChan := make(chan Inp, numPasses*numGroups)
-	//var wg sync.WaitGroup
-
-	//numberOfWorkers := 1
-	//for i := 0; i < numberOfWorkers; i++ {
-	//	wg.Add(1)
-	//	go func() {
-	//		for inp := range inputChan {
-	//			f.doProcessing(inp.iPass, inp.iGroup, passGroups)
-	//		}
-	//		defer wg.Done()
-	//	}()
-	//}
 
 	for pass0 := 0; pass0 < numPasses; pass0++ {
 		pass := pass0
@@ -649,7 +542,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		}
 	}
 	close(inputChan)
-	//wg.Wait()
 
 	for inp := range inputChan {
 		err := f.doProcessing(inp.iPass, inp.iGroup, passGroups)
@@ -657,33 +549,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			return err
 		}
 	}
-
-	//var eg errgroup.Group
-
-	//for pass := 0; pass < numPasses; pass++ {
-	//	j := 0
-	//	for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-	//		ii := i
-	//		jj := j
-	//		eg.Go(func() error {
-	//			channel := f.LfGlobal.gModular.Stream.channels[ii]
-	//			channel.allocate()
-	//			for group := 0; group < int(f.numGroups); group++ {
-	//				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
-	//				buff := newChannelInfo.buffer
-	//				for y := 0; y < len(buff); y++ {
-	//					idx := y + int(newChannelInfo.origin.Y)
-	//					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
-	//				}
-	//			}
-	//			return nil
-	//		})
-	//		j++
-	//	}
-	//	if err := eg.Wait(); err != nil {
-	//		return err
-	//	}
-	//}
 
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
@@ -729,7 +594,9 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 				} else {
 					prev = nil
 				}
-				passGroup.invertVarDCT(buffers, prev)
+				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -1172,4 +1039,38 @@ func (f *Frame) getColourChannelCount() int32 {
 		return 3
 	}
 	return int32(f.globalMetadata.GetColourChannelCount())
+}
+
+// generate a total (signature?) for each row of each channel in the buffer.
+// This is just to see if we can compare Go and Java
+// Assume float buffer
+func (f *Frame) generateSignaturesForBuffer(idx int) []string {
+	sigs := []string{}
+	var c = f.Buffer[idx]
+	for y := int32(0); y < int32(len(c.FloatBuffer)); y++ {
+		sig := float64(0)
+		xx := c.FloatBuffer[y]
+		if y == 288 {
+			fmt.Printf("snoop\n")
+			var cc float32
+			for x := int32(0); x < int32(len(xx)); x++ {
+				cc += c.FloatBuffer[y][x]
+				nanCheck := fmt.Sprintf("%.4f", cc)
+				if nanCheck == "NaN" {
+					fmt.Print("NAN!\n")
+					checkVal := c.FloatBuffer[y][x]
+					fmt.Printf("Nan check value %f\n", checkVal)
+					fmt.Printf("range %+v\n", c.FloatBuffer[y][x-10:x+10])
+				}
+			}
+			fmt.Printf("xx %f\n", cc)
+		}
+
+		for x := int32(0); x < int32(len(xx)); x++ {
+			sig += float64(c.FloatBuffer[y][x])
+		}
+		sigs = append(sigs, fmt.Sprintf("%.4f", sig))
+	}
+
+	return sigs
 }

@@ -141,16 +141,15 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				X: ppg.X + (groupLocation.X >> header.jpegUpsamplingX[c]),
 				Y: ppg.Y + (groupLocation.Y >> header.jpegUpsamplingY[c]),
 			}
-			//var foeff0 float32
-			//var foeff1 float32
+
 			lfs := make([]float32, 2)
 			var coeff0 float32
 			var coeff1 float32
 			switch tt.transformMethod {
 			case METHOD_DCT:
-				// TODO(kpfaulkner) 20241020 after this, the frame.Buffer changes from 0's to other (in JXLatte)
-				// coeffs[c] seems to be wrong here...
-				util.InverseDCT2D(coeffs[c], frameBuffer[c], ppg, ppf, tt.getPixelSize(), scratchBlock[0], scratchBlock[1], false)
+				if err := util.InverseDCT2D(coeffs[c], frameBuffer[c], ppg, ppf, tt.getPixelSize(), scratchBlock[0], scratchBlock[1], false); err != nil {
+					return err
+				}
 				break
 			case METHOD_DCT8_4:
 				coeff0 = coeffs[c][ppg.Y][ppg.X]

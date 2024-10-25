@@ -23,6 +23,7 @@ func main() {
 
 	//file := `../testdata/lossless.jxl`
 	file := `c:\temp\work.jxl`
+	//file := `c:\temp\tiny.jxl`
 	//file := `c:\temp\input.jxl`
 	f, err := os.ReadFile(file)
 	if err != nil {
