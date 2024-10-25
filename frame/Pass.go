@@ -12,6 +12,7 @@ type Pass struct {
 	hfPass           *HFPass
 }
 
+// TODO(kpfaulkner) 20241025 hfPass wrong after a few attempts....
 func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, prevMinShift uint32) (Pass, error) {
 	p := Pass{}
 

@@ -290,7 +290,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 				mc := NewModularChannelFromChannel(*newChannels[0])
 				ms.channels = append([]*ModularChannel{mc}, newChannels...)
 			} else {
-				fmt.Printf("snoop\n")
+				//fmt.Printf("snoop\n")
 			}
 
 		} else if ms.transforms[i].tr == RCT {

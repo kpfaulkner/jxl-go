@@ -157,7 +157,7 @@ func getHorizontalTransformType(index int32) (*TransformType, error) {
 
 func getByOrderID(orderID int32) (*TransformType, error) {
 	for _, tt := range allDCT {
-		if tt.orderID == orderID {
+		if tt.orderID == orderID && !tt.isVertical() {
 			return &tt, nil
 		}
 	}

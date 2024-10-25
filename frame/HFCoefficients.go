@@ -35,7 +35,7 @@ type HFCoefficients struct {
 	quantizedCoeffs [][][]int32
 	dequantHFCoeff  [][][]float32
 	groupPos        util.Point
-	blocks          []util.Point
+	blocks          []*util.Point
 }
 
 func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, group uint32) (*HFCoefficients, error) {
@@ -73,7 +73,7 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 	hf.groupPos = hf.frame.groupPosInLFGroup(hf.lfg.lfGroupID, hf.groupID)
 	hf.groupPos.Y <<= 5
 	hf.groupPos.X <<= 5
-	hf.blocks = make([]util.Point, len(hf.lfg.hfMetadata.blockList))
+	hf.blocks = make([]*util.Point, len(hf.lfg.hfMetadata.blockList))
 	for i := 0; i < len(hf.lfg.hfMetadata.blockList); i++ {
 		posInLfg := hf.lfg.hfMetadata.blockList[i]
 		groupY := posInLfg.Y - hf.groupPos.Y
@@ -81,7 +81,7 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 		if groupY < 0 || groupX < 0 || groupY >= 32 || groupX >= 32 {
 			continue
 		}
-		hf.blocks[i] = posInLfg
+		hf.blocks[i] = &posInLfg
 		tt := hf.lfg.hfMetadata.dctSelect[posInLfg.Y][posInLfg.X]
 		flip := tt.flip()
 		hfMult := hf.lfg.hfMetadata.hfMultiplier[posInLfg.Y][posInLfg.X]
@@ -142,13 +142,19 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 				posY := pixelGroupY
 				posX := pixelGroupX
 				if flip {
-					posY = order.X
-					posX = order.Y
+					posY += order.X
+					posX += order.Y
 				} else {
-					posY = order.Y
-					posX = order.X
+					posY += order.Y
+					posX += order.X
 				}
+				if c == 1 && posY == 100 && posX == 242 {
+					//fmt.Printf("snoop\n")
+				}
+				//fmt.Printf("BEFORE quantizedCoeff c %d posY %d posX %d value %d\n", c, posY, posX, hf.quantizedCoeffs[c][posY][posX])
+				//fmt.Printf("uccoeff[%d] is %d\n", k, ucoeff[k])
 				hf.quantizedCoeffs[c][posY][posX] = jxlio.UnpackSigned(uint32(ucoeff[k])) << shift
+				fmt.Printf("quantizedCoeff c %d posY %d posX %d value %d\n", c, posY, posX, hf.quantizedCoeffs[c][posY][posX])
 				if ucoeff[k] != 0 {
 					nonZero--
 					if nonZero == 0 {
@@ -211,6 +217,8 @@ func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
 	if err := hf.dequantizeHFCoefficients(); err != nil {
 		return err
 	}
+
+	// chromaFromLuma is definitely not adding values to qequantHFCoeff[2]...
 	if err := hf.chromaFromLuma(); err != nil {
 		return err
 	}
@@ -240,7 +248,7 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 
 	for i := 0; i < len(hf.blocks); i++ {
 		pos := hf.blocks[i]
-		if pos.X == 0 && pos.Y == 0 {
+		if pos == nil {
 			continue
 		}
 
@@ -296,7 +304,7 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 	header := hf.frame.Header
 	xMatch := slices.ContainsFunc(header.jpegUpsamplingX, func(x int32) bool { return x != 0 })
 	yMatch := slices.ContainsFunc(header.jpegUpsamplingY, func(y int32) bool { return y != 0 })
-	if !xMatch || !yMatch {
+	if xMatch || yMatch {
 		return nil
 	}
 
@@ -308,7 +316,7 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 
 	for i := 0; i < len(hf.blocks); i++ {
 		pos := hf.blocks[i]
-		if pos.X == 0 && pos.Y == 0 {
+		if pos == nil {
 			continue
 		}
 		tt := hf.lfg.hfMetadata.dctSelect[pos.Y][pos.X]
@@ -352,7 +360,7 @@ func (hf *HFCoefficients) finalizeLLF() error {
 	header := hf.frame.Header
 	for i := 0; i < len(hf.blocks); i++ {
 		posInLfg := hf.blocks[i]
-		if posInLfg.X == 0 && posInLfg.Y == 0 {
+		if posInLfg == nil {
 			continue
 		}
 		tt := hf.lfg.hfMetadata.dctSelect[posInLfg.Y][posInLfg.X]

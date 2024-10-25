@@ -2,7 +2,6 @@ package frame
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -14,16 +13,18 @@ type HFPass struct {
 	order         [][][]util.Point
 	naturalOrder  [][]util.Point
 	contextStream *entropy.EntropyStream
+	usedOrders    uint32
 }
 
 func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32) (*HFPass, error) {
 	hfp := &HFPass{}
 	hfp.naturalOrder = util.MakeMatrix2D[util.Point](13, 0)
 	hfp.order = util.MakeMatrix3D[util.Point](13, 3, 0)
-	usedOrders, err := reader.ReadU32(05, 0, 19, 0, 0, 0, 0, 13)
+	usedOrders, err := reader.ReadU32(0x5F, 0, 0x13, 0, 0, 0, 0, 13)
 	if err != nil {
 		return nil, err
 	}
+	hfp.usedOrders = usedOrders
 	var stream *entropy.EntropyStream
 	if usedOrders != 0 {
 		if stream, err = entropy.NewEntropyStreamWithReaderAndNumDists(reader, 8); err != nil {
@@ -34,13 +35,18 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 	}
 
 	for b := int32(0); b < 13; b++ {
+
+		if b == 4 {
+			//fmt.Printf("snoop\n")
+		}
+
 		naturalOrder, err := hfp.getNaturalOrder(b)
 		if err != nil {
 			return nil, err
 		}
 		l := len(naturalOrder)
 		if b == 3 {
-			fmt.Printf("snoop\n")
+			//fmt.Printf("snoop\n")
 		}
 
 		for c := 0; c < 3; c++ {
@@ -49,6 +55,9 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 				perm, err := readPermutation(reader, stream, uint32(l), uint32(l/64))
 				if err != nil {
 					return nil, err
+				}
+				if b == 4 && c == 1 {
+					//fmt.Printf("snoop\n")
 				}
 				for i := 0; i < len(hfp.order[b][c]); i++ {
 					hfp.order[b][c][i] = naturalOrder[perm[i]]
@@ -125,7 +134,7 @@ func getNaturalOrderFunc(i int32) (func(a util.Point, b util.Point) int, error) 
 		aSY := a.Y * maxDim / tt.dctSelectHeight
 		aSX := a.X * maxDim / tt.dctSelectWidth
 		bSY := b.Y * maxDim / tt.dctSelectHeight
-		bSX := b.Y * maxDim / tt.dctSelectWidth
+		bSX := b.X * maxDim / tt.dctSelectWidth
 		aKey1 := aSY + aSX
 		bKey1 := bSY + bSX
 		if aKey1 != bKey1 {

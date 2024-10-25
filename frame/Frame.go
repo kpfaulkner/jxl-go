@@ -3,7 +3,6 @@ package frame
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
@@ -306,7 +305,6 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	modularBuffer := f.LfGlobal.gModular.Stream.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
-		var scaleFactor float32
 		isModularColour := f.Header.Encoding == MODULAR && c < f.GetColorChannelCount()
 		isModularXYB := f.globalMetadata.XybEncoded && isModularColour
 		var cOut int
@@ -316,22 +314,30 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 			cOut = c
 		}
 		cOut += len(f.Buffer) - len(modularBuffer)
-		ecIndex := c
-		if f.Header.Encoding == MODULAR {
-			ecIndex -= f.globalMetadata.GetColourChannelCount()
-		}
+
+		var scaleFactor float32
 		if isModularXYB {
 			scaleFactor = f.LfGlobal.lfDequant[cOut]
-		} else if isModularColour && f.globalMetadata.BitDepth.ExpBits != 0 {
-			scaleFactor = 1.0
-		} else if isModularColour {
-			step1 := f.globalMetadata.BitDepth.BitsPerSample
-			step2 := ^int32(0) << step1
-			step3 := ^step2
-			scaleFactor = 1.0 / float32(step3)
 		} else {
-			scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.ExtraChannelInfo[ecIndex].BitDepth.BitsPerSample))
+			scaleFactor = 1.0
 		}
+
+		//ecIndex := c
+		//if f.Header.Encoding == MODULAR {
+		//	ecIndex -= f.globalMetadata.GetColourChannelCount()
+		//}
+		//if isModularXYB {
+		//	scaleFactor = f.LfGlobal.lfDequant[cOut]
+		//} else if isModularColour && f.globalMetadata.BitDepth.ExpBits != 0 {
+		//	scaleFactor = 1.0
+		//} else if isModularColour {
+		//	step1 := f.globalMetadata.BitDepth.BitsPerSample
+		//	step2 := ^int32(0) << step1
+		//	step3 := ^step2
+		//	scaleFactor = 1.0 / float32(step3)
+		//} else {
+		//	scaleFactor = float32(1.0 / ^(^uint32(0) << f.globalMetadata.ExtraChannelInfo[ecIndex].BitDepth.BitsPerSample))
+		//}
 
 		if isModularXYB && cIn == 2 {
 			outBuffer := f.Buffer[cOut].FloatBuffer
@@ -696,7 +702,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 					idx := y + int(newChannelInfo.origin.Y)
 					//copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 					if y == 8 {
-						fmt.Printf("snoop\n")
+						//fmt.Printf("snoop\n")
 					}
 					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 				}
@@ -798,6 +804,7 @@ func (f *Frame) invertSubsampling() {
 
 func (f *Frame) performGabConvolution() error {
 
+	// f.Buffer[c] is already wrong at this stage. We have -0.003936676 where as should be -0.000675
 	colours := f.getColourChannelCount()
 	normGabBase := make([]float32, colours)
 	normGabAdj := make([]float32, colours)
@@ -968,7 +975,11 @@ func (f *Frame) performEdgePreservingFilter() error {
 		}
 
 		for c := 0; c < int(colours); c++ {
-			f.Buffer[c], outputBuffer[c] = outputBuffer[c], f.Buffer[c]
+			//f.Buffer[c], outputBuffer[c] = outputBuffer[c], f.Buffer[c]
+			tmp := f.Buffer[c]
+			f.Buffer[c].FloatBuffer = outputBuffers[c]
+			outputBuffer[c] = tmp
+
 		}
 
 	}

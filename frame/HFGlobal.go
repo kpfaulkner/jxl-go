@@ -2,7 +2,6 @@ package frame
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -493,7 +492,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			for y := int32(0); y < tt.matrixHeight; y++ {
 				for x := int32(0); x < tt.matrixWidth; x++ {
 					if index == 1 && c == 0 && x == 1 && y == 1 {
-						fmt.Printf("snoop\n")
+						//fmt.Printf("snoop\n")
 					}
 					if hfg.weights[index][c][y][x] < 0 || math.IsInf(float64(hfg.weights[index][c][y][x]), 0) {
 						return errors.New("Invalid weight")

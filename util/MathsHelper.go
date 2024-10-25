@@ -369,7 +369,7 @@ func inverseDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartO
 	xLength int32) error {
 
 	// fill dest with initial data
-	for i, _ := range dest[xStartIn : xStartIn+xLength] {
+	for i := xStartOut; i < xStartOut+xLength; i++ {
 		dest[i] = src[xStartIn]
 	}
 
@@ -402,7 +402,7 @@ func ForwardDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 		}
 	}
 
-	TransposeMatrixInto(scratchSpace0, dest, ZERO, ZERO, Point{X: int32(length.Height), Y: int32(length.Width)})
+	TransposeMatrixInto(scratchSpace0, dest, ZERO, startOut, Point{X: int32(length.Height), Y: int32(length.Width)})
 	return nil
 }
 

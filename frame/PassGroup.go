@@ -120,7 +120,7 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 	for i := 0; i < len(g.hfCoefficients.blocks); i++ {
 		posInLFG := g.hfCoefficients.blocks[i]
 		// Zero value then continue? TODO(kpfaulkner) check this!
-		if posInLFG.X == 0 && posInLFG.Y == 0 {
+		if posInLFG == nil {
 			continue
 		}
 		tt := g.lfg.hfMetadata.dctSelect[posInLFG.Y][posInLFG.X]
@@ -148,6 +148,8 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 			var coeff1 float32
 			switch tt.transformMethod {
 			case METHOD_DCT:
+				// TODO(kpfaulkner) 20241020 after this, the frame.Buffer changes from 0's to other (in JXLatte)
+				// coeffs[c] seems to be wrong here...
 				util.InverseDCT2D(coeffs[c], frameBuffer[c], ppg, ppf, tt.getPixelSize(), scratchBlock[0], scratchBlock[1], false)
 				break
 			case METHOD_DCT8_4:
