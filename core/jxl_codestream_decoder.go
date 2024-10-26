@@ -109,7 +109,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		var show uint64
-		show, err = jxl.bitReader.ShowBits(32)
+		show, err = jxl.bitReader.ShowBits(16)
 		fmt.Printf("show %d\n", show)
 		if err != nil {
 			return nil, err
@@ -122,6 +122,8 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 		jxl.imageHeader = imageHeader
 		size := imageHeader.Size
+		show, err = jxl.bitReader.ShowBits(32)
+		fmt.Printf("show2 %d\n", show)
 		jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
 		if imageHeader.AnimationHeader != nil {
 			panic("dont care about animation for now")
@@ -225,6 +227,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 				panic("VARDCT not implemented yet")
 			}
 
+			//if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
 			if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
 				for c := 0; c < len(jxl.canvas); c++ {
 					jxl.canvas[c] = *image2.NewImageBuffer(imgFrame.Buffer[0].BufferType, int32(size.Height), int32(size.Width))

@@ -122,8 +122,35 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if uint32(headerBits) != CODESTREAM_HEADER {
 		return nil, errors.New("Not a JXL codestream: 0xFF0A magic mismatch")
 	}
+	fmt.Printf("header bits %d\n", headerBits)
 
-	err := header.setLevel(level)
+	var err error
+	//for i := 0; i < 64; i++ {
+	//	var show uint64
+	//	if show, err = reader.ReadBits(8); err != nil {
+	//		return nil, err
+	//	}
+	//	fmt.Printf("%d : %02x\n", i, show)
+	//
+	//}
+	//var show uint64
+	//if show, err := reader.ReadBits(16); err != nil {
+	//	return nil, err
+	//} else {
+	//	fmt.Printf("showy header %d\n", show)
+	//}
+	//if show, err := reader.ReadBits(16); err != nil {
+	//	return nil, err
+	//} else {
+	//	fmt.Printf("showy header %d\n", show)
+	//}
+	//if show, err := reader.ReadBits(16); err != nil {
+	//	return nil, err
+	//} else {
+	//	fmt.Printf("showy header %d\n", show)
+	//}
+
+	err = header.setLevel(level)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +159,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if err != nil {
 		return nil, err
 	}
+
+	//show, err = reader.ShowBits(32)
+	//fmt.Printf("showy header %d\n", show)s
 
 	allDefault := reader.MustReadBool()
 	extraFields := false
@@ -416,7 +446,7 @@ func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error
 	}
 	fmt.Printf("show %d\n", show)
 	if div8 {
-		dim.Height = 1 + uint32(reader.MustReadBits(5))<<3
+		dim.Height = (1 + uint32(reader.MustReadBits(5))) << 3
 	} else {
 		dim.Height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 	}

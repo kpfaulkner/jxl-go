@@ -1,6 +1,8 @@
 package frame
 
 import (
+	"fmt"
+
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -68,6 +70,10 @@ type FrameHeader struct {
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeader) (*FrameHeader, error) {
 	fh := &FrameHeader{}
 
+	showy, _ := reader.ShowBits(32)
+
+	fmt.Printf("bits at beginning of header %d\n", showy)
+
 	allDefault := reader.MustReadBool()
 	if allDefault {
 		fh.FrameType = REGULAR_FRAME
@@ -132,6 +138,8 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	fh.logLFGroupDIM = uint32(util.CeilLog2(int64(fh.lfGroupDim)))
 	if parent.XybEncoded && fh.Encoding == VARDCT {
 		if !allDefault {
+			// TODO(kpfaulkner) 20241026 getting 0's for xqmScale and bqmScale where as JXLatte gets 2 for both?!?
+			// REALLY confused how this is happening...
 			xqmScale, err := reader.ReadBits(3)
 			if err != nil {
 				return nil, err
@@ -224,22 +232,40 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	if normalFrame && parent.AnimationHeader != nil {
 		// dont care about animation
 		panic("animation")
+		dur, err := reader.ReadU32(0, 0, 1, 0, 0, 8, 0, 32)
+		if err != nil {
+			return nil, err
+		}
+		fh.Duration = dur
 	} else {
 		fh.Duration = 0
 	}
 	if normalFrame && parent.AnimationHeader != nil && parent.AnimationHeader.HaveTimeCodes {
 		// dont care about animation
-		panic("animation")
+		tc, err := reader.ReadBits(32)
+		if err != nil {
+			return nil, err
+		}
+		fh.timecode = uint32(tc)
 	} else {
 		fh.timecode = 0
 	}
 
+	showy, _ = reader.ShowBits(32)
+
+	fmt.Printf("showy %d\n", showy)
 	if normalFrame {
 		fh.IsLast = reader.MustReadBool()
 	} else {
 		fh.IsLast = fh.FrameType == REGULAR_FRAME
 	}
 
+	//if !allDefault && (fh.FrameType == REFERENCE_ONLY || fullFrame &&
+	//	(fh.FrameType == REGULAR_FRAME || fh.FrameType == SKIP_PROGRESSIVE) &&
+	//	(fh.Duration == 0 || fh.SaveAsReference != 0) &&
+	//	!fh.IsLast && fh.BlendingInfo.Mode == BLEND_REPLACE) {
+	//	fh.saveB
+	//}
 	if !allDefault && fh.FrameType != LF_FRAME && !fh.IsLast {
 		fh.SaveAsReference = uint32(reader.MustReadBits(2))
 	} else {

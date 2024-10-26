@@ -494,11 +494,17 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 	replaced := []ModularChannel{}
 	for _, r := range f.passes[iPass].replacedChannels {
 		// remove any replacedChannels that are nil/empty
-		if r.size.Width != 0 && r.size.Height != 0 {
-			mc := NewModularChannelFromChannel(r)
+		//if r.size.Width != 0 && r.size.Height != 0 {
+		if r != nil {
+			mc := NewModularChannelFromChannel(*r)
 			replaced = append(replaced, *mc)
 		}
 	}
+
+	if len(replaced) != len(f.passes[iPass].replacedChannels) {
+		fmt.Printf("replaced changed %d to %d\n", len(f.passes[iPass].replacedChannels), len(replaced))
+	}
+
 	for i := 0; i < len(replaced); i++ {
 		info := replaced[i]
 		groupHeight := f.Header.groupDim >> info.vshift
@@ -553,7 +559,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-			if f.passes[pass].replacedChannels[i].size.Width == 0 || f.passes[pass].replacedChannels[i].size.Height == 0 {
+			if f.passes[pass].replacedChannels[i] == nil {
 				continue
 			}
 			ii := i
@@ -565,10 +571,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
 					idx := y + int(newChannelInfo.origin.Y)
-					//copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
-					if y == 8 {
-						//fmt.Printf("snoop\n")
-					}
 					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
 				}
 			}
@@ -1060,7 +1062,7 @@ func (f *Frame) generateSignaturesForBuffer(idx int) []string {
 					fmt.Print("NAN!\n")
 					checkVal := c.FloatBuffer[y][x]
 					fmt.Printf("Nan check value %f\n", checkVal)
-					fmt.Printf("range %+v\n", c.FloatBuffer[y][x-10:x+10])
+					//fmt.Printf("range %+v\n", c.FloatBuffer[y][x-10:x+10])
 				}
 			}
 			fmt.Printf("xx %f\n", cc)

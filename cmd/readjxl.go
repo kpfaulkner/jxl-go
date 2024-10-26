@@ -22,8 +22,9 @@ func main() {
 	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
 	//file := `../testdata/lossless.jxl`
-	file := `c:\temp\work.jxl`
-	//file := `c:\temp\tiny.jxl`
+	//file := `../testdata/lenna.jxl`
+	//file := `c:\temp\work.jxl`
+	file := `c:\temp\tiny2.jxl`
 	//file := `c:\temp\input.jxl`
 	f, err := os.ReadFile(file)
 	if err != nil {
