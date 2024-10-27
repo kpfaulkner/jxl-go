@@ -107,13 +107,6 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		return nil, nil
 	}
 
-	var show uint64
-	show, err = jxl.bitReader.ShowBits(16)
-	fmt.Printf("show %d\n", show)
-	if err != nil {
-		return nil, err
-	}
-
 	level := int32(jxl.level)
 	imageHeader, err := bundle.ParseImageHeader(jxl.bitReader, level)
 	if err != nil {
@@ -121,8 +114,6 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 	}
 	jxl.imageHeader = imageHeader
 	size := imageHeader.Size
-	show, err = jxl.bitReader.ShowBits(32)
-	fmt.Printf("show2 %d\n", show)
 	jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
 	if imageHeader.AnimationHeader != nil {
 		panic("dont care about animation for now")

@@ -1,8 +1,6 @@
 package frame
 
 import (
-	"fmt"
-
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -251,9 +249,6 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		fh.timecode = 0
 	}
 
-	showy, _ := reader.ShowBits(32)
-
-	fmt.Printf("showy %d\n", showy)
 	if normalFrame {
 		fh.IsLast = reader.MustReadBool()
 	} else {

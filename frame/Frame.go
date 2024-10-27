@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -318,16 +317,11 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
-	sig0 := f.generateSignaturesForBuffer(0)
-	fmt.Printf("sig0 %s\n", strings.Join(sig0, ","))
-
 	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
 	}
 
-	sig1 := f.generateSignaturesForBuffer(0)
-	fmt.Printf("sig1 %s\n", strings.Join(sig1, ","))
 	err = f.LfGlobal.gModular.Stream.applyTransforms()
 	if err != nil {
 		return err
@@ -525,10 +519,6 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 			mc := NewModularChannelFromChannel(*r)
 			replaced = append(replaced, *mc)
 		}
-	}
-
-	if len(replaced) != len(f.passes[iPass].replacedChannels) {
-		fmt.Printf("replaced changed %d to %d\n", len(f.passes[iPass].replacedChannels), len(replaced))
 	}
 
 	for i := 0; i < len(replaced); i++ {
@@ -1079,7 +1069,6 @@ func (f *Frame) generateSignaturesForBuffer(idx int) []string {
 		sig := float64(0)
 		xx := c.FloatBuffer[y]
 		if y == 288 {
-			fmt.Printf("snoop\n")
 			var cc float32
 			for x := int32(0); x < int32(len(xx)); x++ {
 				cc += c.FloatBuffer[y][x]
