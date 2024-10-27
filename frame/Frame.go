@@ -57,6 +57,7 @@ type Frame struct {
 	globalTree *MATree
 	hfGlobal   *HFGlobal
 	passes     []Pass
+	bitreaders []*jxlio.Bitreader
 }
 
 func (f *Frame) ReadFrameHeader() (FrameHeader, error) {
@@ -119,18 +120,18 @@ func (f *Frame) ReadTOC() error {
 
 	f.reader.ZeroPadToByte()
 
-	f.buffers = make([][]uint8, tocEntries)
-
-	// TODO(kpfaulkner) potentially make this more concurrent?
-	if tocEntries != 1 && !f.options.ParseOnly {
-		for i := 0; i < int(tocEntries); i++ {
-			b, err := f.readBuffer(i)
-			if err != nil {
-				return err
-			}
-			f.buffers[i] = b
-		}
-	}
+	//f.buffers = make([][]uint8, tocEntries)
+	//
+	//// TODO(kpfaulkner) potentially make this more concurrent?
+	//if tocEntries != 1 && !f.options.ParseOnly {
+	//	for i := 0; i < int(tocEntries); i++ {
+	//		b, err := f.readBuffer(i)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		f.buffers[i] = b
+	//	}
+	//}
 	return nil
 }
 
@@ -214,11 +215,22 @@ func (f *Frame) SkipFrameData() error {
 
 // gets a bit reader for each TOC entry???
 func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
-	if len(f.tocLengths) == 1 {
-		panic("getBitreader panic... unsure what to do")
+	//if len(f.tocLengths) == 1 {
+	//	panic("getBitreader panic... unsure what to do")
+	//}
+	var i uint32
+	if len(f.tocLengths) <= 1 {
+		i = 0
+	} else {
+		if f.tocPermutation != nil {
+			i = f.tocPermutation[index]
+		}
+		i = uint32(index)
 	}
-	permutedIndex := f.tocPermutation[index]
-	return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[permutedIndex]), index), nil
+
+	//permutedIndex := f.tocPermutation[index]
+	//return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[i]), int(i)), nil
+	return f.bitreaders[i], nil
 }
 
 func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
@@ -227,6 +239,20 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return nil
 	}
 	f.decoded = true
+
+	//f.buffers = make([][]uint8, len(f.tocLengths))
+	f.bitreaders = make([]*jxlio.Bitreader, len(f.tocLengths))
+	if len(f.tocLengths) != 1 {
+		for i := 0; i < len(f.tocLengths); i++ {
+			buffer, err := f.readBuffer(i)
+			if err != nil {
+				return err
+			}
+			f.bitreaders[i] = jxlio.NewBitreader(bytes.NewReader(buffer))
+		}
+	} else {
+		f.bitreaders[0] = f.reader
+	}
 
 	lfGlobalBitReader, err := f.getBitreader(0)
 	if err != nil {

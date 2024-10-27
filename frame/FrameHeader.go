@@ -70,9 +70,9 @@ type FrameHeader struct {
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeader) (*FrameHeader, error) {
 	fh := &FrameHeader{}
 
-	showy, _ := reader.ShowBits(32)
-
-	fmt.Printf("bits at beginning of header %d\n", showy)
+	//showy, _ := reader.ShowBits(32)
+	//
+	//fmt.Printf("bits at beginning of header %d\n", showy)
 
 	allDefault := reader.MustReadBool()
 	if allDefault {
@@ -251,7 +251,7 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		fh.timecode = 0
 	}
 
-	showy, _ = reader.ShowBits(32)
+	showy, _ := reader.ShowBits(32)
 
 	fmt.Printf("showy %d\n", showy)
 	if normalFrame {

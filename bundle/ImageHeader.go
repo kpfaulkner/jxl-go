@@ -438,13 +438,14 @@ func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error
 	dim := util.Dimension{}
 	var err error
 
-	div8 := reader.MustReadBool()
-
 	show, err := reader.ShowBits(32)
 	if err != nil {
 		return util.Dimension{}, err
 	}
 	fmt.Printf("show %d\n", show)
+
+	div8 := reader.MustReadBool()
+
 	if div8 {
 		dim.Height = (1 + uint32(reader.MustReadBits(5))) << 3
 	} else {

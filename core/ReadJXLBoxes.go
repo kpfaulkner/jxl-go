@@ -78,7 +78,6 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 	boxSizeArray := make([]byte, 8)
 	boxTag := make([]byte, 4)
 	for {
-
 		err := br.reader.ReadBytesToBuffer(boxSizeArray, 4)
 		if err != nil {
 			if err == io.EOF {
@@ -135,6 +134,11 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 				Processed: false,
 			}
 			boxHeaders = append(boxHeaders, bh)
+			// skip past this box.
+			_, err = br.SkipFully(int64(boxSize))
+			if err != nil {
+				return nil, err
+			}
 
 		case JXLL:
 			if boxSize != 1 {

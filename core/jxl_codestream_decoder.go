@@ -95,65 +95,86 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		return nil, err
 	}
 
-	// loop through each box.
-	// first thing is to set the BitReader to the beginning of the data for that box.
-	// FIXME(kpfaulkner) need to figure out how to handle multiple boxes.
-	for _, box := range jxl.boxHeaders {
-		_, err := jxl.bitReader.Seek(box.Offset, io.SeekStart)
+	// first header is image header...   the rest are frame headers... I think
+	// TODO(kpfaulkner) check this
+	box := jxl.boxHeaders[0]
+	_, err = jxl.bitReader.Seek(box.Offset, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	if jxl.atEnd() {
+		return nil, nil
+	}
+
+	var show uint64
+	show, err = jxl.bitReader.ShowBits(16)
+	fmt.Printf("show %d\n", show)
+	if err != nil {
+		return nil, err
+	}
+
+	level := int32(jxl.level)
+	imageHeader, err := bundle.ParseImageHeader(jxl.bitReader, level)
+	if err != nil {
+		return nil, err
+	}
+	jxl.imageHeader = imageHeader
+	size := imageHeader.Size
+	show, err = jxl.bitReader.ShowBits(32)
+	fmt.Printf("show2 %d\n", show)
+	jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
+	if imageHeader.AnimationHeader != nil {
+		panic("dont care about animation for now")
+	}
+
+	if imageHeader.PreviewSize != nil {
+		previewOptions := options.NewJXLOptions(&jxl.options)
+		previewOptions.ParseOnly = true
+		frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
+		frame.ReadFrameHeader()
+		panic("not implemented previewheader yet")
+	}
+
+	var matrix *color.OpsinInverseMatrix
+	if imageHeader.XybEncoded {
+		bundle := imageHeader.ColorEncoding
+		matrix, err = imageHeader.OpsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	frameCount := 0
+	invisibleFrames := int64(0)
+	visibleFrames := 0
+	header := frame.FrameHeader{}
+
+	// If we have multiple box headers...  then we want to loop over from the second one.
+	// Need to also seek to that box offset.
+	ii := 0
+	shouldSeekBoxOffset := false
+	if len(jxl.boxHeaders) > 1 {
+		ii = 1
+		shouldSeekBoxOffset = true
+	}
+
+	for _, box := range jxl.boxHeaders[ii:] {
+
+		// only seek if we're not dealing with a single box.
+		if shouldSeekBoxOffset {
+			_, err = jxl.bitReader.Seek(box.Offset, io.SeekStart)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if jxl.atEnd() {
 			return nil, nil
 		}
 
-		var show uint64
-		show, err = jxl.bitReader.ShowBits(16)
-		fmt.Printf("show %d\n", show)
-		if err != nil {
-			return nil, err
-		}
-
-		level := int32(jxl.level)
-		imageHeader, err := bundle.ParseImageHeader(jxl.bitReader, level)
-		if err != nil {
-			return nil, err
-		}
-		jxl.imageHeader = imageHeader
-		size := imageHeader.Size
-		show, err = jxl.bitReader.ShowBits(32)
-		fmt.Printf("show2 %d\n", show)
-		jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
-		if imageHeader.AnimationHeader != nil {
-			panic("dont care about animation for now")
-		}
-
-		if imageHeader.PreviewSize != nil {
-			previewOptions := options.NewJXLOptions(&jxl.options)
-			previewOptions.ParseOnly = true
-			frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
-			frame.ReadFrameHeader()
-			panic("not implemented previewheader yet")
-		}
-
-		frameCount := 0
-		header := frame.FrameHeader{}
-
-		var matrix *color.OpsinInverseMatrix
-		if imageHeader.XybEncoded {
-			bundle := imageHeader.ColorEncoding
-			matrix, err = imageHeader.OpsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		//var canvas []image2.ImageBuffer
-		invisibleFrames := int64(0)
-		visibleFrames := 0
-
 		for {
+			showNextNBytes(jxl.bitReader, "begin loop", 4)
 			imgFrame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
 			header, err = imgFrame.ReadFrameHeader()
 			if err != nil {
@@ -161,6 +182,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 			}
 			frameCount++
 
+			//showNextNBytes(jxl.bitReader, 4)
 			if jxl.lfBuffer[header.LfLevel] == nil && header.Flags&frame.USE_LF_FRAME != 0 {
 				return nil, errors.New("LF level too large")
 			}
@@ -290,6 +312,16 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 
 	panic("make JXL image here?")
 	return nil, nil
+}
+
+func showNextNBytes(reader *jxlio.Bitreader, prefix string, n int) {
+	b, _ := reader.ShowBits(8 * n)
+	fmt.Printf(prefix + " ")
+	for i := 0; i < n; i++ {
+		fmt.Printf("%02x ", b&0xFF)
+		b >>= 8
+	}
+	fmt.Printf("\n")
 }
 
 // Read signature
