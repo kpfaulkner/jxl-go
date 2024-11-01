@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"image"
 	"io"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
@@ -87,7 +86,7 @@ func (jxl *JXLCodestreamDecoder) GetImageHeader() (*bundle.ImageHeader, error) {
 	return nil, errors.New("unable to find image header")
 }
 
-func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
+func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 
 	// read header to get signature
 	err := jxl.readSignatureAndBoxes()
@@ -203,11 +202,12 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 				invisibleFrames++
 			}
 
-			err = imgFrame.InitializeNoise(int64(visibleFrames<<32) | invisibleFrames)
+			err = imgFrame.Upsample()
 			if err != nil {
 				return nil, err
 			}
-			err = imgFrame.Upsample()
+
+			err = imgFrame.InitializeNoise(int64(visibleFrames<<32) | invisibleFrames)
 			if err != nil {
 				return nil, err
 			}
@@ -257,6 +257,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 
 				if found {
 					// unsure if we really need a copy of the canvas?  TODO(kpfaulkner) check this!
+					panic("not implemented")
 				}
 				err = jxl.blendFrame(jxl.canvas, imgFrame)
 				if err != nil {
@@ -293,7 +294,7 @@ func (jxl *JXLCodestreamDecoder) decode() (image.Image, error) {
 		}
 
 		// generate image and return.
-		img, err := NewImage(orientedCanvas, *imageHeader)
+		img, err := NewJXLImageWithBuffer(orientedCanvas, *imageHeader)
 		if err != nil {
 			return nil, err
 		}

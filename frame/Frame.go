@@ -104,11 +104,12 @@ func (f *Frame) ReadTOC() error {
 			return errors.New("invalid final ANS state decoding TOC")
 		}
 	} else {
-		f.tocPermutation = make([]uint32, tocEntries)
-		for i := uint32(0); i < tocEntries; i++ {
-			a := i
-			f.tocPermutation[i] = a
-		}
+		f.tocPermutation = nil
+		//f.tocPermutation = make([]uint32, tocEntries)
+		//for i := uint32(0); i < tocEntries; i++ {
+		//	a := i
+		//	f.tocPermutation[i] = a
+		//}
 	}
 	f.reader.ZeroPadToByte()
 	f.tocLengths = make([]uint32, tocEntries)
@@ -373,6 +374,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	f.invertSubsampling()
 
 	if f.Header.restorationFilter.gab {
+		// 20241101  think gab convolution is the first time buffer starts diverging from JXLatte
 		f.performGabConvolution()
 	}
 

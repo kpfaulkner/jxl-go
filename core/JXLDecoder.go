@@ -35,7 +35,12 @@ func (jxl *JXLDecoder) Decode() (image.Image, error) {
 		return nil, err
 	}
 
-	return jxlImage, nil
+	// convert to regular Go image.Image
+	img, err := NewImageFromJXLImage(jxlImage)
+	if err != nil {
+		return nil, err
+	}
+	return img, nil
 
 }
 

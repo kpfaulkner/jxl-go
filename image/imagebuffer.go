@@ -162,6 +162,28 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 	return nil
 }
 
+func (ib *ImageBuffer) Clamp(maxValue int32) error {
+	if ib.IsFloat() {
+		return errors.New("Clamp only supported for int buffers")
+	}
+
+	buf := util.MakeMatrix2D[int32](ib.Height, ib.Width)
+	for y := 0; y < int(ib.Height); y++ {
+		for x := 0; x < int(ib.Width); x++ {
+			v := ib.IntBuffer[y][x]
+			if v < 0 {
+				buf[y][x] = 0
+			} else if v > maxValue {
+				buf[y][x] = maxValue
+			} else {
+				buf[y][x] = v
+			}
+		}
+	}
+	ib.IntBuffer = buf
+	return nil
+}
+
 // Equals compares two ImageBuffer slices and returns true if they are equal.
 // Need to have:
 //   - same size

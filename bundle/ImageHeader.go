@@ -330,9 +330,9 @@ func (h *ImageHeader) GetTotalChannelCount() int {
 }
 
 func (h *ImageHeader) GetDecodedICC() []byte {
-	return nil
 
-	// TODO(kpfaulkner) NOT IMPLEMENTED YET... but test images do not have ICC component... so skipping for now.
+	panic("not implemented")
+	return nil
 }
 
 func GetICCContext(buffer []byte, index int) int {

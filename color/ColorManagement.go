@@ -7,7 +7,9 @@ import (
 )
 
 var (
-	CM_PRI_SRGB = GetPrimaries(PRI_SRGB)
+	CM_PRI_SRGB   = GetPrimaries(PRI_SRGB)
+	CM_PRI_BT2100 = GetPrimaries(PRI_BT2100)
+	CM_PRI_P3     = GetPrimaries(PRI_P3)
 
 	CM_WP_D65 = GetWhitePoint(WP_D65)
 	CM_WP_D50 = GetWhitePoint(WP_D50)
