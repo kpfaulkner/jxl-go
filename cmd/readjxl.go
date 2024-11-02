@@ -23,9 +23,9 @@ func main() {
 
 	//file := `../testdata/lossless.jxl`
 	//file := `../testdata/lenna.jxl`
-	//file := `c:\temp\work.jxl`
+	file := `c:\temp\work.jxl`
 	//file := `c:\temp\tiny2.jxl`
-	file := `c:\temp\tiny4.jxl`
+	//file := `c:\temp\tiny4.jxl`
 	//file := `c:\temp\tiny5.jxl`
 	//file := `c:\temp\input.jxl`
 	f, err := os.ReadFile(file)
