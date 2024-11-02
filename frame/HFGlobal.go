@@ -2,6 +2,7 @@ package frame
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -238,12 +239,55 @@ func NewHFGlobalWithReader(reader *jxlio.Bitreader, frame *Frame) (*HFGlobal, er
 			return nil, err
 		}
 	}
+
+	hf.totalWeights()
 	numPresets, err := reader.ReadBits(uint32(util.CeilLog1p(frame.numGroups - 1)))
 	if err != nil {
 		return nil, err
 	}
 	hf.numHFPresets = 1 + int32(numPresets)
 	return hf, nil
+}
+
+func (hfg *HFGlobal) totalWeights() {
+
+	var total float32 = 0
+	for index := 0; index < 17; index++ {
+		for c := 0; c < len(hfg.weights[index]); c++ {
+			for y := 0; y < len(hfg.weights[index][c]); y++ {
+				for x := 0; x < len(hfg.weights[index][c][y]); x++ {
+					total += hfg.weights[index][c][y][x]
+					if math.IsInf(float64(total), 0) {
+						fmt.Printf("total weight %f\n", total)
+					}
+					//fmt.Printf("running total %f\n", total)
+				}
+			}
+		}
+	}
+	fmt.Printf("total weight %f\n", total)
+}
+
+func (hfg *HFGlobal) displayWeights() {
+	for index := 0; index < 17; index++ {
+		for c := 0; c < len(hfg.weights[index]); c++ {
+			for y := 0; y < len(hfg.weights[index][c]); y++ {
+				for x := 0; x < len(hfg.weights[index][c][y]); x++ {
+					print(hfg.weights[index][c][y][x], " ")
+				}
+				println()
+			}
+			println()
+		}
+	}
+}
+
+func (hfg *HFGlobal) displaySpecificWeights(index int, c int, y int) {
+	for x := 0; x < len(hfg.weights[index][c][y]); x++ {
+		fmt.Printf("%f ", hfg.weights[index][c][y][x])
+	}
+	fmt.Printf("\n")
+
 }
 
 func (hfg *HFGlobal) setupDCTParam(reader *jxlio.Bitreader, frame *Frame, index int32) error {
@@ -464,9 +508,10 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			w = hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
-					hfg.weights[index][c][y][x] = w[y/2][x/2]
+					hfg.weights[index][c][y][x] = w[y/2][x]
 				}
 			}
+			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
 			break
 		case MODE_AFV:
 			afv, err := hfg.getAFVTransformWeights(index, c)
@@ -491,9 +536,6 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 		for c := 0; c < 3; c++ {
 			for y := int32(0); y < tt.matrixHeight; y++ {
 				for x := int32(0); x < tt.matrixWidth; x++ {
-					if index == 1 && c == 0 && x == 1 && y == 1 {
-						//fmt.Printf("snoop\n")
-					}
 					if hfg.weights[index][c][y][x] < 0 || math.IsInf(float64(hfg.weights[index][c][y][x]), 0) {
 						return errors.New("Invalid weight")
 					}
@@ -596,7 +638,7 @@ func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, erro
 			if x == 0 && y == 0 {
 				continue
 			}
-			weight[2*y+1][2*x+1] = weights4x4[y][x]
+			weight[2*y][2*x+1] = weights4x4[y][x]
 		}
 	}
 

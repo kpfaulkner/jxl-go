@@ -40,9 +40,6 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 			return nil, err
 		}
 		l := len(naturalOrder)
-		if b == 3 {
-			//fmt.Printf("snoop\n")
-		}
 
 		for c := 0; c < 3; c++ {
 			if usedOrders&(1<<uint32(b)) != 0 {
@@ -50,9 +47,6 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 				perm, err := readPermutation(reader, stream, uint32(l), uint32(l/64))
 				if err != nil {
 					return nil, err
-				}
-				if b == 4 && c == 1 {
-					//fmt.Printf("snoop\n")
 				}
 				for i := 0; i < len(hfp.order[b][c]); i++ {
 					hfp.order[b][c][i] = naturalOrder[perm[i]]

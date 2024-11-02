@@ -89,10 +89,6 @@ var (
 
 func NewTransformType(name string, transType int32, parameterIndex int32, orderID int32, transformMethod int32, pixelHeight int32, pixelWidth int32) *TransformType {
 
-	if name == "DCT 16x16" {
-		fmt.Printf("snoop\n")
-	}
-
 	dctSelectWidth := pixelWidth >> 3
 	dctSelectHeight := pixelHeight >> 3
 	yll := util.CeilLog2(dctSelectHeight)
@@ -106,8 +102,8 @@ func NewTransformType(name string, transType int32, parameterIndex int32, orderI
 		dctSelectWidth:  dctSelectWidth,
 		dctSelectHeight: dctSelectHeight,
 		orderID:         orderID,
-		matrixWidth:     util.Min[int32](pixelHeight, pixelWidth),
-		matrixHeight:    util.Max[int32](pixelHeight, pixelWidth),
+		matrixWidth:     util.Max[int32](pixelHeight, pixelWidth),
+		matrixHeight:    util.Min[int32](pixelHeight, pixelWidth),
 
 		transformMethod: transformMethod,
 		llfScale:        util.MakeMatrix2D[float32](dctSelectHeight, dctSelectWidth),

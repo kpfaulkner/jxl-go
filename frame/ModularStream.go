@@ -289,12 +289,9 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			if len(newChannels) > 0 {
 				mc := NewModularChannelFromChannel(*newChannels[0])
 				ms.channels = append([]*ModularChannel{mc}, newChannels...)
-			} else {
-				//fmt.Printf("snoop\n")
 			}
 
 		} else if ms.transforms[i].tr == RCT {
-			//squeezeList = append(squeezeList, ms.transforms[i].sp...)
 			continue
 		} else {
 			return nil, fmt.Errorf("illegal transform type %d", ms.transforms[i].tr)
