@@ -85,7 +85,7 @@ func (jxl *JXLImage) IsHDR() bool {
 		!colour.Prim.Matches(color.CM_PRI_P3)
 }
 
-func (jxl *JXLImage) Transform(primaries *color.CIEPrimaries, whitePoint *color.CIEXY, transfer int32, peakDetect int) error {
+func (jxl *JXLImage) Transform(primaries *color.CIEPrimaries, whitePoint *color.CIEXY, transfer int32, peakDetect int32) error {
 
 	if primaries.Matches(jxl.primariesXY) && whitePoint.Matches(jxl.whiteXY) {
 		return jxl.Transfer(transfer, peakDetect)
@@ -103,8 +103,7 @@ func (jxl *JXLImage) Transform(primaries *color.CIEPrimaries, whitePoint *color.
 		return err
 	}
 
-	panic("not implemented")
-	return nil, nil
+	return nil
 }
 
 // GetBuffer gets a copy of the buffer... making a copy if required
@@ -136,72 +135,62 @@ func (jxl *JXLImage) GetBuffer(makeCopy bool) []image2.ImageBuffer {
 	return buffer
 }
 
-func (jxl *JXLImage) Transfer(transfer int32, detect int) error {
+func (jxl *JXLImage) Transfer(transfer int32, peakDetect int32) error {
 	if transfer == jxl.transfer {
 		return nil
 	}
-	
+	if err := jxl.Linearize(); err != nil {
+		return err
+	}
+	if jxl.taggedTransfer == color.TF_PQ &&
+		(peakDetect == PEAK_DETECT_AUTO || peakDetect == PEAK_DETECT_ON) {
+		panic("not implemented")
+	}
+
+	transferFunction, err := color.GetTransferFunction(transfer)
+	if err != nil {
+		return err
+	}
+	if err := jxl.transferInPlace(transferFunction.FromLinear); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (jxl *JXLImage) Linearize() error {
 
+	if jxl.transfer == color.TF_LINEAR {
+		return nil
+	}
+
+	panic("not implemented")
 }
 
 func (jxl *JXLImage) ToneMapLinear() error {
-
+	return nil
 }
 
-// NewImage generates a standard go image.Image from the JXL image.
-func NewImageORIGGoodForLossless(buffer []image2.ImageBuffer, header bundle.ImageHeader) (image.Image, error) {
-
-	// default to NRGBA for now. Will need to detect properly later.
-	// TODO(kpfaulkner) get right image type
-	jxl := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
-
-	// case to int image..
-	for c := 0; c < len(buffer); c++ {
-		if buffer[c].IsInt() {
-			// convert to float
-			buffer[c].CastToFloatIfInt(255)
-		}
+func (jxl *JXLImage) transferInPlace(transferFunction func(float64) float64) error {
+	colours := 3
+	if jxl.ColorEncoding == color.CE_GRAY {
+		colours = 1
 	}
-	pix := jxl.Pix
-	dx := jxl.Bounds().Dx()
-	dy := jxl.Bounds().Dy()
-	pos := 0
-	if buffer[0].IsFloat() {
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
-				pix[pos] = uint8(buffer[0].FloatBuffer[y][x] * 255)
-				pos++
-				pix[pos] = uint8(buffer[1].FloatBuffer[y][x] * 255)
-				pos++
-				pix[pos] = uint8(buffer[2].FloatBuffer[y][x] * 255)
-				pos++
 
-				// FIXME(kpfaulkner) deal with alpha channels properly
-				pix[pos] = 255 // uint8(buffer[3].FloatBuffer[y][x] * 255)
-				pos++
-			}
-		}
-	} else {
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
-				pix[pos] = uint8(buffer[0].IntBuffer[y][x])
-				pos++
-				pix[pos] = uint8(buffer[1].IntBuffer[y][x])
-				pos++
-				pix[pos] = uint8(buffer[2].IntBuffer[y][x])
-				pos++
+	buffers := util.MakeMatrix3D[float32](colours, 0, 0)
+	for c := 0; c < colours; c++ {
+		jxl.Buffer[c].CastToFloatIfInt(int32(jxl.bitDepths[c]))
+		buffers[c] = jxl.Buffer[c].FloatBuffer
+	}
 
-				// FIXME(kpfaulkner) deal with alpha channels properly
-				pix[pos] = uint8(buffer[3].IntBuffer[y][x])
-				pos++
+	for c := 0; c < colours; c++ {
+		for y := 0; y < int(jxl.Height); y++ {
+			for x := 0; x < int(jxl.Width); x++ {
+				buffers[c][y][x] = float32(transferFunction(float64(buffers[c][y][x])))
 			}
 		}
 	}
-
-	return jxl, nil
+	return nil
 }
 
 func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
@@ -224,12 +213,14 @@ func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
 	iccProfile := jxlImage.iccProfile
 	var err error
 	if iccProfile == nil {
-		jxlImage, err = jxlImage.Transform(primaries, whitePoint, tf, PEAK_DETECT_AUTO)
+
+		// transforms in place
+		err = jxlImage.Transform(primaries, whitePoint, tf, PEAK_DETECT_AUTO)
 		if err != nil {
 			return nil, err
 		}
 	}
-	maxValue := ^(^0 << bitDepth)
+	maxValue := int32(^(^0 << bitDepth))
 
 	//var colourMode int32
 	//var colourChannels int32
@@ -260,7 +251,9 @@ func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
 	}
 	if coerce {
 		for c := 0; c < len(buffer); c++ {
-			buffer[c].CastToFloatIfInt(^(^0 << jxlImage.bitDepths[c]))
+			if err := buffer[c].CastToFloatIfInt(^(^0 << jxlImage.bitDepths[c])); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if jxlImage.alphaIsPremultiplied {

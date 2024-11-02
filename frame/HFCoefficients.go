@@ -382,6 +382,8 @@ func (hf *HFCoefficients) finalizeLLF() error {
 
 			for y := int32(0); y < tt.dctSelectHeight; y++ {
 				dqy := dq[y+pixelGroupY]
+
+				// FIXME(kpfaulkner) tt.llfScale is WRONG... very wrong.
 				llfy := tt.llfScale[y]
 				for x := int32(0); x < tt.dctSelectWidth; x++ {
 					dqy[x+pixelGroupX] *= llfy[x]

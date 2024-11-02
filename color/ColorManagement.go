@@ -23,6 +23,11 @@ var (
 	BRADFORD_INVERSE = util.InvertMatrix3x3(BRADFORD)
 )
 
+type TransferFunction interface {
+	ToLinear(input float64) float64
+	FromLinear(input float64) float64
+}
+
 func GetConversionMatrix(targetPrim CIEPrimaries, targetWP CIEXY, currentPrim CIEPrimaries, currentWP CIEXY) ([][]float32, error) {
 	if targetPrim.Matches(&currentPrim) && targetWP.Matches(&currentWP) {
 		return util.MatrixIdentity(3), nil
@@ -103,4 +108,28 @@ func GetXYZ(xy CIEXY) ([]float32, error) {
 	}
 	invY := 1.0 / xy.Y
 	return []float32{xy.X * invY, 1.0, (1.0 - xy.X - xy.Y) * invY}, nil
+}
+
+func GetTransferFunction(transfer int32) (TransferFunction, error) {
+
+	switch transfer {
+	case TF_LINEAR:
+		return LinearTransferFunction{}, nil
+	case TF_SRGB:
+		return SRGBTransferFunction{}, nil
+	case TF_PQ:
+		return PQTransferFunction{}, nil
+	case TF_BT709:
+		return BT709TransferFunction{}, nil
+	case TF_DCI:
+		return NewGammaTransferFunction(transfer), nil
+	case TF_HLG:
+		return nil, errors.New("Not implemented")
+	}
+
+	if transfer < (1 << 24) {
+		return NewGammaTransferFunction(transfer), nil
+	}
+
+	return nil, errors.New("Invalid transfer function")
 }

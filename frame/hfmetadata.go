@@ -70,6 +70,7 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 	return hf, nil
 }
 
+// FIXME(kpfaulkner) 20241102 think somethings wrong in here...  llfScale is bad
 func (m *HFMetadata) placeBlock(lastBlock util.Point, block TransformType, mul int32) (util.Point, error) {
 
 	x := lastBlock.X
@@ -97,10 +98,11 @@ outerY:
 				X: x,
 				Y: y,
 			}
-			m.hfMultiplier[y][x] = mul
+			//m.hfMultiplier[y][x] = mul
 			for iy := int32(0); iy < block.dctSelectHeight; iy++ {
 				for f := x; f < x+block.dctSelectWidth; f++ {
 					m.dctSelect[y+iy][f] = &block
+					m.hfMultiplier[y+iy][f] = mul
 				}
 			}
 			return pos, nil

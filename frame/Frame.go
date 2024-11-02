@@ -318,6 +318,9 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
+	// 20241102 for tiny5.jxl different to JXLatte... but also we have all 16 elements per row.
+	// where later on the last 8 get NaN'ed.
+	// FIXME(kpfaulkner) figure this out!!
 	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
