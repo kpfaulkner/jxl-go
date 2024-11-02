@@ -35,11 +35,6 @@ func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32
 	}
 
 	for b := int32(0); b < 13; b++ {
-
-		if b == 4 {
-			//fmt.Printf("snoop\n")
-		}
-
 		naturalOrder, err := hfp.getNaturalOrder(b)
 		if err != nil {
 			return nil, err
@@ -91,11 +86,11 @@ func (hfp *HFPass) getNaturalOrder(i int32) ([]util.Point, error) {
 		return nil, err
 	}
 
-	l := tt.blockWidth * tt.blockHeight
+	l := tt.pixelWidth * tt.pixelHeight
 	hfp.naturalOrder[i] = make([]util.Point, l)
-	for y := int32(0); y < tt.blockHeight; y++ {
-		for x := int32(0); x < tt.blockWidth; x++ {
-			hfp.naturalOrder[i][y*tt.blockWidth+x] = util.Point{X: x, Y: y}
+	for y := int32(0); y < tt.pixelHeight; y++ {
+		for x := int32(0); x < tt.pixelWidth; x++ {
+			hfp.naturalOrder[i][y*tt.pixelWidth+x] = util.Point{X: x, Y: y}
 		}
 	}
 

@@ -265,8 +265,8 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 			pixelGroupY := sGroupY << 3
 			pixelGroupX := sGroupX << 3
 			qbc := qbclut[c]
-			for y := int32(0); y < tt.blockHeight; y++ {
-				for x := int32(0); x < tt.blockWidth; x++ {
+			for y := int32(0); y < tt.pixelHeight; y++ {
+				for x := int32(0); x < tt.pixelWidth; x++ {
 					if y < tt.dctSelectHeight && x < tt.dctSelectWidth {
 						continue
 					}
@@ -317,7 +317,7 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 		tt := hf.lfg.hfMetadata.dctSelect[pos.Y][pos.X]
 		pPosY := pos.Y << 3
 		pPosX := pos.X << 3
-		for iy := int32(0); iy < tt.blockHeight; iy++ {
+		for iy := int32(0); iy < tt.pixelHeight; iy++ {
 			y := pPosY + iy
 			fy := y >> 6
 			by := fy<<6 == y
@@ -325,7 +325,7 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 			bF := bFactors[fy]
 			hfX := xFactorHF[fy]
 			hfB := bFactorHF[fy]
-			for ix := int32(0); ix < tt.blockWidth; ix++ {
+			for ix := int32(0); ix < tt.pixelWidth; ix++ {
 				x := pPosX + ix
 				fx := x >> 6
 				var kX float32
