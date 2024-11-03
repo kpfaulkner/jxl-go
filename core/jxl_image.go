@@ -36,6 +36,7 @@ type JXLImage struct {
 	bitDepths            []uint32
 }
 
+// NewJXLImageWithBuffer creates a new JXLImage with the given buffer and header.
 func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeader) (*JXLImage, error) {
 	jxl := &JXLImage{}
 
