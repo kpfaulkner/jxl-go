@@ -1,9 +1,7 @@
 package core
 
 import (
-	"image"
 	"io"
-	"os"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -29,28 +27,14 @@ func NewJXLDecoder(in io.ReadSeeker) *JXLDecoder {
 	return jxl
 }
 
-func (jxl *JXLDecoder) Decode() (image.Image, error) {
+func (jxl *JXLDecoder) Decode() (*JXLImage, error) {
 
 	jxlImage, err := jxl.decoder.decode()
 	if err != nil {
 		return nil, err
 	}
 
-	f, err := os.Create(`c:\temp\test.pfm`)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	WritePFM(jxlImage, f)
-
-	// convert to regular Go image.Image
-	img, err := NewImageFromJXLImage(jxlImage)
-	if err != nil {
-		return nil, err
-	}
-	return img, nil
-
+	return jxlImage, nil
 }
 
 func (jxl *JXLDecoder) GetImageHeader() (*bundle.ImageHeader, error) {

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image"
 	"image/png"
 	"os"
 	"time"
@@ -22,8 +21,9 @@ func main() {
 	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
 	//file := `../testdata/lossless.jxl`
-	//file := `../testdata/lenna.jxl`
-	file := `c:\temp\work.jxl`
+	file := `../testdata/lenna.jxl`
+	//file := `c:\temp\work.jxl`
+	//file := `c:\temp\from-nwf.jxl`
 	//file := `c:\temp\tiny2.jxl`
 	//file := `c:\temp\tiny4.jxl`
 	//file := `c:\temp\tiny5.jxl`
@@ -37,16 +37,19 @@ func main() {
 	r := bytes.NewReader(f)
 	jxl := core.NewJXLDecoder(r)
 
-	var img image.Image
+	var jxlImage *core.JXLImage
 	start := time.Now()
-	if img, err = jxl.Decode(); err != nil {
+	if jxlImage, err = jxl.Decode(); err != nil {
 		fmt.Printf("Error decoding: %v\n", err)
 		return
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
-	fmt.Printf("img %+v\n", img.Bounds())
 
-	//return
+	// convert to regular Go image.Image
+	img, err := jxlImage.ToImage()
+	if err != nil {
+		fmt.Printf("error when making image %v\n", err)
+	}
 
 	buf := new(bytes.Buffer)
 	if err := png.Encode(buf, img); err != nil {

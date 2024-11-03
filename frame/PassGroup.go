@@ -222,7 +222,7 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 			case METHOD_DCT4:
 				panic("not implemented")
 			default:
-				return errors.New("Transform not implemented")
+				return errors.New("transform not implemented")
 			}
 		}
 

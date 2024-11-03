@@ -54,7 +54,7 @@ func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Fr
 	for i := uint64(0); i < hf.nbBlocks; i++ {
 		t := blockInfoBuffer[0][i]
 		if t > 26 || t < 0 {
-			return nil, errors.New(fmt.Sprintf("Invalid Transform Type %d", t))
+			return nil, errors.New(fmt.Sprintf("Invalid transform Type %d", t))
 		}
 		tt := tta[t]
 		pos, err := hf.placeBlock(lastBlock, tt, 1+blockInfoBuffer[1][i])

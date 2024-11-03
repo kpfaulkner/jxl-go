@@ -164,7 +164,6 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		}
 
 		for {
-			showNextNBytes(jxl.bitReader, "begin loop", 4)
 			imgFrame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, &jxl.options)
 			header, err = imgFrame.ReadFrameHeader()
 			if err != nil {
