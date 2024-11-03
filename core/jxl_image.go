@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"image"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
@@ -74,6 +75,17 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 		}
 	}
 	return jxl, nil
+}
+
+// GetChannel will return the ImageBuffer for the given channel.
+// TODO(kpfaulkner) try and figure out a better exported API. Would prefer to be
+// able to return the float32 data or the int32 data... but not the ImageBuffer.
+func (jxl *JXLImage) GetChannelData(c int) (image2.ImageBuffer, error) {
+	if c < 0 || c >= len(jxl.Buffer) {
+		return image2.ImageBuffer{}, fmt.Errorf("Invalid channel index %d", c)
+	}
+
+	return jxl.Buffer[c], nil
 }
 
 // ToImage converts to standard Go image.Image RGBA format
