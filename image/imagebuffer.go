@@ -130,7 +130,10 @@ func (ib *ImageBuffer) CastToIntIfFloat(maxValue int32) error {
 	if ib.BufferType == TYPE_INT {
 		return nil
 	}
-	return ib.castToIntBuffer(maxValue)
+
+	err := ib.castToIntBuffer(maxValue)
+	ib.BufferType = TYPE_INT
+	return err
 }
 
 func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
@@ -159,6 +162,8 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 			newBuffer[y][x] = vv
 		}
 	}
+	ib.IntBuffer = newBuffer
+	ib.BufferType = TYPE_INT
 	return nil
 }
 

@@ -32,3 +32,5 @@ Once that is done will focus on performance improvements. There are many areas t
 
 ## Notes
 
+Good to generate PFM files then use a site like https://imagetostl.com/convert/file/pfm/to/png#convert to 
+convert to PNG for easier viewing.

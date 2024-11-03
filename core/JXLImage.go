@@ -265,7 +265,7 @@ func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
 				return nil, err
 			}
 		} else {
-			if err := buffer[c].CastToFloatIfInt(maxValue); err != nil {
+			if err := buffer[c].CastToIntIfFloat(maxValue); err != nil {
 				return nil, err
 			}
 		}
@@ -275,13 +275,13 @@ func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
 	// TODO(kpfaulkner) get right image type
 	jxl := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 
-	// case to int image..
-	for c := 0; c < len(buffer); c++ {
-		if buffer[c].IsInt() {
-			// convert to float
-			buffer[c].CastToFloatIfInt(255)
-		}
-	}
+	// cast to int image..
+	//for c := 0; c < len(buffer); c++ {
+	//	if buffer[c].IsInt() {
+	//		// convert to float
+	//		buffer[c].CastToFloatIfInt(255)
+	//	}
+	//}
 	pix := jxl.Pix
 	dx := jxl.Bounds().Dx()
 	dy := jxl.Bounds().Dy()
@@ -302,6 +302,7 @@ func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
 			}
 		}
 	} else {
+
 		for y := 0; y < dy; y++ {
 			for x := 0; x < dx; x++ {
 				pix[pos] = uint8(buffer[0].IntBuffer[y][x])
@@ -311,9 +312,14 @@ func NewImageFromJXLImage(jxlImage *JXLImage) (image.Image, error) {
 				pix[pos] = uint8(buffer[2].IntBuffer[y][x])
 				pos++
 
-				// FIXME(kpfaulkner) deal with alpha channels properly
-				pix[pos] = uint8(buffer[3].IntBuffer[y][x])
-				pos++
+				if jxlImage.imageHeader.HasAlpha() {
+					// FIXME(kpfaulkner) deal with alpha channels properly
+					pix[pos] = uint8(buffer[3].IntBuffer[y][x])
+					pos++
+				} else {
+					pix[pos] = 255
+					pos++
+				}
 			}
 		}
 	}
