@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -570,12 +571,16 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	}
 	close(inputChan)
 
+	wg := sync.WaitGroup{}
+	wg.Add(numPasses * numGroups)
 	for inp := range inputChan {
-		err := f.doProcessing(inp.iPass, inp.iGroup, passGroups)
-		if err != nil {
-			return err
-		}
+		ii := inp
+		go func(i Inp) {
+			f.doProcessing(i.iPass, i.iGroup, passGroups)
+			wg.Done()
+		}(ii)
 	}
+	wg.Wait()
 
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0

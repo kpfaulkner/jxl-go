@@ -8,14 +8,13 @@ import (
 	"time"
 
 	"github.com/kpfaulkner/jxl-go/core"
-	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	fmt.Printf("So it begins...\n")
 
-	defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
+	//defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.BlockProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
@@ -48,7 +47,7 @@ func main() {
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
 
-	return
+	//return
 
 	// convert to regular Go image.Image
 	img, err := jxlImage.ToImage()
@@ -60,7 +59,7 @@ func main() {
 	if err := png.Encode(buf, img); err != nil {
 		log.Fatalf("boomage %v", err)
 	}
-	err = os.WriteFile(`c:\temp\test.png`, buf.Bytes(), 0666)
+	err = os.WriteFile(`c:\temp\test2.png`, buf.Bytes(), 0666)
 	if err != nil {
 		log.Fatalf("boomage %v", err)
 	}
