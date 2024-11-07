@@ -240,7 +240,7 @@ func NewHFGlobalWithReader(reader *jxlio.Bitreader, frame *Frame) (*HFGlobal, er
 		}
 	}
 
-	hf.totalWeights()
+	//hf.totalWeights()
 	numPresets, err := reader.ReadBits(uint32(util.CeilLog1p(frame.numGroups - 1)))
 	if err != nil {
 		return nil, err
@@ -257,10 +257,6 @@ func (hfg *HFGlobal) totalWeights() {
 			for y := 0; y < len(hfg.weights[index][c]); y++ {
 				for x := 0; x < len(hfg.weights[index][c][y]); x++ {
 					total += hfg.weights[index][c][y][x]
-					if math.IsInf(float64(total), 0) {
-						fmt.Printf("total weight %f\n", total)
-					}
-					//fmt.Printf("running total %f\n", total)
 				}
 			}
 		}

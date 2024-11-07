@@ -62,6 +62,7 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	} else {
 		jxl.transfer = bundle.Tf
 		jxl.iccProfile = header.GetDecodedICC()
+
 	}
 	jxl.taggedTransfer = bundle.Tf
 	jxl.alphaIsPremultiplied = jxl.imageHeader.HasAlpha() && jxl.imageHeader.ExtraChannelInfo[jxl.alphaIndex].AlphaAssociated
@@ -86,6 +87,14 @@ func (jxl *JXLImage) GetChannelData(c int) (image2.ImageBuffer, error) {
 	}
 
 	return jxl.Buffer[c], nil
+}
+
+func (jxl *JXLImage) HasAlpha() bool {
+	return jxl.imageHeader.HasAlpha()
+}
+
+func (jxl *JXLImage) NumExtraChannels() int {
+	return len(jxl.imageHeader.ExtraChannelInfo)
 }
 
 // ToImage converts to standard Go image.Image RGBA format

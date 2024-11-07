@@ -41,8 +41,7 @@ func SignedPow(base float32, exponent float32) float32 {
 }
 
 func CeilLog1p[T constraints.Integer](x T) int {
-	xx := bits.LeadingZeros64(uint64(x))
-	return 64 - xx
+	return 64 - bits.LeadingZeros64(uint64(x))
 }
 
 func FloorLog1p[T constraints.Integer](x T) int64 {

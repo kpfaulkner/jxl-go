@@ -331,6 +331,9 @@ func (h *ImageHeader) GetTotalChannelCount() int {
 
 func (h *ImageHeader) GetDecodedICC() []byte {
 
+	if h.EncodedICC == nil {
+		return nil
+	}
 	panic("not implemented")
 	return nil
 }

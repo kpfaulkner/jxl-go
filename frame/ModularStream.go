@@ -241,12 +241,6 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			for j := 0; j < len(squeezeList); j++ {
 				begin := spa[j].beginC
 				end := begin + spa[j].numC - 1
-				var offset int
-				if spa[j].inPlace {
-					offset = end + 1
-				} else {
-					offset = len(ms.channels)
-				}
 				if begin < ms.nbMetaChannels {
 					if !spa[j].inPlace {
 						return nil, errors.New("squeeze meta must be in place")
@@ -260,8 +254,6 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 				for c := begin; c <= end; c++ {
 					var residu *ModularChannel
 					ch := ms.channels[c]
-					//r := offset + k - begin
-					r := offset + ii
 					if spa[j].horizontal {
 						w := ch.size.Width
 						ch.size.Width = (w + 1) / 2
@@ -276,15 +268,9 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 						residu.size.Height = h / 2
 					}
 					newChannels = append([]*ModularChannel{residu}, newChannels...)
-					chpos1 := newChannels[0]
-					fmt.Printf("R is %d\n", r)
-					fmt.Printf("Adding channel in pos 0 with width %d, height %d\n", chpos1.size.Width, chpos1.size.Height)
 					ii++
 				}
 			}
-
-			// hack.. duplicate first element
-			// FIXME(kpfaulkner) just a hack to test issues...
 
 			if len(newChannels) > 0 {
 				mc := NewModularChannelFromChannel(*newChannels[0])

@@ -8,22 +8,24 @@ import (
 	"time"
 
 	"github.com/kpfaulkner/jxl-go/core"
+	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	fmt.Printf("So it begins...\n")
 
-	//defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
+	defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.BlockProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
-	//file := `../testdata/lossless.jxl`
-	file := `../testdata/lenna.jxl`
+	file := `../testdata/lossless.jxl`
+	//file := `../testdata/lenna.jxl`
 	//file := `c:\temp\work.jxl`
 	//file := `c:\temp\from-nwf.jxl`
+	//file := `c:\temp\ken-0-0.jxl`
 	//file := `c:\temp\tiny2.jxl`
 	//file := `c:\temp\tiny4.jxl`
 	//file := `c:\temp\tiny5.jxl`
@@ -35,15 +37,18 @@ func main() {
 	}
 
 	r := bytes.NewReader(f)
+	start := time.Now()
 	jxl := core.NewJXLDecoder(r)
 
 	var jxlImage *core.JXLImage
-	start := time.Now()
+
 	if jxlImage, err = jxl.Decode(); err != nil {
 		fmt.Printf("Error decoding: %v\n", err)
 		return
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
+
+	return
 
 	// convert to regular Go image.Image
 	img, err := jxlImage.ToImage()

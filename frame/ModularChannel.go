@@ -217,11 +217,20 @@ func (mc *ModularChannel) north(x int32, y int32) int32 {
 }
 
 func (mc *ModularChannel) northWest(x int32, y int32) int32 {
-	if x > 0 && y > 0 {
-		return mc.buffer[y-1][x-1]
+
+	if x > 0 {
+		if y > 0 {
+			return mc.buffer[y-1][x-1]
+		} else {
+			return mc.buffer[y][x-1]
+		}
+	} else {
+		if y > 0 {
+			return mc.buffer[y-1][x]
+		} else {
+			return 0
+		}
 	}
-	resp := mc.west(x, y)
-	return resp
 }
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
@@ -431,7 +440,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			x := int32(x0)
 			var maxError int32
 			if useWP {
-				maxError, err = mc.prePredictWP(wpParams, int32(x), int32(y))
+				maxError, err = mc.prePredictWP(wpParams, x, y)
 				if err != nil {
 					return err
 				}
