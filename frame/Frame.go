@@ -7,6 +7,8 @@ import (
 	"math"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/image"
@@ -30,6 +32,11 @@ var (
 		{X: -1, Y: 1}, {X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1},
 		{X: 0, Y: -2}, {X: 0, Y: 2}, {X: 2, Y: 0}, {X: -2, Y: 0}}
 )
+
+type Inp struct {
+	iPass  int
+	iGroup int
+}
 
 type Frame struct {
 	globalMetadata   *bundle.ImageHeader
@@ -510,6 +517,15 @@ func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
 	return nil
 }
 
+func (f *Frame) startWorker(inputChan chan Inp, passGroups [][]PassGroup) {
+	for inp := range inputChan {
+		if err := f.doProcessing(inp.iPass, inp.iGroup, passGroups); err != nil {
+			log.Errorf("Error processing %v %v %v", inp.iPass, inp.iGroup, err)
+		}
+
+	}
+}
+
 func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) error {
 
 	br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + iGroup)
@@ -520,7 +536,6 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 	replaced := []ModularChannel{}
 	for _, r := range f.passes[iPass].replacedChannels {
 		// remove any replacedChannels that are nil/empty
-		//if r.size.Width != 0 && r.size.Height != 0 {
 		if r != nil {
 			mc := NewModularChannelFromChannel(*r)
 			replaced = append(replaced, *mc)
@@ -553,10 +568,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	numGroups := int(f.numGroups)
 	passGroups := util.MakeMatrix2D[PassGroup](numPasses, numGroups)
 
-	type Inp struct {
-		iPass  int
-		iGroup int
-	}
 	inputChan := make(chan Inp, numPasses*numGroups)
 
 	for pass0 := 0; pass0 < numPasses; pass0++ {
@@ -572,14 +583,14 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	close(inputChan)
 
 	wg := sync.WaitGroup{}
-	wg.Add(numPasses * numGroups)
-	for inp := range inputChan {
-		ii := inp
-		go func(i Inp) {
-			f.doProcessing(i.iPass, i.iGroup, passGroups)
+	for i := 0; i < f.options.MaxGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			f.startWorker(inputChan, passGroups)
 			wg.Done()
-		}(ii)
+		}()
 	}
+
 	wg.Wait()
 
 	for pass := 0; pass < numPasses; pass++ {

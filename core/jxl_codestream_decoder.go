@@ -36,13 +36,13 @@ type JXLCodestreamDecoder struct {
 	canvas         []image2.ImageBuffer
 }
 
-func NewJXLCodestreamDecoder(br *jxlio.Bitreader, options *options.JXLOptions) *JXLCodestreamDecoder {
+func NewJXLCodestreamDecoder(br *jxlio.Bitreader, opts *options.JXLOptions) *JXLCodestreamDecoder {
 	jxl := &JXLCodestreamDecoder{}
 	jxl.bitReader = br
 	jxl.foundSignature = false
 	jxl.lfBuffer = make([][]image2.ImageBuffer, 5)
-	if options != nil {
-		jxl.options = *options
+	if opts != nil {
+		jxl.options = *options.NewJXLOptions(opts)
 	}
 	jxl.reference = make([][]image2.ImageBuffer, 4)
 	return jxl

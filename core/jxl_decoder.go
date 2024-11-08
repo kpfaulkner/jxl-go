@@ -5,6 +5,7 @@ import (
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/options"
 )
 
 // JXLDecoder decodes the JXL image
@@ -23,7 +24,9 @@ func NewJXLDecoder(in io.ReadSeeker) *JXLDecoder {
 	}
 
 	br := jxlio.NewBitreader(in)
-	jxl.decoder = NewJXLCodestreamDecoder(br, nil)
+
+	opt := &options.JXLOptions{}
+	jxl.decoder = NewJXLCodestreamDecoder(br, opt)
 	return jxl
 }
 
