@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/kpfaulkner/jxl-go/core"
-	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,7 +16,7 @@ func main() {
 	fmt.Printf("So it begins...\n")
 
 	//defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
+	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.BlockProfile, profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()

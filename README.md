@@ -11,6 +11,20 @@ Currently the focus is on reading lossless images but will expand to lossy image
 This started off based off the JXL specs, JXL reference implementation (https://github.com/libjxl/libjxl) , JXLatte ( https://github.com/Traneptora/jxlatte ) 
 and jxl-oxide ( https://github.com/tirr-c/jxl-oxide ). These days it's probably better described as 90% a Go port of JXLatte.
 
+## Example usage:
+
+```go
+
+  // read JXL file 
+  file := `../testdata/lossless.jxl`
+  f, _ := os.ReadFile(file)
+  r := bytes.NewReader(f)
+  jxl := core.NewJXLDecoder(r)
+  jxlImage, _ := jxl.Decode()
+
+  // convert to regular Go image.Image
+  img, _ := jxlImage.ToImage()
+```
 
 ## TODO:
 
