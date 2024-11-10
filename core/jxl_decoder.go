@@ -18,15 +18,18 @@ type JXLDecoder struct {
 	decoder *JXLCodestreamDecoder
 }
 
-func NewJXLDecoder(in io.ReadSeeker) *JXLDecoder {
+func NewJXLDecoder(in io.ReadSeeker, opts *options.JXLOptions) *JXLDecoder {
 	jxl := &JXLDecoder{
 		in: in,
 	}
 
 	br := jxlio.NewBitreader(in)
 
-	opt := &options.JXLOptions{}
-	jxl.decoder = NewJXLCodestreamDecoder(br, opt)
+	// if nil options, then create one
+	if opts == nil {
+		opts = options.NewJXLOptions(nil)
+	}
+	jxl.decoder = NewJXLCodestreamDecoder(br, opts)
 	return jxl
 }
 

@@ -33,7 +33,7 @@ func main() {
 
 	r := bytes.NewReader(f)
 	start := time.Now()
-	jxl := core.NewJXLDecoder(r)
+	jxl := core.NewJXLDecoder(r, nil)
 
 	var jxlImage *core.JXLImage
 
