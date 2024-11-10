@@ -580,13 +580,16 @@ func interpolate(scaledPos float32, bands []float32) float32 {
 	}
 
 	scaledIndex := int(scaledPos)
-	fracIndex := scaledPos - float32(scaledIndex)
 	if scaledIndex+1 > l {
 		return bands[l]
 	}
+	fracIndex := float64(scaledPos) - float64(scaledIndex)
 	a := bands[scaledIndex]
 	b := bands[scaledIndex+1]
-	return float32(a) * float32(math.Pow(float64(b/a), float64(fracIndex)))
+	first := float64(b / a)
+	second := fracIndex
+	//fmt.Printf("first %f second %f\n", first, second)
+	return float32(a) * float32(math.Pow(first, second))
 }
 
 func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, error) {

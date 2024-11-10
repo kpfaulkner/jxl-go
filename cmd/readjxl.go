@@ -21,9 +21,13 @@ func main() {
 	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
 
-	file := `../testdata/lossless.jxl`
+	//file := `../testdata/lossless.jxl`
 	//file := `../testdata/lenna.jxl`
 	//file := `c:\temp\work.jxl`
+	//file := `c:\temp\ken-0-0.jxl`
+
+	// church fails with nested distribution.
+	file := `../testdata/church.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {
@@ -32,11 +36,9 @@ func main() {
 	}
 
 	r := bytes.NewReader(f)
-	start := time.Now()
 	jxl := core.NewJXLDecoder(r, nil)
-
+	start := time.Now()
 	var jxlImage *core.JXLImage
-
 	if jxlImage, err = jxl.Decode(); err != nil {
 		fmt.Printf("Error decoding: %v\n", err)
 		return

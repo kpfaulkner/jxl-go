@@ -9,6 +9,74 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
+var (
+	orderLookup     = make([]TransformType, 13)
+	parameterLookup = make([]TransformType, 17)
+	typeLookup      = make([]TransformType, 27)
+)
+
+// not crazy about init functions...  but think this is probably the best way to handle this.
+func init() {
+	for i := int32(0); i < 13; i++ {
+		tt, err := filterByOrderID(i)
+		if err != nil {
+
+			// intentionally panic. If we can't setup this data, fail immediately
+			panic(err)
+		}
+		orderLookup[i] = tt
+	}
+
+	for i := int32(0); i < 17; i++ {
+		tt, err := filterByParameterIndex(i)
+		if err != nil {
+			// intentionally panic. If we can't setup this data, fail immediately
+			panic(err)
+		}
+		parameterLookup[i] = tt
+
+	}
+
+	for i := int32(0); i < 27; i++ {
+		tt, err := filterByType(i)
+		if err != nil {
+			// intentionally panic. If we can't setup this data, fail immediately
+			panic(err)
+		}
+		typeLookup[i] = tt
+	}
+}
+
+func filterByType(typeIndex int32) (TransformType, error) {
+	for _, tt := range allDCT {
+		if tt.ttType == typeIndex {
+			return tt, nil
+		}
+	}
+
+	return TransformType{}, errors.New("Unable to find transform type for typeIndex")
+}
+
+func filterByParameterIndex(parameterIndex int32) (TransformType, error) {
+	for _, tt := range allDCT {
+		if tt.parameterIndex == parameterIndex && !tt.isVertical() {
+			return tt, nil
+		}
+	}
+
+	return TransformType{}, errors.New("Unable to find transform type for parameterIndex")
+}
+
+func filterByOrderID(orderID int32) (TransformType, error) {
+	for _, tt := range allDCT {
+		if tt.orderID == orderID && !tt.isVertical() {
+			return tt, nil
+		}
+	}
+
+	return TransformType{}, errors.New("Unable to find transform type for orderID")
+}
+
 type HFPass struct {
 	order         [][][]util.Point
 	naturalOrder  [][]util.Point
@@ -74,12 +142,7 @@ func (hfp *HFPass) getNaturalOrder(i int32) ([]util.Point, error) {
 		return hfp.naturalOrder[i], nil
 	}
 
-	var tt *TransformType
-	var err error
-	if tt, err = getByOrderID(i); err != nil {
-		return nil, err
-	}
-
+	tt := getByOrderID(i)
 	l := tt.pixelWidth * tt.pixelHeight
 	hfp.naturalOrder[i] = make([]util.Point, l)
 	for y := int32(0); y < tt.pixelHeight; y++ {
@@ -100,10 +163,8 @@ func (hfp *HFPass) getNaturalOrder(i int32) ([]util.Point, error) {
 
 func getNaturalOrderFunc(i int32) (func(a util.Point, b util.Point) int, error) {
 
-	tt, err := getByOrderID(i)
-	if err != nil {
-		return nil, err
-	}
+	tt := getByOrderID(i)
+
 	return func(a util.Point, b util.Point) int {
 		maxDim := util.Max(tt.dctSelectHeight, tt.dctSelectWidth)
 		aLLF := a.Y < tt.dctSelectHeight && a.X < tt.dctSelectWidth

@@ -173,11 +173,6 @@ func getHorizontalTransformType(index int32) (*TransformType, error) {
 	return nil, errors.New("Unable to find horizontal transform type")
 }
 
-func getByOrderID(orderID int32) (*TransformType, error) {
-	for _, tt := range allDCT {
-		if tt.orderID == orderID && !tt.isVertical() {
-			return &tt, nil
-		}
-	}
-	return nil, errors.New("Unable to find transform type for orderID")
+func getByOrderID(orderID int32) TransformType {
+	return orderLookup[orderID]
 }
