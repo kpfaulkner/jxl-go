@@ -243,10 +243,9 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 	index := state & 0xFFF
 	i := uint32(index) >> asd.logBucketSize
 	pos := index & ((1 << asd.logBucketSize) - 1)
-	greater := pos >= asd.cutoffs[i]
 	var symbol int32
 	var offset int32
-	if greater {
+	if pos >= asd.cutoffs[i] {
 		symbol = asd.symbols[i]
 		offset = asd.offsets[i] + int32(pos)
 	} else {

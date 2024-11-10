@@ -93,6 +93,7 @@ func (hfp *HFPass) getNaturalOrder(i int32) ([]util.Point, error) {
 		return nil, err
 	}
 	slices.SortFunc(hfp.naturalOrder[i], sorterFunc)
+
 	return hfp.naturalOrder[i], nil
 
 }
@@ -120,10 +121,12 @@ func getNaturalOrderFunc(i int32) (func(a util.Point, b util.Point) int, error) 
 			return int(a.X - b.X)
 		}
 
-		aSY := a.Y * maxDim / tt.dctSelectHeight
-		aSX := a.X * maxDim / tt.dctSelectWidth
-		bSY := b.Y * maxDim / tt.dctSelectHeight
-		bSX := b.X * maxDim / tt.dctSelectWidth
+		heightDivider := maxDim / tt.dctSelectHeight
+		widthDivider := maxDim / tt.dctSelectWidth
+		aSY := a.Y * heightDivider
+		aSX := a.X * widthDivider
+		bSY := b.Y * heightDivider
+		bSX := b.X * widthDivider
 		aKey1 := aSY + aSX
 		bKey1 := bSY + bSX
 		if aKey1 != bKey1 {
