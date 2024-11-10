@@ -19,7 +19,7 @@ and jxl-oxide ( https://github.com/tirr-c/jxl-oxide ). These days it's probably 
   file := `../testdata/lossless.jxl`
   f, _ := os.ReadFile(file)
   r := bytes.NewReader(f)
-  jxl := core.NewJXLDecoder(r)
+  jxl := core.NewJXLDecoder(r,nil)
   jxlImage, _ := jxl.Decode()
 
   // convert to regular Go image.Image
