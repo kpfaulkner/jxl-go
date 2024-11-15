@@ -24,7 +24,26 @@ func NewLFChannelCorrelationWithReaderAndDefault(reader *jxlio.Bitreader, allDef
 		lf.xFactorLF = 128
 		lf.bFactorLF = 128
 	} else {
-		panic("NewLFChannelCorrelationWithReaderAndDefault not implemented yet")
+		var err error
+		if lf.colorFactor, err = reader.ReadU32(84, 0, 256, 0, 2, 8, 258, 16); err != nil {
+			return nil, err
+		}
+		if lf.baseCorrelationX, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+		if lf.baseCorrelationB, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+
+		bits := uint64(0)
+		if bits, err = reader.ReadBits(8); err != nil {
+			return nil, err
+		}
+		lf.xFactorLF = uint32(bits)
+		if bits, err = reader.ReadBits(8); err != nil {
+			return nil, err
+		}
+		lf.bFactorLF = uint32(bits)
 	}
 	return lf, nil
 }

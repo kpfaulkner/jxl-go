@@ -304,6 +304,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 
 	err = f.decodeLFGroups(lfBuffer)
 	if err != nil {
+		log.Errorf("Error decoding LFGroups %v", err)
 		return err
 	}
 
@@ -326,20 +327,17 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
-	// 20241102 for tiny5.jxl different to JXLatte... but also we have all 16 elements per row.
-	// where later on the last 8 get NaN'ed.
-	// FIXME(kpfaulkner) figure this out!!
 	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
 	}
 
-	err = f.LfGlobal.gModular.Stream.applyTransforms()
+	err = f.LfGlobal.globalModular.applyTransforms()
 	if err != nil {
 		return err
 	}
 
-	modularBuffer := f.LfGlobal.gModular.Stream.getDecodedBuffer()
+	modularBuffer := f.LfGlobal.globalModular.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
 		isModularColour := f.Header.Encoding == MODULAR && c < f.GetColorChannelCount()
@@ -440,14 +438,14 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 	lfReplacementChannels := []*ModularChannel{}
 	lfReplacementChannelIndicies := []int{}
 
-	for i := 0; i < len(f.LfGlobal.gModular.Stream.channels); i++ {
-		ch := f.LfGlobal.gModular.Stream.channels[i]
+	for i := 0; i < len(f.LfGlobal.globalModular.channels); i++ {
+		ch := f.LfGlobal.globalModular.channels[i]
 		if !ch.decoded {
 			if ch.hshift >= 3 && ch.vshift >= 3 {
 				lfReplacementChannelIndicies = append(lfReplacementChannelIndicies, i)
 				height := f.Header.lfGroupDim >> ch.vshift
 				width := f.Header.lfGroupDim >> ch.hshift
-				lfReplacementChannels = append(lfReplacementChannels, NewModularChannelWithAllParams(int32(height), int32(width), ch.hshift, ch.vshift, false))
+				lfReplacementChannels = append(lfReplacementChannels, NewModularChannelWithAllParams(int32(height), int32(width), ch.vshift, ch.hshift, false))
 			}
 		}
 	}
@@ -487,7 +485,7 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
 		for j := 0; j < len(lfReplacementChannelIndicies); j++ {
 			index := lfReplacementChannelIndicies[j]
-			channel := f.LfGlobal.gModular.Stream.channels[index]
+			channel := f.LfGlobal.globalModular.channels[index]
 			channel.allocate()
 			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
 			newChannel := newChannelInfo.buffer
@@ -601,7 +599,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			}
 			ii := i
 			jj := j
-			channel := f.LfGlobal.gModular.Stream.channels[ii]
+			channel := f.LfGlobal.globalModular.channels[ii]
 			channel.allocate()
 			for group := 0; group < int(f.numGroups); group++ {
 				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]

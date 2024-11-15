@@ -1,6 +1,7 @@
 package frame
 
 import (
+	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -13,10 +14,11 @@ type LFGlobal struct {
 	lfDequant       []float32
 	hfBlockCtx      *HFBlockContext
 	lfChanCorr      *LFChannelCorrelation
-	gModular        *GlobalModular
-	globalScale     int32
-	quantLF         int32
-	scaledDequant   []float32
+	//gModular        *GlobalModular
+	globalScale   int32
+	quantLF       int32
+	scaledDequant []float32
+	globalModular *ModularStream
 }
 
 func NewLFGlobal() *LFGlobal {
@@ -30,7 +32,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 
 	lf := NewLFGlobal()
 	lf.frame = parent
-
+	extra := len(lf.frame.globalMetadata.ExtraChannelInfo)
 	if lf.frame.Header.Flags&PATCHES != 0 {
 
 		// TODO(kpfaulkner) not used yet with the lossless images I'm trying.
@@ -79,7 +81,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		//if err != nil {
 		//	return nil, err
 		//}
-		globalScale, err := reader.ReadU32(1, 11, 2049, 11, 4097, 12, 8193, 1)
+		globalScale, err := reader.ReadU32(1, 11, 2049, 11, 4097, 12, 8193, 16)
 		if err != nil {
 			return nil, err
 		}
@@ -101,6 +103,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 			return nil, err
 		}
 	} else {
+		lf.globalScale = 0
 		lf.quantLF = 0
 		lf.hfBlockCtx = nil
 		lf.lfChanCorr, err = NewLFChannelCorrelation()
@@ -109,8 +112,38 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		}
 	}
 
-	lf.gModular, err = NewGlobalModularWithReader(reader, lf.frame)
+	hasGlobalTree, err := reader.ReadBool()
 	if err != nil {
+		return nil, err
+	}
+	var globalTree *MATree
+	if hasGlobalTree {
+		globalTree, err = NewMATreeWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		globalTree = nil
+	}
+	lf.frame.globalTree = globalTree
+	subModularChannelCount := extra
+	ecStart := 0
+	if lf.frame.Header.Encoding == MODULAR {
+		if lf.frame.Header.DoYCbCr && !lf.frame.globalMetadata.XybEncoded &&
+			lf.frame.globalMetadata.ColorEncoding.ColorEncoding == color.CE_GRAY {
+			ecStart = 1
+		} else {
+			ecStart = 3
+		}
+	}
+	subModularChannelCount += ecStart
+
+	globalModular, err := NewModularStreamWithReader(reader, parent, 0, subModularChannelCount, ecStart)
+	if err != nil {
+		return nil, err
+	}
+	lf.globalModular = globalModular
+	if err = lf.globalModular.decodeChannels(reader, true); err != nil {
 		return nil, err
 	}
 

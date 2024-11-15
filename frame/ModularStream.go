@@ -173,7 +173,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 			} else {
 				dimShift = frame.globalMetadata.ExtraChannelInfo[i-ecStart].DimShift
 			}
-			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.Width), int32(size.Height), dimShift, dimShift, false))
+			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.Height), int32(size.Width), dimShift, dimShift, false))
 		}
 	} else {
 		//ms.channels = append(ms.channels, channelArray...)
@@ -201,7 +201,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 				mc.forceWP = true
 				ms.channels[ms.transforms[i].beginC] = mc
 			}
-			mc := NewModularChannelWithAllParams(int32(ms.transforms[i].nbColours), int32(ms.transforms[i].numC), -1, -1, false)
+			mc := NewModularChannelWithAllParams(int32(ms.transforms[i].numC), int32(ms.transforms[i].nbColours), -1, -1, false)
 			ms.channels = append([]*ModularChannel{mc}, ms.channels...)
 
 		} else if ms.transforms[i].tr == SQUEEZE {
@@ -362,14 +362,14 @@ func (ms *ModularStream) applyTransforms() error {
 					residu := ms.channels[r]
 					var output *ModularChannel
 					if sp.horizontal {
-						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Width+residu.size.Width), int32(ch.size.Height), ch.hshift-1, ch.vshift, false)
+						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Height), int32(ch.size.Width+residu.size.Width), ch.vshift, ch.hshift-1, false)
 						output, err = inverseHorizontalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err
 						}
 					} else {
 
-						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Width), int32(ch.size.Height+residu.size.Height), ch.hshift, ch.vshift-1, false)
+						outputInfo := NewModularChannelWithAllParams(int32(ch.size.Height+residu.size.Height), int32(ch.size.Width), ch.vshift-1, ch.hshift, false)
 						output, err = inverseVerticalSqueeze(outputInfo, ch, residu)
 						if err != nil {
 							return err

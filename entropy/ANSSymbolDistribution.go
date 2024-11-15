@@ -265,8 +265,6 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 
 	//stateObj.State = 0xFFFFFFFF & uint64(state)
 	stateObj.State = state
-	if lastStateObj != stateObj.State {
-		lastStateObj = stateObj.State
-	}
+
 	return symbol, nil
 }

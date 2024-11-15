@@ -37,7 +37,7 @@ func init() {
 }
 
 func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
-	mc := NewModularChannelWithAllParams(int32(ch.size.Width), int32(ch.size.Height), ch.hshift, ch.vshift, ch.forceWP)
+	mc := NewModularChannelWithAllParams(int32(ch.size.Height), int32(ch.size.Width), ch.vshift, ch.hshift, ch.forceWP)
 	mc.decoded = ch.decoded
 	if ch.buffer != nil {
 		mc.allocate()
@@ -48,7 +48,7 @@ func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
 	return mc
 }
 
-func NewModularChannelWithAllParams(width int32, height int32, hshift int32, vshift int32, forceWP bool) *ModularChannel {
+func NewModularChannelWithAllParams(height int32, width int32, vshift int32, hshift int32, forceWP bool) *ModularChannel {
 	mc := &ModularChannel{
 		hshift:  hshift,
 		vshift:  vshift,
