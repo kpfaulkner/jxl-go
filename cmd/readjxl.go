@@ -24,7 +24,7 @@ func main() {
 	//file := `../testdata/lossless.jxl`
 	//file := `../testdata/lenna.jxl`
 	//file := `c:\temp\work.jxl`
-	//file := `c:\temp\ken-0-0.jxl`
+	//file := `c:\temp\ken-0-3.jxl`
 
 	// church fails with nested distribution.
 	file := `../testdata/church.jxl`
@@ -44,6 +44,9 @@ func main() {
 		return
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
+
+	fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
+	fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
 
 	// convert to regular Go image.Image
 	img, err := jxlImage.ToImage()

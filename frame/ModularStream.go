@@ -137,7 +137,6 @@ func NewModularStreamWithReader(reader *jxlio.Bitreader, frame *Frame, streamInd
 	return NewModularStreamWithChannels(reader, frame, streamIndex, channelCount, ecStart, nil)
 }
 
-// ModularStream.java line 63... TODO(kpfaulkner) continue
 func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (*ModularStream, error) {
 	ms := &ModularStream{}
 	ms.streamIndex = streamIndex
@@ -182,7 +181,6 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 		}
 	}
 
-	newChannels := []*ModularChannel{}
 	for i := 0; i < int(nbTransforms); i++ {
 
 		if ms.transforms[i].tr == PALETTE {
@@ -235,12 +233,18 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 				squeezeList = append(squeezeList, ms.transforms[i].sp...)
 			}
 
-			// FIXME(kpfaulkner) need to rework this squeeze loop :/
 			ms.squeezeMap[i] = squeezeList
 			spa := squeezeList
+			ii := 0
 			for j := 0; j < len(squeezeList); j++ {
 				begin := spa[j].beginC
 				end := begin + spa[j].numC - 1
+				var offset int
+				if spa[j].inPlace {
+					offset = end + 1
+				} else {
+					offset = len(ms.channels)
+				}
 				if begin < ms.nbMetaChannels {
 					if !spa[j].inPlace {
 						return nil, errors.New("squeeze meta must be in place")
@@ -250,10 +254,11 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 					}
 					ms.nbMetaChannels += spa[j].numC
 				}
-				ii := 0
+
 				for c := begin; c <= end; c++ {
 					var residu *ModularChannel
 					ch := ms.channels[c]
+					r := offset + c - begin
 					if spa[j].horizontal {
 						w := ch.size.Width
 						ch.size.Width = (w + 1) / 2
@@ -267,16 +272,10 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 						residu = NewModularChannelFromChannel(*ch)
 						residu.size.Height = h / 2
 					}
-					newChannels = append([]*ModularChannel{residu}, newChannels...)
+					ms.channels = util.AddToSlice(ms.channels, r, residu)
 					ii++
 				}
 			}
-
-			if len(newChannels) > 0 {
-				mc := NewModularChannelFromChannel(*newChannels[0])
-				ms.channels = append([]*ModularChannel{mc}, newChannels...)
-			}
-
 		} else if ms.transforms[i].tr == RCT {
 			continue
 		} else {

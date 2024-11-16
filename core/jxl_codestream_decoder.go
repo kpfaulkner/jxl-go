@@ -707,9 +707,11 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 		buffers[c] = buffer[c].FloatBuffer
 	}
 
-	err := matrix.InvertXYB(buffers, jxl.imageHeader.ToneMapping.GetIntensityTarget())
-	if err != nil {
-		return err
+	if matrix != nil {
+		err := matrix.InvertXYB(buffers, jxl.imageHeader.ToneMapping.GetIntensityTarget())
+		if err != nil {
+			return err
+		}
 	}
 
 	if frame.Header.DoYCbCr {
