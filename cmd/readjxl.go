@@ -24,10 +24,10 @@ func main() {
 	//file := `../testdata/lossless.jxl`
 	//file := `../testdata/lenna.jxl`
 	//file := `c:\temp\work.jxl`
-	//file := `c:\temp\ken-0-3.jxl`
+	file := `c:\temp\ken-0-3.jxl`
 
 	// church fails with nested distribution.
-	file := `../testdata/church.jxl`
+	//file := `../testdata/church.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {
@@ -47,6 +47,13 @@ func main() {
 
 	fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
 	fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
+
+	pfmBuf := new(bytes.Buffer)
+	core.WritePFM(jxlImage, pfmBuf)
+	err = os.WriteFile(`c:/temp/test.pfm`, pfmBuf.Bytes(), 0666)
+	if err != nil {
+		log.Fatalf("boomage %v", err)
+	}
 
 	// convert to regular Go image.Image
 	img, err := jxlImage.ToImage()

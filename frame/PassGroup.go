@@ -232,11 +232,11 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 
 func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *TransformType, ppg util.Point, ppf util.Point, scratchBlock [][][]float32) error {
 
-	scratchBlock[0][0][0] = (coeffs[ppg.Y][ppg.X] + coeffs[ppg.Y+1][ppg.X] + coeffs[ppg.Y][ppg.X+1]*4.0)
+	scratchBlock[0][0][0] = (coeffs[ppg.Y][ppg.X] + coeffs[ppg.Y+1][ppg.X] + coeffs[ppg.Y][ppg.X+1]) * 4.0
 	for iy := int32(0); iy < 4; iy++ {
-		startX := int32(1)
-		if iy != 0 {
-			startX = 0
+		startX := int32(0)
+		if iy == 0 {
+			startX = 1
 		}
 		for ix := startX; ix < 4; ix++ {
 			scratchBlock[0][iy][ix] = coeffs[ppg.Y+iy*2][ppg.X+ix*2]

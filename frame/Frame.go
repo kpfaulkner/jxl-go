@@ -373,6 +373,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 				}
 			}
 		} else {
+			fmt.Printf("buf location %d\n", modularBuffer[cIn][96][185])
 			outBuffer := f.Buffer[cOut].IntBuffer
 			for y := uint32(0); y < f.bounds.Size.Height; y++ {
 				copy(outBuffer[y], modularBuffer[cIn][y])
@@ -383,7 +384,6 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	f.invertSubsampling()
 
 	if f.Header.restorationFilter.gab {
-		// 20241101  think gab convolution is the first time buffer starts diverging from JXLatte
 		f.performGabConvolution()
 	}
 
@@ -631,14 +631,35 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 				} else {
 					prev = nil
 				}
+				displayBuffers("Before", buffers)
 				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
 					return err
 				}
+				displayBuffers("After", buffers)
 			}
 		}
 	}
 
 	return nil
+}
+
+func displayBuffers(text string, frameBuffer [][][]float32) {
+	fmt.Printf("DisplayBuffers %s\n", text)
+	total := 0.0
+	for c := 0; c < len(frameBuffer); c++ {
+		fmt.Printf("Channel %d\n", c)
+		for y := 0; y < len(frameBuffer[c]); y++ {
+			//fmt.Printf("Row %d: %v\n", y, frameBuffer[c][y])
+			fmt.Printf("Row %d: ", y)
+			for x := 0; x < len(frameBuffer[c][y]); x++ {
+				fmt.Printf("%f ", frameBuffer[c][y][x])
+				total += float64(frameBuffer[c][y][x])
+			}
+			fmt.Printf("\n")
+		}
+		fmt.Printf("Total up to c %d is %f\n", c, total)
+	}
+	fmt.Printf("Total %f\n", total)
 }
 
 func (f *Frame) invertSubsampling() {

@@ -213,7 +213,6 @@ func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
 		return err
 	}
 
-	// chromaFromLuma is definitely not adding values to qequantHFCoeff[2]...
 	if err := hf.chromaFromLuma(); err != nil {
 		return err
 	}
@@ -292,6 +291,10 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 		}
 	}
 	return nil
+}
+
+func (hf *HFCoefficients) DisplayDequantHFCoeff() {
+
 }
 
 func (hf *HFCoefficients) chromaFromLuma() error {
@@ -383,7 +386,6 @@ func (hf *HFCoefficients) finalizeLLF() error {
 			for y := int32(0); y < tt.dctSelectHeight; y++ {
 				dqy := dq[y+pixelGroupY]
 
-				// FIXME(kpfaulkner) tt.llfScale is WRONG... very wrong.
 				llfy := tt.llfScale[y]
 				for x := int32(0); x < tt.dctSelectWidth; x++ {
 					dqy[x+pixelGroupX] *= llfy[x]

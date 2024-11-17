@@ -44,7 +44,8 @@ func init() {
 func setupDefaultParams() {
 	defaultParams = make([]DCTParam, 17)
 	defaultParams[0] = DCTParam{
-		dctParam: [][]float64{{3150.0, 0.0, -0.4, -0.4, -0.4, -2.0},
+		dctParam: [][]float64{
+			{3150.0, 0.0, -0.4, -0.4, -0.4, -2.0},
 			{560.0, 0.0, -0.3, -0.3, -0.3, -0.3},
 			{512.0, -2.0, -1.0, 0.0, -1.0, -2.0}},
 		param:       nil,
@@ -64,7 +65,8 @@ func setupDefaultParams() {
 	}
 	defaultParams[2] = DCTParam{
 		dctParam: nil,
-		param: [][]float32{{3840.0, 2560.0, 1280.0, 640.0, 480.0, 300.0},
+		param: [][]float32{
+			{3840.0, 2560.0, 1280.0, 640.0, 480.0, 300.0},
 			{960.0, 640.0, 320.0, 180.0, 140.0, 120.0},
 			{640.0, 320.0, 128.0, 64.0, 32.0, 16.0}},
 		mode:        MODE_DCT2,
@@ -73,7 +75,8 @@ func setupDefaultParams() {
 	}
 	defaultParams[3] = DCTParam{
 		dctParam: dct4x4params,
-		param: [][]float32{{1.0, 1.0},
+		param: [][]float32{
+			{1.0, 1.0},
 			{1.0, 1.0},
 			{1.0, 1.0}},
 		mode:        MODE_DCT4,
