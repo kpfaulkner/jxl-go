@@ -176,17 +176,7 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 		}
 	}
 
-	// default to NRGBA for now. Will need to detect properly later.
-	// TODO(kpfaulkner) get right image type
 	img := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
-
-	// cast to int image..
-	//for c := 0; c < len(buffer); c++ {
-	//	if buffer[c].IsInt() {
-	//		// convert to float
-	//		buffer[c].CastToFloatIfInt(255)
-	//	}
-	//}
 	pix := img.Pix
 	dx := img.Bounds().Dx()
 	dy := img.Bounds().Dy()
@@ -218,7 +208,6 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 				pos++
 
 				if jxl.imageHeader.HasAlpha() {
-					// FIXME(kpfaulkner) deal with alpha channels properly
 					pix[pos] = uint8(buffer[3].IntBuffer[y][x])
 					pos++
 				} else {
@@ -228,7 +217,6 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 			}
 		}
 	}
-
 	return img, nil
 }
 
