@@ -78,15 +78,32 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	return jxl, nil
 }
 
-// GetChannel will return the ImageBuffer for the given channel.
-// TODO(kpfaulkner) try and figure out a better exported API. Would prefer to be
-// able to return the float32 data or the int32 data... but not the ImageBuffer.
-func (jxl *JXLImage) GetChannelData(c int) (image2.ImageBuffer, error) {
+// GetFloatChannelData will return the floating point image data for a channel.
+// The underlying image MAY not have any floating point data (this is all image dependant).
+func (jxl *JXLImage) GetFloatChannelData(c int) ([][]float32, error) {
 	if c < 0 || c >= len(jxl.Buffer) {
-		return image2.ImageBuffer{}, fmt.Errorf("Invalid channel index %d", c)
+		return nil, fmt.Errorf("Invalid channel index %d", c)
 	}
+	return jxl.Buffer[c].FloatBuffer, nil
+}
 
-	return jxl.Buffer[c], nil
+// GetIntChannelData will return the integer image data for a channel.
+// The underlying image MAY not have any integer point data (this is all image dependant).
+func (jxl *JXLImage) GetIntChannelData(c int) ([][]int32, error) {
+	if c < 0 || c >= len(jxl.Buffer) {
+		return nil, fmt.Errorf("Invalid channel index %d", c)
+	}
+	return jxl.Buffer[c].IntBuffer, nil
+}
+
+// IsIntBased returns true if underlying data related to image is integer based.
+func (jxl *JXLImage) IsIntBased() bool {
+	return jxl.Buffer[0].IsInt()
+}
+
+// IsFloatBased returns true if underlying data related to image is float based.
+func (jxl *JXLImage) IsFloatBased() bool {
+	return jxl.Buffer[0].IsFloat()
 }
 
 func (jxl *JXLImage) HasAlpha() bool {

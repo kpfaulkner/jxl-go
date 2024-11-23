@@ -25,6 +25,7 @@ func main() {
 	//file := `../testdata/lenna.jxl`
 	//file := `c:\temp\work.jxl`
 	//file := `c:\temp\ken-0-3.jxl`
+	//file := `c:\temp\ken-0-0.jxl`
 
 	// church fails with nested distribution.
 	//file := `../testdata/church.jxl`
