@@ -2,6 +2,7 @@ package frame
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -79,6 +80,9 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 		if err != nil {
 			return nil, err
 		}
+
+		// have confirmed that QuantizedCoeffs and DequantizedCoeffs are the same
+		// as JXLatte at least. Have not checked other members in HFCoefficients.
 		pg.hfCoefficients = coeff
 	} else {
 		pg.hfCoefficients = nil
@@ -101,8 +105,8 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 }
 
 func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) error {
+
 	header := g.frame.Header
-	//zero := util.Point{}
 	if prev != nil {
 		panic("not implemented")
 	}
@@ -119,7 +123,6 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 	scratchBlock := util.MakeMatrix3D[float32](5, 256, 256)
 	for i := 0; i < len(g.hfCoefficients.blocks); i++ {
 		posInLFG := g.hfCoefficients.blocks[i]
-		// Zero value then continue? TODO(kpfaulkner) check this!
 		if posInLFG == nil {
 			continue
 		}
@@ -208,9 +211,13 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				break
 
 			case METHOD_AFV:
+				//displayBuffer("before", frameBuffer[c])
+				// FIXME(kpfaulkner) there is some bug in here compared to JXLatte, but
+				// have yet to figure it out.
 				if err := g.invertAFV(coeffs[c], frameBuffer[c], tt, ppg, ppf, scratchBlock); err != nil {
 					return err
 				}
+				//displayBuffer("after", frameBuffer[c])
 				break
 			case METHOD_DCT2:
 				g.auxDCT2(coeffs[c], scratchBlock[0], ppg, util.ZERO, 2)
@@ -225,12 +232,32 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				return errors.New("transform not implemented")
 			}
 		}
-
 	}
 	return nil
 }
 
 func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *TransformType, ppg util.Point, ppf util.Point, scratchBlock [][][]float32) error {
+
+	// some debugging logic here... there's a bug in here somewhere :/
+	if false {
+		fmt.Printf("invertAFV coeffs:\n")
+		for y := 0; y < len(coeffs); y++ {
+			total := float32(0.0)
+			for x := 0; x < len(coeffs[y]); x++ {
+				//fmt.Printf("%0.10f ", coeffs[i][j])
+				total += coeffs[y][x]
+			}
+			if total != 0.0 {
+				// super inefficient... but dont care.
+				fmt.Printf("coord y=%d non zero %0.10f\n", y, total)
+				for x := 0; x < len(coeffs[y]); x++ {
+					//fmt.Printf("%0.10f ", coeffs[y][x])
+				}
+				//fmt.Printf("\n")
+			}
+		}
+		fmt.Printf("==========\n")
+	}
 
 	scratchBlock[0][0][0] = (coeffs[ppg.Y][ppg.X] + coeffs[ppg.Y+1][ppg.X] + coeffs[ppg.Y][ppg.X+1]) * 4.0
 	for iy := int32(0); iy < 4; iy++ {
@@ -251,6 +278,7 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 	if tt == AFV1 || tt == AFV3 {
 		flipX = 1
 	}
+	totalSample := float32(0)
 	for iy := 0; iy < 4; iy++ {
 		for ix := 0; ix < 4; ix++ {
 			sample := float32(0.0)
@@ -260,6 +288,7 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 				sample += scratchBlock[0][jy][jx] * AFV_BASIS[j][iy*4+ix]
 			}
 			scratchBlock[1][iy][ix] = sample
+			totalSample += sample
 		}
 	}
 
@@ -302,6 +331,7 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 			buffer[ppf.Y+flipY*4+iy][ppf.X+xx+ix] = scratchBlock[1][ix][iy]
 		}
 	}
+
 	scratchBlock[0][0][0] = coeffs[ppg.Y][ppg.X] - coeffs[ppg.Y+1][ppg.X]
 	for iy := int32(0); iy < 4; iy++ {
 		startX := int32(0)
@@ -325,7 +355,7 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 			if flipY == 1 {
 				yy = 0
 			}
-			buffer[ppf.Y+yy+iy][ppf.X+ix] = scratchBlock[1][ix][iy]
+			buffer[ppf.Y+yy+iy][ppf.X+ix] = scratchBlock[1][iy][ix]
 		}
 	}
 	return nil

@@ -343,7 +343,6 @@ func (ms *ModularStream) applyTransforms() error {
 	var err error
 	for i := len(ms.transforms) - 1; i >= 0; i-- {
 		if ms.transforms[i].tr == SQUEEZE {
-			fmt.Printf("orig channel length %d\n", len(ms.channels))
 			spa := ms.squeezeMap[i]
 			for j := len(spa) - 1; j >= 0; j-- {
 				sp := spa[j]
@@ -380,7 +379,6 @@ func (ms *ModularStream) applyTransforms() error {
 					ms.channels = append(ms.channels[:offset], ms.channels[offset+1:]...)
 				}
 			}
-			fmt.Printf("channel length %d\n", len(ms.channels))
 		} else if ms.transforms[i].tr == RCT {
 
 			// HERE... need to implement

@@ -158,7 +158,6 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 				}
 			}
 
-			// TODO(kpfaulkner) check this...  taken from JXLatte
 			if nonZero != 0 {
 				return nil, errors.New("nonZero != 0")
 			}
@@ -169,6 +168,48 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 		return nil, errors.New(fmt.Sprintf("Illegal final state in passgroup pass %d : group %d", pass, group))
 	}
 	return hf, nil
+}
+
+func (hf *HFCoefficients) DisplayHFCoefficients() {
+	hf.displayQuantizedCoeffs()
+	hf.displayDequantHFCoeff()
+}
+
+func (hf *HFCoefficients) displayQuantizedCoeffs() {
+	fmt.Printf("DisplayQuantizedCoeffs\n")
+	grandTotal := int32(0)
+	for c := 0; c < 3; c++ {
+		fmt.Printf("Channel %d\n", c)
+		for y := 0; y < len(hf.quantizedCoeffs[c]); y++ {
+			total := int32(0)
+			for x := 0; x < len(hf.quantizedCoeffs[c][y]); x++ {
+				//fmt.Printf("%d ", hf.quantizedCoeffs[c][y][x])
+				total += hf.quantizedCoeffs[c][y][x]
+			}
+			grandTotal += total
+			//fmt.Printf("\n")
+			fmt.Printf("Total for c %d y %d : %d\n", c, y, total)
+		}
+	}
+	fmt.Printf("GrandTotal %d\n", grandTotal)
+}
+
+func (hf *HFCoefficients) displayDequantHFCoeff() {
+	fmt.Printf("DisplayDequantHFCoeff\n")
+	grandTotal := float32(0)
+	for c := 0; c < 3; c++ {
+		fmt.Printf("Channel %d\n", c)
+		for y := 0; y < len(hf.dequantHFCoeff[c]); y++ {
+			total := float32(0)
+			for x := 0; x < len(hf.dequantHFCoeff[c][y]); x++ {
+				fmt.Printf("%f ", hf.dequantHFCoeff[c][y][x])
+				total += hf.dequantHFCoeff[c][y][x]
+			}
+			//fmt.Printf("\n")
+			fmt.Printf("Total for c %d y %d : %f\n", c, y, total)
+		}
+	}
+	fmt.Printf("GrandTotal %f\n", grandTotal)
 }
 
 func (hf *HFCoefficients) getBlockContext(c int, orderID int32, hfMult int32, lfIndex int32) int32 {
@@ -291,10 +332,6 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 		}
 	}
 	return nil
-}
-
-func (hf *HFCoefficients) DisplayDequantHFCoeff() {
-
 }
 
 func (hf *HFCoefficients) chromaFromLuma() error {
