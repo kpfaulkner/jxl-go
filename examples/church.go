@@ -13,22 +13,9 @@ import (
 )
 
 func main() {
-	fmt.Printf("So it begins...\n")
 
-	//defer profile.Start(profile.TraceProfile, profile.ProfilePath(`.`)).Stop()
-	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(`.`)).Stop()
-	//defer profile.Start(profile.BlockProfile, profile.ProfilePath(`.`)).Stop()
-	//defer profile.Start(profile.MemProfileHeap, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
-	//defer profile.Start(profile.MemProfileAllocs, profile.MemProfileRate(1), profile.ProfilePath(`.`)).Stop()
-
-	file := `../testdata/lossless.jxl`
-	//file := `../testdata/lenna.jxl`
-	//file := `c:\temp\work.jxl`
-	//file := `c:\temp\ken-0-3.jxl`
-	//file := `c:\temp\ken-0-0.jxl`
-
-	// church fails with nested distribution.
-	//file := `../testdata/church.jxl`
+	// church image exercises different code pathways compared to lenna.jxl
+	file := `../testdata/church.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {
@@ -45,7 +32,6 @@ func main() {
 		return
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
-
 	fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
 	fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
 
