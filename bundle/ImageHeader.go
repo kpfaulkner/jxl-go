@@ -231,7 +231,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 
 	defaultMatrix := reader.MustReadBool()
 	if !defaultMatrix && header.XybEncoded {
-		header.OpsinInverseMatrix = color.NewOpsinInverseMatrixWithReader(reader)
+		if header.OpsinInverseMatrix, err = color.NewOpsinInverseMatrixWithReader(reader); err != nil {
+			return nil, err
+		}
 	} else {
 		header.OpsinInverseMatrix = color.NewOpsinInverseMatrix()
 	}
@@ -245,8 +247,11 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 
 	if cwMask&1 != 0 {
 		header.Up2Weights = make([]float32, 15)
+
 		for i := 0; i < len(header.Up2Weights); i++ {
-			header.Up2Weights[i] = reader.MustReadF16()
+			if header.Up2Weights[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		header.Up2Weights = DEFAULT_UP2
@@ -255,7 +260,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if cwMask&2 != 0 {
 		header.Up4Weights = make([]float32, 55)
 		for i := 0; i < len(header.Up4Weights); i++ {
-			header.Up4Weights[i] = reader.MustReadF16()
+			if header.Up4Weights[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		header.Up4Weights = DEFAULT_UP4
@@ -264,7 +271,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if cwMask&4 != 0 {
 		header.Up8Weights = make([]float32, 210)
 		for i := 0; i < len(header.Up8Weights); i++ {
-			header.Up8Weights[i] = reader.MustReadF16()
+			if header.Up8Weights[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		header.Up8Weights = DEFAULT_UP8

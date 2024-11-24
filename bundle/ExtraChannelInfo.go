@@ -43,10 +43,19 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 	}
 
 	if eci.EcType == SPOT_COLOR {
-		eci.red = reader.MustReadF16()
-		eci.green = reader.MustReadF16()
-		eci.blue = reader.MustReadF16()
-		eci.solidity = reader.MustReadF16()
+		var err error
+		if eci.red, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+		if eci.green, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+		if eci.blue, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+		if eci.solidity, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 	} else {
 		eci.red = 0
 		eci.green = 0

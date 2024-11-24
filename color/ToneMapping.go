@@ -26,25 +26,34 @@ func NewToneMapping() *ToneMapping {
 
 func NewToneMappingWithReader(reader *jxlio.Bitreader) (*ToneMapping, error) {
 	tm := &ToneMapping{}
+	var err error
 	if reader.MustReadBool() {
 		tm.IntensityTarget = 255.0
 		tm.MinNits = 0.0
 		tm.RelativeToMaxDisplay = false
 		tm.LinearBelow = 0
 	} else {
-		tm.IntensityTarget = reader.MustReadF16()
+		if tm.IntensityTarget, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 		if tm.IntensityTarget <= 0 {
 			return nil, errors.New("Intensity Target must be positive")
 		}
-		tm.MinNits = reader.MustReadF16()
+		if tm.MinNits, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 		if tm.MinNits < 0 {
 			return nil, errors.New("Min Nits must be positive")
 		}
 		if tm.MinNits > tm.IntensityTarget {
 			return nil, errors.New("Min Nits must be at most the Intensity Target")
 		}
-		tm.RelativeToMaxDisplay = reader.MustReadBool()
-		tm.LinearBelow = reader.MustReadF16()
+		if tm.RelativeToMaxDisplay, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
+		if tm.LinearBelow, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 		if tm.RelativeToMaxDisplay && (tm.LinearBelow < 0 || tm.LinearBelow > 1) {
 			return nil, errors.New("Linear Below out of relative range")
 		}

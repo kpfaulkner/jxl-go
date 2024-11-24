@@ -69,10 +69,15 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 		rf.customGab = false
 	}
 
+	var err error
 	if rf.customGab {
 		for i := 0; i < 3; i++ {
-			rf.gab1Weights[i] = reader.MustReadF16()
-			rf.gab2Weights[i] = reader.MustReadF16()
+			if rf.gab1Weights[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
+			if rf.gab2Weights[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -89,20 +94,28 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	}
 	if rf.epfSharpCustom {
 		for i := 0; i < len(rf.epfSharpLut); i++ {
-			rf.epfSharpLut[i] = reader.MustReadF16()
+			if rf.epfSharpLut[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
 
 	}
 
 	if !allDefault && rf.epfIterations > 9 {
-		rf.epfWeightCustom = reader.MustReadBool()
+		if rf.epfWeightCustom, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		rf.epfWeightCustom = false
 	}
+
 	if rf.epfWeightCustom {
 		for i := 0; i < len(rf.epfChannelScale); i++ {
-			rf.epfChannelScale[i] = reader.MustReadF16()
+			if rf.epfChannelScale[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
+
 		reader.MustReadBits(32) // ??? what do we do with this data?
 	}
 
@@ -112,7 +125,6 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 		rf.epfSigmaCustom = false
 	}
 
-	var err error
 	if rf.epfSigmaCustom && encoding == VARDCT {
 		rf.epfQuantMul, err = reader.ReadF16()
 		if err != nil {
@@ -122,9 +134,15 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 		rf.epfQuantMul = 0.46
 	}
 	if rf.epfSigmaCustom {
-		rf.epfPass0SigmaScale = reader.MustReadF16()
-		rf.epfPass2SigmaScale = reader.MustReadF16()
-		rf.epfBorderSadMul = reader.MustReadF16()
+		if rf.epfPass0SigmaScale, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+		if rf.epfPass2SigmaScale, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
+		if rf.epfBorderSadMul, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 	} else {
 		rf.epfPass0SigmaScale = 0.9
 		rf.epfPass2SigmaScale = 6.5
@@ -132,7 +150,9 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	}
 
 	if !allDefault && rf.epfIterations > 0 && encoding == MODULAR {
-		rf.epfSigmaForModular = reader.MustReadF16()
+		if rf.epfSigmaForModular, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 	} else {
 		rf.epfSigmaForModular = 1.0
 	}

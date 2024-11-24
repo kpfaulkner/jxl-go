@@ -50,9 +50,9 @@ func NewOpsinInverseMatrixAllParams(
 	return oim
 }
 
-func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) *OpsinInverseMatrix {
+func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) (*OpsinInverseMatrix, error) {
 	oim := &OpsinInverseMatrix{}
-
+	var err error
 	if reader.MustReadBool() {
 		oim.matrix = DEFAULT_MATRIX
 		oim.opsinBias = DEFAULT_OPSIN_BIAS
@@ -62,24 +62,32 @@ func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) *OpsinInverseMatri
 		oim.matrix = util.MakeMatrix2D[float32](3, 3)
 		for i := 0; i < 3; i++ {
 			for j := 0; j < 3; j++ {
-				oim.matrix[i][j] = reader.MustReadF16()
+				if oim.matrix[i][j], err = reader.ReadF16(); err != nil {
+					return nil, err
+				}
 			}
 		}
 		oim.opsinBias = make([]float32, 3)
 		for i := 0; i < 3; i++ {
-			oim.opsinBias[i] = reader.MustReadF16()
+			if oim.opsinBias[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
 		oim.QuantBias = make([]float32, 3)
 		for i := 0; i < 3; i++ {
-			oim.QuantBias[i] = reader.MustReadF16()
+			if oim.QuantBias[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
 		}
-		oim.QuantBiasNumerator = reader.MustReadF16()
+		if oim.QuantBiasNumerator, err = reader.ReadF16(); err != nil {
+			return nil, err
+		}
 	}
 	oim.primaries = *CM_PRI_SRGB
 	oim.whitePoint = *CM_WP_D65
 	oim.bakeCbrtBias()
 
-	return oim
+	return oim, nil
 }
 
 func (oim *OpsinInverseMatrix) bakeCbrtBias() {

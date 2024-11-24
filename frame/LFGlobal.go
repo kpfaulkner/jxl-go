@@ -69,13 +69,16 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		lf.noiseParameters = nil
 	}
 
+	var err error
 	if !reader.MustReadBool() {
 		for i := 0; i < 3; i++ {
-			lf.lfDequant[i] = reader.MustReadF16() * (1.0 / 128.0)
+			if lf.lfDequant[i], err = reader.ReadF16(); err != nil {
+				return nil, err
+			}
+			lf.lfDequant[i] *= (1.0 / 128.0)
 		}
 	}
 
-	var err error
 	if lf.frame.Header.Encoding == VARDCT {
 		//lf.quantizer, err = NewQuantizerWithReader(reader, lf.lfDequant)
 		//if err != nil {
