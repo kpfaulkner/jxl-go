@@ -26,6 +26,11 @@ and jxl-oxide ( https://github.com/tirr-c/jxl-oxide ). These days it's probably 
   img, _ := jxlImage.ToImage()
 ```
 
+## Example images:
+
+A number of good test JXL images are located in the testdata directory which exercise different parts of the 
+decoding process. In particular lossless.jxl, church.jxl and lenna.jxl are good examples.
+
 ## TODO:
 
 - [ ] Performance improvements
