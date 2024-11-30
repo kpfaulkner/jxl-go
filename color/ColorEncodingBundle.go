@@ -45,7 +45,9 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	}
 
 	if !allDefault {
-		ceb.ColorEncoding = reader.MustReadEnum()
+		if ceb.ColorEncoding, err = reader.ReadEnum(); err != nil {
+			return nil, err
+		}
 	} else {
 		ceb.ColorEncoding = CE_RGB
 	}
@@ -55,7 +57,9 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	}
 
 	if !allDefault && !ceb.UseIccProfile && ceb.ColorEncoding != CE_XYB {
-		ceb.WhitePoint = reader.MustReadEnum()
+		if ceb.WhitePoint, err = reader.ReadEnum(); err != nil {
+			return nil, err
+		}
 	} else {
 		ceb.WhitePoint = WP_D65
 	}
@@ -75,7 +79,9 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	}
 
 	if !allDefault && !ceb.UseIccProfile && ceb.ColorEncoding != CE_XYB && ceb.ColorEncoding != CE_GRAY {
-		ceb.Primaries = reader.MustReadEnum()
+		if ceb.Primaries, err = reader.ReadEnum(); err != nil {
+			return nil, err
+		}
 	} else {
 		ceb.Primaries = PRI_SRGB
 	}
@@ -110,12 +116,18 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		if useGamma {
 			ceb.Tf = int32(reader.MustReadBits(24))
 		} else {
-			ceb.Tf = (1 << 24) + reader.MustReadEnum()
+			var tfEnum int32
+			if tfEnum, err = reader.ReadEnum(); err != nil {
+				return nil, err
+			}
+			ceb.Tf = (1 << 24) + tfEnum
 		}
 		if !ValidateTransfer(ceb.Tf) {
 			return nil, errors.New("Illegal transfer function")
 		}
-		ceb.RenderingIntent = reader.MustReadEnum()
+		if ceb.RenderingIntent, err = reader.ReadEnum(); err != nil {
+			return nil, err
+		}
 		if !ValidateRenderingIntent(ceb.RenderingIntent) {
 			return nil, errors.New("Invalid RenderingIntent enum")
 		}

@@ -173,14 +173,6 @@ func (br *Bitreader) ReadByte() (uint8, error) {
 	return uint8(v), nil
 }
 
-func (br *Bitreader) MustReadEnum() int32 {
-	v, err := br.ReadEnum()
-	if err != nil {
-		panic("MustReadEnum panic")
-	}
-	return v
-}
-
 func (br *Bitreader) ReadEnum() (int32, error) {
 	constant, err := br.ReadU32(0, 0, 1, 0, 2, 4, 18, 6)
 	if err != nil {
