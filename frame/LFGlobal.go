@@ -70,7 +70,11 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	}
 
 	var err error
-	if !reader.MustReadBool() {
+	var readDequant bool
+	if readDequant, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
+	if !readDequant {
 		for i := 0; i < 3; i++ {
 			if lf.lfDequant[i], err = reader.ReadF16(); err != nil {
 				return nil, err

@@ -98,7 +98,10 @@ func (f *Frame) ReadTOC() error {
 		tocEntries = 1 + f.numLFGroups + 1 + f.numGroups*f.Header.passes.numPasses
 	}
 
-	f.permutatedTOC = f.reader.MustReadBool()
+	var err error
+	if f.permutatedTOC, err = f.reader.ReadBool(); err != nil {
+		return err
+	}
 	if f.permutatedTOC {
 		tocStream, err := entropy.NewEntropyStreamWithReaderAndNumDists(f.reader, 8)
 		if err != nil {

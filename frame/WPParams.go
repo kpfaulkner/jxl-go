@@ -13,9 +13,14 @@ type WPParams struct {
 	weight  [4]int64
 }
 
-func NewWPParams(reader *jxlio.Bitreader) *WPParams {
+func NewWPParams(reader *jxlio.Bitreader) (*WPParams, error) {
 	wp := WPParams{}
-	if reader.MustReadBool() {
+	var err error
+	var defaultParams bool
+	if defaultParams, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
+	if defaultParams {
 		wp.param1 = 16
 		wp.param2 = 10
 		wp.param3a = 7
@@ -41,5 +46,5 @@ func NewWPParams(reader *jxlio.Bitreader) *WPParams {
 		wp.weight[3] = int64(reader.MustReadBits(4))
 	}
 
-	return &wp
+	return &wp, nil
 }

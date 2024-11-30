@@ -53,7 +53,11 @@ func NewOpsinInverseMatrixAllParams(
 func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) (*OpsinInverseMatrix, error) {
 	oim := &OpsinInverseMatrix{}
 	var err error
-	if reader.MustReadBool() {
+	var useMatrix bool
+	if useMatrix, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
+	if useMatrix {
 		oim.matrix = DEFAULT_MATRIX
 		oim.opsinBias = DEFAULT_OPSIN_BIAS
 		oim.QuantBias = DEFAULT_QUANT_BIAS

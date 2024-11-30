@@ -56,20 +56,27 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	rf.gab1Weights = []float32{0.115169525, 0.115169525, 0.115169525}
 	rf.gab2Weights = []float32{0.061248592, 0.061248592, 0.061248592}
 
-	allDefault := reader.MustReadBool()
+	var allDefault bool
+	var err error
+	if allDefault, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if allDefault {
 		rf.gab = true
 	} else {
-		rf.gab = reader.MustReadBool()
+		if rf.gab, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	}
 
 	if !allDefault && rf.gab {
-		rf.customGab = reader.MustReadBool()
+		if rf.customGab, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		rf.customGab = false
 	}
 
-	var err error
 	if rf.customGab {
 		for i := 0; i < 3; i++ {
 			if rf.gab1Weights[i], err = reader.ReadF16(); err != nil {
@@ -88,7 +95,9 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	}
 
 	if !allDefault && rf.epfIterations > 0 && encoding == VARDCT {
-		rf.epfSharpCustom = reader.MustReadBool()
+		if rf.epfSharpCustom, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		rf.epfSharpCustom = false
 	}
@@ -120,7 +129,9 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	}
 
 	if !allDefault && rf.epfIterations > 0 {
-		rf.epfSigmaCustom = reader.MustReadBool()
+		if rf.epfSigmaCustom, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		rf.epfSigmaCustom = false
 	}

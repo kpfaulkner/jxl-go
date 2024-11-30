@@ -43,13 +43,18 @@ type SqueezeParam struct {
 	numC       int
 }
 
-func NewSqueezeParam(reader *jxlio.Bitreader) SqueezeParam {
+func NewSqueezeParam(reader *jxlio.Bitreader) (SqueezeParam, error) {
 	sp := SqueezeParam{}
-	sp.horizontal = reader.MustReadBool()
-	sp.inPlace = reader.MustReadBool()
+	var err error
+	if sp.horizontal, err = reader.ReadBool(); err != nil {
+		return sp, err
+	}
+	if sp.inPlace, err = reader.ReadBool(); err != nil {
+		return sp, err
+	}
 	sp.beginC = int(reader.MustReadU32(3, 6, 10, 13, 0, 8, 72, 1096))
 	sp.numC = int(reader.MustReadU32(0, 0, 0, 4, 1, 2, 3, 4))
-	return sp
+	return sp, nil
 }
 
 type TransformInfo struct {
@@ -63,7 +68,7 @@ type TransformInfo struct {
 	sp        []SqueezeParam
 }
 
-func NewTransformInfo(reader *jxlio.Bitreader) TransformInfo {
+func NewTransformInfo(reader *jxlio.Bitreader) (TransformInfo, error) {
 
 	ti := TransformInfo{}
 
@@ -95,15 +100,18 @@ func NewTransformInfo(reader *jxlio.Bitreader) TransformInfo {
 	if tr == SQUEEZE {
 		numSq := reader.MustReadU32(0, 0, 1, 4, 9, 6, 41, 8)
 		ti.sp = make([]SqueezeParam, numSq)
+		var err error
 		for i := 0; i < int(numSq); i++ {
-			ti.sp[i] = NewSqueezeParam(reader)
+			if ti.sp[i], err = NewSqueezeParam(reader); err != nil {
+				return ti, err
+			}
 		}
 	} else {
 		ti.sp = nil
 	}
 
 	ti.tr = int(tr)
-	return ti
+	return ti, nil
 }
 
 type ModularStream struct {
@@ -151,8 +159,14 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 		return ms, nil
 	}
 
-	useGlobalTree := reader.MustReadBool()
-	ms.wpParams = NewWPParams(reader)
+	var useGlobalTree bool
+	var err error
+	if useGlobalTree, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
+	if ms.wpParams, err = NewWPParams(reader); err != nil {
+		return nil, err
+	}
 	nbTransforms, err := reader.ReadU32(0, 0, 1, 0, 2, 4, 18, 8)
 	if err != nil {
 		return nil, err
@@ -160,7 +174,9 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 
 	ms.transforms = make([]TransformInfo, nbTransforms)
 	for i := 0; i < int(nbTransforms); i++ {
-		ms.transforms[i] = NewTransformInfo(reader)
+		if ms.transforms[i], err = NewTransformInfo(reader); err != nil {
+			return nil, err
+		}
 	}
 
 	if channelArray == nil || len(channelArray) == 0 {

@@ -27,7 +27,11 @@ func NewToneMapping() *ToneMapping {
 func NewToneMappingWithReader(reader *jxlio.Bitreader) (*ToneMapping, error) {
 	tm := &ToneMapping{}
 	var err error
-	if reader.MustReadBool() {
+	var useToneMapping bool
+	if useToneMapping, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
+	if useToneMapping {
 		tm.IntensityTarget = 255.0
 		tm.MinNits = 0.0
 		tm.RelativeToMaxDisplay = false

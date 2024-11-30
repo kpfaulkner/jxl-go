@@ -64,7 +64,9 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 		return nil, errors.New("Num Dists must be positive")
 	}
 	es := &EntropyStream{}
-	es.usesLZ77 = reader.MustReadBool()
+	if es.usesLZ77, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	es.ansState = &ANSState{State: -1}
 	if es.usesLZ77 {
 		if disallowLZ77 {
@@ -87,7 +89,11 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	}
 
 	es.dists = make([]SymbolDistribution, numClusters)
-	prefixCodes := reader.MustReadBool()
+	var prefixCodes bool
+
+	if prefixCodes, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if prefixCodes {
 		es.logAlphabetSize = 15
 	} else {
@@ -105,7 +111,11 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	if prefixCodes {
 		alphabetSizes := make([]int32, len(es.dists))
 		for i := 0; i < len(es.dists); i++ {
-			if reader.MustReadBool() {
+			var readBits bool
+			if readBits, err = reader.ReadBool(); err != nil {
+				return nil, err
+			}
+			if readBits {
 				n := reader.MustReadBits(4)
 				alphabetSizes[i] = 1 + int32(1<<n+reader.MustReadBits(uint32(n)))
 			} else {
@@ -137,44 +147,55 @@ func ReadClusterMap(reader *jxlio.Bitreader, clusterMap []int, maxClusters int) 
 	numDists := len(clusterMap)
 	if numDists == 1 {
 		clusterMap[0] = 0
-	} else if reader.MustReadBool() {
-		nbits := reader.MustReadBits(2)
-		for i := 0; i < numDists; i++ {
-			clusterMap[i] = int(reader.MustReadBits(uint32(nbits)))
-		}
 	} else {
-		useMtf := reader.MustReadBool()
-		nested, err := NewEntropyStreamWithReader(reader, 1, numDists <= 2)
-		if err != nil {
+		var simpleClustering bool
+		var err error
+		if simpleClustering, err = reader.ReadBool(); err != nil {
 			return 0, err
 		}
-
-		for i := 0; i < numDists; i++ {
-			c, err := nested.ReadSymbol(reader, 0)
-			clusterMap[i] = int(c)
+		if simpleClustering {
+			nbits := reader.MustReadBits(2)
+			for i := 0; i < numDists; i++ {
+				clusterMap[i] = int(reader.MustReadBits(uint32(nbits)))
+			}
+		} else {
+			var useMtf bool
+			var err error
+			if useMtf, err = reader.ReadBool(); err != nil {
+				return 0, err
+			}
+			nested, err := NewEntropyStreamWithReader(reader, 1, numDists <= 2)
 			if err != nil {
 				return 0, err
 			}
-		}
 
-		if !nested.ValidateFinalState() {
-			return 0, errors.New("nested distribution")
-		}
-
-		if useMtf {
-			mtf := make([]int, 256)
-			for i := 0; i < 256; i++ {
-				mtf[i] = i
-			}
 			for i := 0; i < numDists; i++ {
-				index := clusterMap[i]
-				clusterMap[i] = mtf[index]
-				if index != 0 {
-					value := mtf[index]
-					for j := index; j > 0; j-- {
-						mtf[j] = mtf[j-1]
+				c, err := nested.ReadSymbol(reader, 0)
+				clusterMap[i] = int(c)
+				if err != nil {
+					return 0, err
+				}
+			}
+
+			if !nested.ValidateFinalState() {
+				return 0, errors.New("nested distribution")
+			}
+
+			if useMtf {
+				mtf := make([]int, 256)
+				for i := 0; i < 256; i++ {
+					mtf[i] = i
+				}
+				for i := 0; i < numDists; i++ {
+					index := clusterMap[i]
+					clusterMap[i] = mtf[index]
+					if index != 0 {
+						value := mtf[index]
+						for j := index; j > 0; j-- {
+							mtf[j] = mtf[j-1]
+						}
+						mtf[0] = value
 					}
-					mtf[0] = value
 				}
 			}
 		}

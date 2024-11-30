@@ -184,7 +184,9 @@ func (rcvr *PrefixSymbolDistribution) populateSimplePrefix(reader *jxlio.Bitread
 		symbols[i] = int32(s)
 	}
 	if nsym == 4 {
-		treeSelect = reader.MustReadBool()
+		if treeSelect, err = reader.ReadBool(); err != nil {
+			return err
+		}
 	}
 	switch nsym {
 	case 1:

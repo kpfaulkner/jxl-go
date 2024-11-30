@@ -34,10 +34,13 @@ func NewBlendingInfoWithReader(reader *jxlio.Bitreader, extra bool, fullFrame bo
 		bi.AlphaChannel = 0
 	}
 
+	var err error
 	if extra && (bi.Mode == BLEND_BLEND ||
 		bi.Mode == BLEND_MULT ||
 		bi.Mode == BLEND_MULADD) {
-		bi.Clamp = reader.MustReadBool()
+		if bi.Clamp, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		bi.Clamp = false
 	}

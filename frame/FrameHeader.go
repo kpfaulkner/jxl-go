@@ -69,7 +69,10 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	fh := &FrameHeader{}
 
 	var err error
-	allDefault := reader.MustReadBool()
+	var allDefault bool
+	if allDefault, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if allDefault {
 		fh.FrameType = REGULAR_FRAME
 		fh.Encoding = VARDCT
@@ -83,7 +86,9 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if !allDefault && !parent.XybEncoded {
-		fh.DoYCbCr = reader.MustReadBool()
+		if fh.DoYCbCr, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		fh.DoYCbCr = false
 	}
@@ -156,7 +161,6 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		fh.bqmScale = 2
 	}
 
-	var err error
 	if !allDefault && fh.FrameType != REFERENCE_ONLY {
 		fh.passes, err = NewPassesInfoWithReader(reader)
 		if err != nil {
@@ -172,7 +176,9 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		fh.LfLevel = 0
 	}
 	if !allDefault && fh.FrameType != LF_FRAME {
-		fh.haveCrop = reader.MustReadBool()
+		if fh.haveCrop, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		fh.haveCrop = false
 	}
@@ -249,17 +255,13 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if normalFrame {
-		fh.IsLast = reader.MustReadBool()
+		if fh.IsLast, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		fh.IsLast = fh.FrameType == REGULAR_FRAME
 	}
 
-	//if !allDefault && (fh.FrameType == REFERENCE_ONLY || fullFrame &&
-	//	(fh.FrameType == REGULAR_FRAME || fh.FrameType == SKIP_PROGRESSIVE) &&
-	//	(fh.Duration == 0 || fh.SaveAsReference != 0) &&
-	//	!fh.IsLast && fh.BlendingInfo.Mode == BLEND_REPLACE) {
-	//	fh.saveB
-	//}
 	if !allDefault && fh.FrameType != LF_FRAME && !fh.IsLast {
 		fh.SaveAsReference = uint32(reader.MustReadBits(2))
 	} else {
@@ -270,7 +272,10 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		(fh.FrameType == REGULAR_FRAME || fh.FrameType == SKIP_PROGRESSIVE) &&
 		(fh.Duration == 0 || fh.SaveAsReference != 0) &&
 		!fh.IsLast && fh.BlendingInfo.Mode == BLEND_REPLACE) {
-		fh.SaveBeforeCT = reader.MustReadBool()
+
+		if fh.SaveBeforeCT, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	} else {
 		fh.SaveBeforeCT = false
 	}

@@ -27,9 +27,21 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int32) (*
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
 	uniqPos := int32(-1)
-	if reader.MustReadBool() {
+	var simpleDistribution bool
+	var err error
+	if simpleDistribution, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 
-		if reader.MustReadBool() {
+	if simpleDistribution {
+
+		var dist1 bool
+		var err error
+		if dist1, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
+
+		if dist1 {
 			v1, err := reader.ReadU8()
 			if err != nil {
 				return nil, err
@@ -58,116 +70,124 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int32) (*
 			}
 			asd.alphabetSize = 1 + int32(x)
 			asd.frequencies = make([]int32, asd.alphabetSize)
-
-			//if x >= len(asd.frequencies) {
-			//	return nil, errors.New("Invalid frequency position")
-			//}
 			asd.frequencies[x] = 1 << 12
 			uniqPos = int32(x)
 		}
-	} else if reader.MustReadBool() {
-		r, err := reader.ReadU8()
-		if err != nil {
-			return nil, err
-		}
-		asd.alphabetSize = 1 + int32(r)
-		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
-			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
-		}
-		if asd.alphabetSize == 1 {
-			uniqPos = 0
-		}
-
-		asd.frequencies = make([]int32, asd.alphabetSize)
-		for i := int32(0); i < asd.alphabetSize; i++ {
-			asd.frequencies[i] = (1 << 12) / asd.alphabetSize
-		}
-		for i := int32(0); i < (1<<12)%asd.alphabetSize; i++ {
-			asd.frequencies[i]++
-		}
 	} else {
-		var l int
-		for l = 0; l < 3; l++ {
-			if !reader.MustReadBool() {
-				break
-			}
-		}
-		shift := (reader.MustReadBits(uint32(l)) | 1<<l) - 1
-		if shift > 13 {
-			return nil, errors.New("Shift > 13")
-		}
-		r, err := reader.ReadU8()
-		if err != nil {
+		// flat distribution
+		var flat bool
+		if flat, err = reader.ReadBool(); err != nil {
 			return nil, err
 		}
-		asd.alphabetSize = 3 + int32(r)
-		if asd.alphabetSize > (1 << asd.logAlphabetSize) {
-			return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
-		}
-
-		asd.frequencies = make([]int32, asd.alphabetSize)
-		logCounts := make([]int32, asd.alphabetSize)
-		same := make([]int, asd.alphabetSize)
-		omitLog := int32(-1)
-		omitPos := int32(-1)
-		for i := int32(0); i < asd.alphabetSize; i++ {
-			logCounts[i], err = distPrefixTable.GetVLC(reader)
+		if flat {
+			r, err := reader.ReadU8()
 			if err != nil {
 				return nil, err
 			}
-			if logCounts[i] == 13 {
-				rle, err := reader.ReadU8()
+			asd.alphabetSize = 1 + int32(r)
+			if asd.alphabetSize > (1 << asd.logAlphabetSize) {
+				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
+			}
+			if asd.alphabetSize == 1 {
+				uniqPos = 0
+			}
+
+			asd.frequencies = make([]int32, asd.alphabetSize)
+			for i := int32(0); i < asd.alphabetSize; i++ {
+				asd.frequencies[i] = (1 << 12) / asd.alphabetSize
+			}
+			for i := int32(0); i < (1<<12)%asd.alphabetSize; i++ {
+				asd.frequencies[i]++
+			}
+		} else {
+			var l int
+			var err error
+			var b bool
+			for l = 0; l < 3; l++ {
+				if b, err = reader.ReadBool(); err != nil {
+					return nil, err
+				}
+				if !b {
+					break
+				}
+			}
+			shift := (reader.MustReadBits(uint32(l)) | 1<<l) - 1
+			if shift > 13 {
+				return nil, errors.New("Shift > 13")
+			}
+			r, err := reader.ReadU8()
+			if err != nil {
+				return nil, err
+			}
+			asd.alphabetSize = 3 + int32(r)
+			if asd.alphabetSize > (1 << asd.logAlphabetSize) {
+				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
+			}
+
+			asd.frequencies = make([]int32, asd.alphabetSize)
+			logCounts := make([]int32, asd.alphabetSize)
+			same := make([]int, asd.alphabetSize)
+			omitLog := int32(-1)
+			omitPos := int32(-1)
+			for i := int32(0); i < asd.alphabetSize; i++ {
+				logCounts[i], err = distPrefixTable.GetVLC(reader)
 				if err != nil {
 					return nil, err
 				}
-				same[i] = rle + 5
-				i += int32(rle) + 3
-				continue
-			}
-			if logCounts[i] > omitLog {
-				omitLog = logCounts[i]
-				omitPos = i
-			}
-		}
-
-		if omitPos < 0 || omitPos+1 < asd.alphabetSize && logCounts[omitPos+1] == 13 {
-			return nil, errors.New("Invalid OmitPos")
-		}
-		totalCount := int32(0)
-		numSame := 0
-		prev := int32(0)
-		for i := int32(0); i < asd.alphabetSize; i++ {
-			if same[i] != 0 {
-				numSame = same[i] - 1
-				if i > 0 {
-					prev = asd.frequencies[i-1]
-				} else {
-					prev = 0
-				}
-			}
-			if numSame != 0 {
-				asd.frequencies[i] = prev
-				numSame--
-			} else {
-				if i == omitPos || logCounts[i] == 0 {
+				if logCounts[i] == 13 {
+					rle, err := reader.ReadU8()
+					if err != nil {
+						return nil, err
+					}
+					same[i] = rle + 5
+					i += int32(rle) + 3
 					continue
 				}
-				if logCounts[i] == 1 {
-					asd.frequencies[i] = 1
-				} else {
-					bitcount := int32(shift) - int32(uint32(12-logCounts[i]+1)>>1)
-					if bitcount < 0 {
-						bitcount = 0
-					}
-					if bitcount > int32(logCounts[i])-1 {
-						bitcount = int32(logCounts[i] - 1)
-					}
-					asd.frequencies[i] = int32(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-bitcount))
+				if logCounts[i] > omitLog {
+					omitLog = logCounts[i]
+					omitPos = i
 				}
 			}
-			totalCount += asd.frequencies[i]
+
+			if omitPos < 0 || omitPos+1 < asd.alphabetSize && logCounts[omitPos+1] == 13 {
+				return nil, errors.New("Invalid OmitPos")
+			}
+			totalCount := int32(0)
+			numSame := 0
+			prev := int32(0)
+			for i := int32(0); i < asd.alphabetSize; i++ {
+				if same[i] != 0 {
+					numSame = same[i] - 1
+					if i > 0 {
+						prev = asd.frequencies[i-1]
+					} else {
+						prev = 0
+					}
+				}
+				if numSame != 0 {
+					asd.frequencies[i] = prev
+					numSame--
+				} else {
+					if i == omitPos || logCounts[i] == 0 {
+						continue
+					}
+					if logCounts[i] == 1 {
+						asd.frequencies[i] = 1
+					} else {
+						bitcount := int32(shift) - int32(uint32(12-logCounts[i]+1)>>1)
+						if bitcount < 0 {
+							bitcount = 0
+						}
+						if bitcount > int32(logCounts[i])-1 {
+							bitcount = int32(logCounts[i] - 1)
+						}
+						asd.frequencies[i] = int32(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-bitcount))
+					}
+				}
+				totalCount += asd.frequencies[i]
+			}
+			asd.frequencies[omitPos] = (1 << 12) - totalCount
 		}
-		asd.frequencies[omitPos] = (1 << 12) - totalCount
 	}
 	asd.generateAliasMapping(uniqPos)
 	return asd, nil

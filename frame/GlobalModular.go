@@ -17,7 +17,10 @@ func NewGlobalModularWithReader(reader *jxlio.Bitreader, parent *Frame) (*Global
 
 	// Have confirmed that java and Go MATrees are identical (comparing property/value/offset etc).
 	var err error
-	hasGlobalTree := reader.MustReadBool()
+	var hasGlobalTree bool
+	if hasGlobalTree, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if hasGlobalTree {
 		gm.globalTree, err = NewMATreeWithReader(reader)
 		if err != nil {

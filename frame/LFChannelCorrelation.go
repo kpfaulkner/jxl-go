@@ -49,5 +49,10 @@ func NewLFChannelCorrelationWithReaderAndDefault(reader *jxlio.Bitreader, allDef
 }
 
 func NewLFChannelCorrelationWithReader(reader *jxlio.Bitreader) (*LFChannelCorrelation, error) {
-	return NewLFChannelCorrelationWithReaderAndDefault(reader, reader.MustReadBool())
+	var allDefault bool
+	var err error
+	if allDefault, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
+	return NewLFChannelCorrelationWithReaderAndDefault(reader, allDefault)
 }
