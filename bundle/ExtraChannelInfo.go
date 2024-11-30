@@ -18,8 +18,11 @@ type ExtraChannelInfo struct {
 
 func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, error) {
 	eci := &ExtraChannelInfo{}
-
-	dAlpha := reader.MustReadBool()
+	var err error
+	var dAlpha bool
+	if dAlpha, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if !dAlpha {
 		eci.EcType = reader.MustReadEnum()
 		if !ValidateExtraChannel(eci.EcType) {
@@ -48,7 +51,11 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 		}
 		eci.name = string(nameBuffer)
 
-		eci.AlphaAssociated = (eci.EcType == ALPHA) && reader.MustReadBool()
+		var alphaBool bool
+		if alphaBool, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
+		eci.AlphaAssociated = (eci.EcType == ALPHA) && alphaBool
 	} else {
 		eci.EcType = ALPHA
 		eci.BitDepth = *NewBitDepthHeader()

@@ -130,32 +130,45 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		return nil, err
 	}
 
-	header.Size, err = readSizeHeader(reader, level)
-	if err != nil {
+	if header.Size, err = readSizeHeader(reader, level); err != nil {
 		return nil, err
 	}
 
-	allDefault := reader.MustReadBool()
+	var allDefault bool
+	if allDefault, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	extraFields := false
 	if !allDefault {
-		extraFields = reader.MustReadBool()
+		if extraFields, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 	}
 
 	if extraFields {
 		header.Orientation = 1 + uint32(reader.MustReadBits(3))
-		if reader.MustReadBool() {
+
+		if extraReadBool, err := reader.ReadBool(); err != nil {
+			return nil, err
+		} else if extraReadBool {
 			header.intrinsicSize, err = readSizeHeader(reader, level)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if reader.MustReadBool() {
+
+		if previewBool, err := reader.ReadBool(); err != nil {
+			return nil, err
+		} else if previewBool {
 			header.PreviewSize, err = readPreviewHeader(reader)
 			if err != nil {
 				return nil, err
 			}
 		}
-		if reader.MustReadBool() {
+
+		if animationBool, err := reader.ReadBool(); err != nil {
+			return nil, err
+		} else if animationBool {
 			header.AnimationHeader, err = NewAnimationHeader(reader)
 			if err != nil {
 				return nil, err
@@ -188,7 +201,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		} else {
 			header.BitDepth = bitDepth
 		}
-		header.Modular16BitBuffers = reader.MustReadBool()
+		if header.Modular16BitBuffers, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
 		header.ExtraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
 		alphaIndicies := make([]int32, extraChannelCount)
@@ -208,7 +223,9 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 		header.AlphaIndices = make([]int32, numAlphaChannels)
 		copy(header.AlphaIndices, alphaIndicies[:numAlphaChannels])
-		header.XybEncoded = reader.MustReadBool()
+		if header.XybEncoded, err = reader.ReadBool(); err != nil {
+			return nil, err
+		}
 		header.ColorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
 		if err != nil {
 			return nil, err
@@ -233,7 +250,10 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		}
 	}
 
-	defaultMatrix := reader.MustReadBool()
+	var defaultMatrix bool
+	if defaultMatrix, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if !defaultMatrix && header.XybEncoded {
 		if header.OpsinInverseMatrix, err = color.NewOpsinInverseMatrixWithReader(reader); err != nil {
 			return nil, err
@@ -396,7 +416,10 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 	var dim util.Dimension
 	var err error
 
-	div8 := reader.MustReadBool()
+	var div8 bool
+	if div8, err = reader.ReadBool(); err != nil {
+		return nil, err
+	}
 	if div8 {
 		dim.Height = reader.MustReadU32(16, 0, 32, 0, 1, 5, 33, 9)
 	} else {
@@ -428,7 +451,11 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error) {
 	dim := util.Dimension{}
 	var err error
-	div8 := reader.MustReadBool()
+
+	var div8 bool
+	if div8, err = reader.ReadBool(); err != nil {
+		return util.Dimension{}, err
+	}
 
 	if div8 {
 		dim.Height = (1 + uint32(reader.MustReadBits(5))) << 3
