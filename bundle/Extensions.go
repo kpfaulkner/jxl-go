@@ -20,10 +20,17 @@ func NewExtensions() *Extensions {
 
 func NewExtensionsWithReader(reader *jxlio.Bitreader) (*Extensions, error) {
 	ex := &Extensions{}
-	ex.ExtensionsKey = reader.MustReadU64()
+	var err error
+	if ex.ExtensionsKey, err = reader.ReadU64(); err != nil {
+		return nil, err
+	}
+
+	var length uint64
 	for i := uint64(0); i < 64; i++ {
 		if (1<<i)&ex.ExtensionsKey != 0 {
-			length := reader.MustReadU64()
+			if length, err = reader.ReadU64(); err != nil {
+				return nil, err
+			}
 			if length > math.MaxUint32 {
 				return nil, errors.New("Large Extensions unsupported")
 			}

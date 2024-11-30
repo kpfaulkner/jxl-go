@@ -183,7 +183,11 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 			return nil, err
 		}
 	} else {
-		header.BitDepth = NewBitDepthHeaderWithReader(reader)
+		if bitDepth, err := NewBitDepthHeaderWithReader(reader); err != nil {
+			return nil, err
+		} else {
+			header.BitDepth = bitDepth
+		}
 		header.Modular16BitBuffers = reader.MustReadBool()
 		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
 		header.ExtraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
@@ -280,7 +284,10 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if header.ColorEncoding.UseIccProfile {
-		encodedSize := reader.MustReadU64()
+		var encodedSize uint64
+		if encodedSize, err = reader.ReadU64(); err != nil {
+			return nil, err
+		}
 
 		// check MaxUint32 or MaxInt32
 		if encodedSize > math.MaxUint32 {

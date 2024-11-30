@@ -25,14 +25,29 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 		if !ValidateExtraChannel(eci.EcType) {
 			return nil, errors.New("Illegal extra channel type")
 		}
-		eci.BitDepth = *NewBitDepthHeaderWithReader(reader)
-		eci.DimShift = int32(reader.MustReadU32(0, 0, 3, 0, 4, 0, 1, 3))
-		nameLen := reader.MustReadU32(0, 0, 0, 4, 16, 5, 48, 10)
+		if bitDepth, err := NewBitDepthHeaderWithReader(reader); err != nil {
+			return nil, err
+		} else {
+			eci.BitDepth = *bitDepth
+		}
+
+		if dimShift, err := reader.ReadU32(0, 0, 3, 0, 4, 0, 1, 3); err != nil {
+			return nil, err
+		} else {
+			eci.DimShift = int32(dimShift)
+		}
+		var nameLen uint32
+		var err error
+		if nameLen, err = reader.ReadU32(0, 0, 0, 4, 16, 5, 48, 10); err != nil {
+			return nil, err
+		}
+
 		nameBuffer := make([]byte, nameLen)
 		for i := uint32(0); i < nameLen; i++ {
 			nameBuffer[i] = byte(reader.MustReadBits(8))
 		}
 		eci.name = string(nameBuffer)
+
 		eci.AlphaAssociated = (eci.EcType == ALPHA) && reader.MustReadBool()
 	} else {
 		eci.EcType = ALPHA

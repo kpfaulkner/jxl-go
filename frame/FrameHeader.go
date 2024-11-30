@@ -68,10 +68,7 @@ type FrameHeader struct {
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeader) (*FrameHeader, error) {
 	fh := &FrameHeader{}
 
-	//showy, _ := reader.ShowBits(32)
-	//
-	//fmt.Printf("bits at beginning of header %d\n", showy)
-
+	var err error
 	allDefault := reader.MustReadBool()
 	if allDefault {
 		fh.FrameType = REGULAR_FRAME
@@ -80,7 +77,9 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	} else {
 		fh.FrameType = uint32(reader.MustReadBits(2))
 		fh.Encoding = uint32(reader.MustReadBits(1))
-		fh.Flags = reader.MustReadU64()
+		if fh.Flags, err = reader.ReadU64(); err != nil {
+			return nil, err
+		}
 	}
 
 	if !allDefault && !parent.XybEncoded {

@@ -210,14 +210,6 @@ func (br *Bitreader) ReadF16() (float32, error) {
 	return math.Float32frombits(total), nil
 }
 
-func (br *Bitreader) MustReadF16() float32 {
-	v, err := br.ReadF16()
-	if err != nil {
-		panic("unable to ReadF16")
-	}
-	return v
-}
-
 func (br *Bitreader) ReadICCVarint() (int, error) {
 	value := 0
 	for shift := 0; shift < 63; shift += 7 {
@@ -259,14 +251,6 @@ func (br *Bitreader) ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 
 		return 0, err
 	}
 	return uint32(c[choice]) + uint32(b), nil
-}
-
-func (br *Bitreader) MustReadU64() uint64 {
-	v, err := br.ReadU64()
-	if err != nil {
-		panic("unable to read U64")
-	}
-	return v
 }
 
 func (br *Bitreader) ReadBool() (bool, error) {

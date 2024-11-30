@@ -16,15 +16,25 @@ func NewBitDepthHeader() *BitDepthHeader {
 	return bh
 }
 
-func NewBitDepthHeaderWithReader(reader *jxlio.Bitreader) *BitDepthHeader {
+func NewBitDepthHeaderWithReader(reader *jxlio.Bitreader) (*BitDepthHeader, error) {
 	bh := &BitDepthHeader{}
 	bh.UsesFloatSamples = reader.MustReadBool()
+	var err error
 	if bh.UsesFloatSamples {
-		bh.BitsPerSample = reader.MustReadU32(32, 0, 16, 0, 24, 0, 1, 6)
-		bh.ExpBits = 1 + uint32(reader.MustReadBits(4))
+		if bh.BitsPerSample, err = reader.ReadU32(32, 0, 16, 0, 24, 0, 1, 6); err != nil {
+			return nil, err
+		}
+		if expBits, err := reader.ReadBits(4); err != nil {
+			return nil, err
+		} else {
+			bh.ExpBits = 1 + uint32(expBits)
+		}
 	} else {
-		bh.BitsPerSample = reader.MustReadU32(8, 0, 10, 0, 12, 0, 1, 6)
+		if bh.BitsPerSample, err = reader.ReadU32(8, 0, 10, 0, 12, 0, 1, 6); err != nil {
+			return nil, err
+		}
+
 		bh.ExpBits = 0
 	}
-	return bh
+	return bh, nil
 }
