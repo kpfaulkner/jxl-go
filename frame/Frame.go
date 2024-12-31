@@ -780,7 +780,7 @@ func (f *Frame) performGabConvolution() error {
 			buffS := buffC[south]
 			newBuffR := newBufferF[y]
 
-			for x := int32(0); x < height; x++ {
+			for x := int32(0); x < width; x++ {
 				var west int32
 				if x == 0 {
 					west = 0

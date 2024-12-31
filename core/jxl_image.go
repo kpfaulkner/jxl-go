@@ -125,7 +125,6 @@ func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
 	if channelNo < 0 || channelNo >= len(buffer) {
 		return nil, fmt.Errorf("Invalid channel index %d", channelNo)
 	}
-	//img := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	img := image.NewGray(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	pix := img.Pix
 	dx := img.Bounds().Dx()

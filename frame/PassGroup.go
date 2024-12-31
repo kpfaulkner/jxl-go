@@ -225,7 +225,34 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				g.auxDCT2(scratchBlock[1], frameBuffer[c], util.ZERO, ppf, 8)
 				break
 			case METHOD_HORNUSS:
-				panic("not implemented")
+				g.auxDCT2(coeffs[c], scratchBlock[1], ppg, util.ZERO, 2)
+				for y := int32(0); y < 2; y++ {
+					for x := int32(0); x < 2; x++ {
+						blockLF := scratchBlock[1][y][x]
+						residual := float32(0.0)
+						for iy := int32(0); iy < 4; iy++ {
+							ixTemp := int32(0)
+							if iy == 0 {
+								ixTemp = 1
+							}
+							for ix := ixTemp; ix < 4; ix++ {
+								residual += coeffs[c][ppg.Y+y+iy*2][ppg.X+x+ix*2]
+							}
+						}
+						scratchBlock[0][4*y+1][4*x+1] = blockLF - residual*0.0625
+						for iy := int32(0); iy < 4; iy++ {
+							for ix := int32(0); ix < 4; ix++ {
+								if ix == 1 && iy == 1 {
+									continue
+								}
+								scratchBlock[0][4*y+iy][x*4+ix] = coeffs[c][ppg.Y+y+iy*2][ppg.X+x+ix*2] + scratchBlock[0][4*y+1][4*x+1]
+							}
+						}
+						scratchBlock[0][4*y][4*x] = coeffs[c][ppg.Y+y+2][ppg.X+x+2] + scratchBlock[0][4*y+1][4*x+1]
+					}
+				}
+				layBlock(scratchBlock[0], frameBuffer[c], util.ZERO, ppf, tt.getPixelSize())
+				//panic("not implemented")
 			case METHOD_DCT4:
 				panic("not implemented")
 			default:
@@ -234,6 +261,12 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 		}
 	}
 	return nil
+}
+
+func layBlock(block [][]float32, buffer [][]float32, inPos util.Point, outPos util.Point, inSize util.Dimension) {
+	for y := int32(0); y < int32(inSize.Height); y++ {
+		copy(buffer[y+outPos.Y][inPos.X:], block[y+inPos.Y][outPos.X:])
+	}
 }
 
 func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *TransformType, ppg util.Point, ppf util.Point, scratchBlock [][][]float32) error {
