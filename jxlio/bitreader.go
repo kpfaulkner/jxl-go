@@ -221,15 +221,6 @@ func (br *Bitreader) ReadICCVarint() (int, error) {
 	return value, nil
 }
 
-func (br *Bitreader) MustReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 int, u3 int) uint32 {
-
-	v, err := br.ReadU32(c0, u0, c1, u1, c2, u2, c3, u3)
-	if err != nil {
-		panic("unable to read U32")
-	}
-	return v
-}
-
 func (br *Bitreader) ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 int, u3 int) (uint32, error) {
 	choice, err := br.ReadBits(2)
 	if err != nil {

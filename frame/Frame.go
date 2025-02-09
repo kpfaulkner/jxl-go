@@ -126,7 +126,11 @@ func (f *Frame) ReadTOC() error {
 	f.tocLengths = make([]uint32, tocEntries)
 
 	for i := 0; i < int(tocEntries); i++ {
-		f.tocLengths[i] = f.reader.MustReadU32(0, 10, 1024, 14, 17408, 22, 4211712, 30)
+		if tocLengths, err := f.reader.ReadU32(0, 10, 1024, 14, 17408, 22, 4211712, 30); err != nil {
+			return err
+		} else {
+			f.tocLengths[i] = tocLengths
+		}
 	}
 
 	f.reader.ZeroPadToByte()

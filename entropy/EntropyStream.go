@@ -72,8 +72,17 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 		if disallowLZ77 {
 			return nil, errors.New("Nested distributions cannot use LZ77")
 		}
-		es.lz77MinSymbol = int32(reader.MustReadU32(224, 0, 512, 0, 4096, 0, 8, 15))
-		es.lz77MinLength = int32(reader.MustReadU32(3, 0, 4, 0, 5, 2, 9, 8))
+		if lz77MinSymbol, err := reader.ReadU32(224, 0, 512, 0, 4096, 0, 8, 15); err != nil {
+			return nil, err
+		} else {
+			es.lz77MinSymbol = int32(lz77MinSymbol)
+		}
+
+		if lz77MinLength, err := reader.ReadU32(3, 0, 4, 0, 5, 2, 9, 8); err != nil {
+			return nil, err
+		} else {
+			es.lz77MinLength = int32(lz77MinLength)
+		}
 		numDists++
 		es.lzLengthConfig, err = NewHybridIntegerConfigWithReader(reader, 8)
 		if err != nil {

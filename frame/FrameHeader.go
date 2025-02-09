@@ -184,8 +184,17 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if fh.haveCrop && fh.FrameType != REFERENCE_ONLY {
-		x0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
-		y0 := reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		var err error
+		var x0 uint32
+		if x0, err = reader.ReadU32(0, 8, 256, 11, 2304, 14, 18688, 30); err != nil {
+			return nil, err
+		}
+
+		var y0 uint32
+		if y0, err = reader.ReadU32(0, 8, 256, 11, 2304, 14, 18688, 30); err != nil {
+			return nil, err
+		}
+
 		x0Signed := jxlio.UnpackSigned(x0)
 		y0Signed := jxlio.UnpackSigned(y0)
 		fh.Bounds.Origin.X = x0Signed
@@ -193,8 +202,17 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if fh.haveCrop {
-		fh.Width = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
-		fh.Height = reader.MustReadU32(0, 8, 256, 11, 2304, 14, 18688, 30)
+		if width, err := reader.ReadU32(0, 8, 256, 11, 2304, 14, 18688, 30); err != nil {
+			return nil, err
+		} else {
+			fh.Width = width
+		}
+
+		if height, err := reader.ReadU32(0, 8, 256, 11, 2304, 14, 18688, 30); err != nil {
+			return nil, err
+		} else {
+			fh.Height = height
+		}
 	} else {
 		fh.Bounds.Size = parent.Size
 	}
@@ -283,7 +301,10 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	if allDefault {
 		fh.name = ""
 	} else {
-		nameLen := reader.MustReadU32(0, 0, 0, 4, 16, 5, 48, 10)
+		var nameLen uint32
+		if nameLen, err = reader.ReadU32(0, 0, 0, 4, 16, 5, 48, 10); err != nil {
+			return nil, err
+		}
 		buffer := make([]byte, nameLen)
 		for i := 0; i < int(nameLen); i++ {
 			buffer[i], err = reader.ReadByte()

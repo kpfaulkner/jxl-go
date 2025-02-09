@@ -23,13 +23,21 @@ func NewBlendingInfo() *BlendingInfo {
 func NewBlendingInfoWithReader(reader *jxlio.Bitreader, extra bool, fullFrame bool) (*BlendingInfo, error) {
 
 	bi := &BlendingInfo{}
-	bi.Mode = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 2)
+	if mode, err := reader.ReadU32(0, 0, 1, 0, 2, 0, 3, 2); err != nil {
+		return nil, err
+	} else {
+		bi.Mode = mode
+	}
 	//if bi.Mode == 0 {
 	//	return bi, nil
 	//}
 
 	if extra && (bi.Mode == BLEND_BLEND || bi.Mode == BLEND_MULADD) {
-		bi.AlphaChannel = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 3)
+		if alphaChannel, err := reader.ReadU32(0, 0, 1, 0, 2, 0, 3, 3); err != nil {
+			return nil, err
+		} else {
+			bi.AlphaChannel = alphaChannel
+		}
 	} else {
 		bi.AlphaChannel = 0
 	}

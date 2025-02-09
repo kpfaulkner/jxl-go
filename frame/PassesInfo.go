@@ -22,9 +22,17 @@ func NewPassesInfo() *PassesInfo {
 
 func NewPassesInfoWithReader(reader *jxlio.Bitreader) (*PassesInfo, error) {
 	pi := &PassesInfo{}
-	pi.numPasses = reader.MustReadU32(1, 0, 2, 0, 3, 0, 4, 3)
+	if numPasses, err := reader.ReadU32(1, 0, 2, 0, 3, 0, 4, 3); err != nil {
+		return nil, err
+	} else {
+		pi.numPasses = numPasses
+	}
 	if pi.numPasses != 1 {
-		pi.numDS = reader.MustReadU32(0, 0, 1, 0, 2, 0, 3, 1)
+		if numDS, err := reader.ReadU32(0, 0, 1, 0, 2, 0, 3, 1); err != nil {
+			return nil, err
+		} else {
+			pi.numDS = numDS
+		}
 	} else {
 		pi.numDS = 0
 	}
@@ -40,7 +48,11 @@ func NewPassesInfoWithReader(reader *jxlio.Bitreader) (*PassesInfo, error) {
 	}
 	pi.lastPass = make([]uint32, pi.numDS+1)
 	for i := 0; i < int(pi.numDS); i++ {
-		pi.lastPass[i] = reader.MustReadU32(0, 0, 1, 0, 2, 0, 0, 3)
+		if lastPass, err := reader.ReadU32(0, 0, 1, 0, 2, 0, 0, 3); err != nil {
+			return nil, err
+		} else {
+			pi.lastPass[i] = lastPass
+		}
 	}
 	pi.downSample[pi.numDS] = 1
 	pi.lastPass[pi.numDS] = pi.numPasses - 1
