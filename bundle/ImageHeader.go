@@ -430,7 +430,11 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 			dim.Height = height
 		}
 	} else {
-		dim.Height = reader.MustReadU32(1, 6, 65, 8, 321, 10, 1345, 12)
+		if height, err := reader.ReadU32(1, 6, 65, 8, 321, 10, 1345, 12); err != nil {
+			return nil, err
+		} else {
+			dim.Height = height
+		}
 	}
 	ratio := reader.MustReadBits(3)
 	if ratio != 0 {
@@ -441,9 +445,17 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 		}
 	} else {
 		if div8 {
-			dim.Width = reader.MustReadU32(16, 0, 32, 0, 1, 5, 33, 9)
+			if width, err := reader.ReadU32(16, 0, 32, 0, 1, 5, 33, 9); err != nil {
+				return nil, err
+			} else {
+				dim.Width = width
+			}
 		} else {
-			dim.Width = reader.MustReadU32(1, 6, 65, 8, 321, 10, 1345, 12)
+			if width, err := reader.MustReadU32(1, 6, 65, 8, 321, 10, 1345, 12); err != nil {
+				return nil, err
+			} else {
+				dim.Width = width
+			}
 		}
 	}
 
@@ -467,7 +479,11 @@ func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error
 	if div8 {
 		dim.Height = (1 + uint32(reader.MustReadBits(5))) << 3
 	} else {
-		dim.Height = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+		if height, err := reader.ReadU32(1, 9, 1, 13, 1, 18, 1, 30); err != nil {
+			return util.Dimension{}, err
+		} else {
+			dim.Height = height
+		}
 	}
 	ratio := reader.MustReadBits(3)
 	if ratio != 0 {
@@ -481,7 +497,11 @@ func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error
 		if div8 {
 			dim.Width = 1 + uint32(reader.MustReadBits(5))<<3
 		} else {
-			dim.Width = reader.MustReadU32(1, 9, 1, 13, 1, 18, 1, 30)
+			if width, err := reader.ReadU32(1, 9, 1, 13, 1, 18, 1, 30); err != nil {
+				return util.Dimension{}, err
+			} else {
+				dim.Width = width
+			}
 		}
 	}
 

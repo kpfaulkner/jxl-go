@@ -20,10 +20,19 @@ func NewCustomXY(reader *jxlio.Bitreader) (*CustomXY, error) {
 }
 
 func (cxy *CustomXY) readCustom(reader *jxlio.Bitreader) (*CIEXY, error) {
-	ux := reader.MustReadU32(0, 19, 524288, 19, 1048576, 20, 2097152, 21)
-	uy := reader.MustReadU32(0, 19, 524288, 19, 1048576, 20, 2097152, 21)
-	x := float32(jxlio.UnpackSigned(ux)) * 1e-6
-	y := float32(jxlio.UnpackSigned(uy)) * 1e-6
+	var x float32
+	if ux, err := reader.ReadU32(0, 19, 524288, 19, 1048576, 20, 2097152, 21); err != nil {
+		return nil, err
+	} else {
+		x = float32(jxlio.UnpackSigned(ux)) * 1e-6
+	}
+
+	var y float32
+	if uy, err := reader.ReadU32(0, 19, 524288, 19, 1048576, 20, 2097152, 21); err != nil {
+		return nil, err
+	} else {
+		y = float32(jxlio.UnpackSigned(uy)) * 1e-6
+	}
 
 	return NewCIEXY(x, y), nil
 }
