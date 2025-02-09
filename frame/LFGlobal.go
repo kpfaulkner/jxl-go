@@ -68,7 +68,6 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 		if err != nil {
 			return nil, err
 		}
-		panic("Splines not implemented yet")
 	} else {
 		lf.splines = nil
 	}

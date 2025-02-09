@@ -1034,6 +1034,8 @@ func (f *Frame) RenderSplines() error {
 		return nil
 	}
 
+	for s := 0; s < int(f.LfGlobal.splines.numSplines); s++ {
+	}
 	panic("RenderSplines not implemented")
 }
 
