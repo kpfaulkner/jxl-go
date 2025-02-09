@@ -114,7 +114,42 @@ func (jxl *JXLImage) NumExtraChannels() int {
 	return len(jxl.imageHeader.ExtraChannelInfo)
 }
 
-// ToImage converts to standard Go image.Image RGBA format
+// ChannelToImage converts a single channel to grayscale Go image.Image interface.
+// Can be used for any channel (R,G,B, alpha, depth..... etc) but is really expected to be
+// used for NON "regular" channels (ie depth etc)
+// TODO(kpfaulkner) still need to confirm if generating an 8 bit grayscale image is appropriate
+// for this, or if Gray16... or even RGBA with generating the RGB values itself is the way to
+// proceed.
+func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
+	buffer := jxl.getBuffer(true)
+	if channelNo < 0 || channelNo >= len(buffer) {
+		return nil, fmt.Errorf("Invalid channel index %d", channelNo)
+	}
+	img := image.NewGray(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
+	pix := img.Pix
+	dx := img.Bounds().Dx()
+	dy := img.Bounds().Dy()
+	pos := 0
+	if buffer[0].IsFloat() {
+		for y := 0; y < dy; y++ {
+			for x := 0; x < dx; x++ {
+				pix[pos] = uint8(buffer[channelNo].FloatBuffer[y][x] * 255)
+				pos++
+			}
+		}
+	} else {
+
+		for y := 0; y < dy; y++ {
+			for x := 0; x < dx; x++ {
+				pix[pos] = uint8(buffer[channelNo].IntBuffer[y][x])
+				pos++
+			}
+		}
+	}
+	return img, nil
+}
+
+// ToImage converts to standard Go image.Image RGBA format for the R,G,B and alpha channels
 func (jxl *JXLImage) ToImage() (image.Image, error) {
 
 	var bitDepth int32
@@ -143,24 +178,6 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 		}
 	}
 	maxValue := int32(^(^0 << bitDepth))
-
-	//var colourMode int32
-	//var colourChannels int32
-	//if gray {
-	//	if jxlImage.alphaIndex >= 0 {
-	//		colourMode = 4
-	//	} else {
-	//		colourMode = 0
-	//	}
-	//	colourChannels = 1
-	//} else {
-	//	if jxlImage.alphaIndex >= 0 {
-	//		colourMode = 6
-	//	} else {
-	//		colourMode = 2
-	//	}
-	//	colourChannels = 3
-	//}
 	coerce := jxl.alphaIsPremultiplied
 	buffer := jxl.getBuffer(true)
 	if !coerce {

@@ -235,6 +235,14 @@ func MatrixMultiply(matrix ...[][]float32) ([][]float32, error) {
 }
 
 func MatrixMatrixMultiply(left [][]float32, right [][]float32) ([][]float32, error) {
+
+	if left == nil {
+		return right, nil
+	}
+	if right == nil {
+		return left, nil
+	}
+
 	if len(left[0]) != len(right) {
 		return nil, errors.New("Invalid argument")
 	}
@@ -275,7 +283,7 @@ func TransposeMatrix(matrix [][]float32, inSize Point) [][]float32 {
 	if inSize.X == 0 || inSize.Y == 0 {
 		return nil
 	}
-	dest := make([][]float32, inSize.X)
+	dest := MakeMatrix2D[float32](inSize.X, inSize.Y)
 	TransposeMatrixInto(matrix, dest, ZERO, ZERO, inSize)
 	return dest
 }

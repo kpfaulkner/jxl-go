@@ -204,8 +204,11 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		if header.Modular16BitBuffers, err = reader.ReadBool(); err != nil {
 			return nil, err
 		}
-		extraChannelCount := reader.MustReadU32(0, 0, 1, 0, 2, 4, 1, 12)
-		header.ExtraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
+		if extraChannelCount, err := reader.ReadU32(0, 0, 1, 0, 2, 4, 1, 12); err != nil {
+			return nil, err
+		} else {
+			header.ExtraChannelInfo = make([]ExtraChannelInfo, extraChannelCount)
+		}
 		alphaIndicies := make([]int32, extraChannelCount)
 		numAlphaChannels := 0
 
@@ -421,7 +424,11 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 		return nil, err
 	}
 	if div8 {
-		dim.Height = reader.MustReadU32(16, 0, 32, 0, 1, 5, 33, 9)
+		if height, err := reader.ReadU32(16, 0, 32, 0, 1, 5, 33, 9); err != nil {
+			return nil, err
+		} else {
+			dim.Height = height
+		}
 	} else {
 		dim.Height = reader.MustReadU32(1, 6, 65, 8, 321, 10, 1345, 12)
 	}

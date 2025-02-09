@@ -88,7 +88,11 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 	}
 
 	if eci.EcType == COLOR_FILTER_ARRAY {
-		eci.cfaIndex = int32(reader.MustReadU32(1, 0, 0, 2, 3, 4, 19, 8))
+		if cfaIndex, err := reader.ReadU32(1, 0, 0, 2, 3, 4, 19, 8); err != nil {
+			return nil, err
+		} else {
+			eci.cfaIndex = int32(cfaIndex)
+		}
 	} else {
 		eci.cfaIndex = 1
 	}
