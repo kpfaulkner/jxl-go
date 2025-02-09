@@ -49,7 +49,11 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 
 		nameBuffer := make([]byte, nameLen)
 		for i := uint32(0); i < nameLen; i++ {
-			nameBuffer[i] = byte(reader.MustReadBits(8))
+			if nb, err := reader.ReadBits(8); err != nil {
+				return nil, err
+			} else {
+				nameBuffer[i] = byte(nb)
+			}
 		}
 		eci.name = string(nameBuffer)
 

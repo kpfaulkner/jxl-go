@@ -118,12 +118,15 @@ func NewImageHeader() *ImageHeader {
 func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error) {
 	header := NewImageHeader()
 
-	headerBits := reader.MustReadBits(16)
+	var headerBits uint64
+	var err error
+	if headerBits, err = reader.ReadBits(16); err != nil {
+		return nil, err
+	}
+
 	if uint32(headerBits) != CODESTREAM_HEADER {
 		return nil, errors.New("Not a JXL codestream: 0xFF0A magic mismatch")
 	}
-
-	var err error
 
 	err = header.setLevel(level)
 	if err != nil {
@@ -146,7 +149,11 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	}
 
 	if extraFields {
-		header.Orientation = 1 + uint32(reader.MustReadBits(3))
+		if orientation, err := reader.ReadBits(3); err != nil {
+			return nil, err
+		} else {
+			header.Orientation = 1 + uint32(orientation)
+		}
 
 		if extraReadBool, err := reader.ReadBool(); err != nil {
 			return nil, err
@@ -270,7 +277,11 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 	if defaultMatrix {
 		cwMask = 0
 	} else {
-		cwMask = int32(reader.MustReadBits(3))
+		if cw, err := reader.ReadBits(3); err != nil {
+			return nil, err
+		} else {
+			cwMask = int32(cw)
+		}
 	}
 
 	if cwMask&1 != 0 {
@@ -437,7 +448,10 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 			dim.Height = height
 		}
 	}
-	ratio := reader.MustReadBits(3)
+	var ratio uint64
+	if ratio, err = reader.ReadBits(3); err != nil {
+		return nil, err
+	}
 	if ratio != 0 {
 		dim.Width, err = getWidthFromRatio(uint32(ratio), dim.Height)
 		if err != nil {
