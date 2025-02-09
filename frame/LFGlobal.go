@@ -1,6 +1,8 @@
 package frame
 
 import (
+	"errors"
+
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -9,7 +11,7 @@ import (
 type LFGlobal struct {
 	frame           *Frame
 	Patches         []Patch
-	splines         []SplinesBundle
+	splines         *SplinesBundle
 	noiseParameters []NoiseParameters
 	lfDequant       []float32
 	hfBlockCtx      *HFBlockContext
@@ -58,6 +60,14 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	}
 
 	if lf.frame.Header.Flags&SPLINES != 0 {
+		if lf.frame.globalMetadata.GetColourChannelCount() < 3 {
+			return nil, errors.New("Cannot do splines in grayscale")
+		}
+		var err error
+		lf.splines, err = NewSplinesBundleWithReader(reader)
+		if err != nil {
+			return nil, err
+		}
 		panic("Splines not implemented yet")
 	} else {
 		lf.splines = nil

@@ -25,14 +25,13 @@ func Decode(r io.Reader) (image.Image, error) {
 		return nil, errors.New("required ReadSeeker")
 	}
 
-	jxl := core.NewJXLDecoder(rs)
+	jxl := core.NewJXLDecoder(rs, nil)
 
-	var img image.Image
-	var err error
-	if img, err = jxl.Decode(); err != nil {
+	if jxlImage, err := jxl.Decode(); err != nil {
 		return nil, err
+	} else {
+		return jxlImage.ToImage()
 	}
-	return img, nil
 }
 
 func DecodeConfig(r io.Reader) (image.Config, error) {
@@ -43,7 +42,7 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 		return image.Config{}, errors.New("required ReadSeeker")
 	}
 
-	jxl := core.NewJXLDecoder(rs)
+	jxl := core.NewJXLDecoder(rs, nil)
 	header, err := jxl.GetImageHeader()
 	if err != nil {
 		return image.Config{}, err
@@ -62,11 +61,11 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 		colourModel = color2.RGBAModel
 	}
 
-	w, h := header.GetSize()
+	dim := header.GetSize()
 	return image.Config{
 		ColorModel: colourModel,
-		Width:      int(w),
-		Height:     int(h),
+		Width:      int(dim.Width),
+		Height:     int(dim.Height),
 	}, nil
 
 }
