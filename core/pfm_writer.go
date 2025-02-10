@@ -27,7 +27,10 @@ func WritePFM(jxlImage *JXLImage, output io.Writer) error {
 		cCount = 3
 	}
 
-	buffer2 := jxlImage.getBuffer(false)
+	buffer2, err := jxlImage.getBuffer(false)
+	if err != nil {
+		return err
+	}
 	nb := make([]image2.ImageBuffer, len(buffer2))
 	for c := 0; c < len(nb); c++ {
 		if buffer2[c].IsInt() {

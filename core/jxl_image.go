@@ -121,7 +121,10 @@ func (jxl *JXLImage) NumExtraChannels() int {
 // for this, or if Gray16... or even RGBA with generating the RGB values itself is the way to
 // proceed.
 func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
-	buffer := jxl.getBuffer(true)
+	buffer, err := jxl.getBuffer(true)
+	if err != nil {
+		return nil, err
+	}
 	if channelNo < 0 || channelNo >= len(buffer) {
 		return nil, fmt.Errorf("Invalid channel index %d", channelNo)
 	}
@@ -179,7 +182,10 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 	}
 	maxValue := int32(^(^0 << bitDepth))
 	coerce := jxl.alphaIsPremultiplied
-	buffer := jxl.getBuffer(true)
+	buffer, err := jxl.getBuffer(true)
+	if err != nil {
+		return nil, err
+	}
 	if !coerce {
 		for c := 0; c < len(buffer); c++ {
 			if buffer[c].IsInt() && jxl.bitDepths[c] != uint32(bitDepth) {
@@ -287,15 +293,18 @@ func (jxl *JXLImage) transform(primaries *color.CIEPrimaries, whitePoint *color.
 
 // getBuffer gets a copy of the buffer... making a copy if required
 // REALLY not optimised but will fix later.
-func (jxl *JXLImage) getBuffer(makeCopy bool) []image2.ImageBuffer {
+func (jxl *JXLImage) getBuffer(makeCopy bool) ([]image2.ImageBuffer, error) {
 	if !makeCopy {
-		return jxl.Buffer
+		return jxl.Buffer, nil
 	}
 
 	buffer := make([]image2.ImageBuffer, len(jxl.Buffer))
 	for c := 0; c < len(jxl.Buffer); c++ {
-		buffer[c] = *image2.NewImageBuffer(jxl.Buffer[c].BufferType, jxl.Buffer[c].Height, jxl.Buffer[c].Width)
-
+		buf, err := image2.NewImageBuffer(jxl.Buffer[c].BufferType, jxl.Buffer[c].Height, jxl.Buffer[c].Width)
+		if err != nil {
+			return nil, err
+		}
+		buffer[c] = *buf
 		// very stupid... will optimise later TODO(kpfaulkner)
 		if buffer[c].IsInt() {
 			for y := 0; y < int(jxl.Buffer[c].Height); y++ {
@@ -311,7 +320,7 @@ func (jxl *JXLImage) getBuffer(makeCopy bool) []image2.ImageBuffer {
 			}
 		}
 	}
-	return buffer
+	return buffer, nil
 }
 
 func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) error {

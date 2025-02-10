@@ -63,13 +63,6 @@ func (br *Bitreader) AtEnd() bool {
 	return false
 }
 
-func (br *Bitreader) Close() {
-
-	// FIXME(kpfaulkner)
-	//br.in.Close()
-	panic("Bitreader.Close() not implemented")
-}
-
 // loop one byte at a time and read.... not efficient but will rework later FIXME(kpfaulkner)
 // Most of the time we probably just want to fill the buffer... but have seen that in some cases
 // we might just want to partially populate the buffer. Hence the numBytes parameter.

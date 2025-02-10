@@ -230,9 +230,6 @@ func (f *Frame) SkipFrameData() error {
 
 // gets a bit reader for each TOC entry???
 func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
-	//if len(f.tocLengths) == 1 {
-	//	panic("getBitreader panic... unsure what to do")
-	//}
 	var i uint32
 	if len(f.tocLengths) <= 1 {
 		i = 0
@@ -306,7 +303,11 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		if isFloat {
 			typeToUse = image.TYPE_FLOAT
 		}
-		f.Buffer[c] = *image.NewImageBuffer(typeToUse, int32(channelSize.Height), int32(channelSize.Width))
+		buf, err := image.NewImageBuffer(typeToUse, int32(channelSize.Height), int32(channelSize.Width))
+		if err != nil {
+			return err
+		}
+		f.Buffer[c] = *buf
 	}
 
 	err = f.decodeLFGroups(lfBuffer)
@@ -387,7 +388,9 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		}
 	}
 
-	f.invertSubsampling()
+	if err := f.invertSubsampling(); err != nil {
+		return nil
+	}
 
 	if f.Header.restorationFilter.gab {
 		f.performGabConvolution()
@@ -680,7 +683,7 @@ func displayBuffer(text string, frameBuffer [][]float32) {
 	fmt.Printf("Total %f\n", total)
 }
 
-func (f *Frame) invertSubsampling() {
+func (f *Frame) invertSubsampling() error {
 	for c := 0; c < 3; c++ {
 		xShift := f.Header.jpegUpsamplingX[c]
 		yShift := f.Header.jpegUpsamplingY[c]
@@ -689,7 +692,11 @@ func (f *Frame) invertSubsampling() {
 			oldBuffer := f.Buffer[c]
 			oldBuffer.CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
 			oldChannel := oldBuffer.FloatBuffer
-			newBuffer := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height, oldBuffer.Width*2)
+			newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height, oldBuffer.Width*2)
+			if err != nil {
+				log.Errorf("Error creating new buffer %v", err)
+				return err
+			}
 			newChannel := newBuffer.FloatBuffer
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
@@ -716,7 +723,11 @@ func (f *Frame) invertSubsampling() {
 			oldBuffer := f.Buffer[c]
 			oldBuffer.CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
 			oldChannel := oldBuffer.FloatBuffer
-			newBuffer := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height*2, oldBuffer.Width)
+			newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height*2, oldBuffer.Width)
+			if err != nil {
+				log.Errorf("Error creating new buffer %v", err)
+				return err
+			}
 			newChannel := newBuffer.FloatBuffer
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
@@ -743,6 +754,7 @@ func (f *Frame) invertSubsampling() {
 			f.Buffer[c] = *newBuffer
 		}
 	}
+	return nil
 }
 
 func (f *Frame) performGabConvolution() error {
@@ -766,7 +778,10 @@ func (f *Frame) performGabConvolution() error {
 		height := f.Buffer[c].Height
 		width := f.Buffer[c].Width
 		buffC := f.Buffer[c].FloatBuffer
-		newBuffer := image.NewImageBuffer(image.TYPE_FLOAT, height, width)
+		newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, height, width)
+		if err != nil {
+			return err
+		}
 		newBufferF := newBuffer.FloatBuffer
 		for y := int32(0); y < height; y++ {
 			var north int32
@@ -854,7 +869,11 @@ func (f *Frame) performEdgePreservingFilter() error {
 	outputBuffer := make([]image.ImageBuffer, colours)
 	for c := int32(0); c < colours; c++ {
 		f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
-		outputBuffer[c] = *image.NewImageBuffer(image.TYPE_FLOAT, int32(paddedSize.Height), int32(paddedSize.Width))
+		outBuf, err := image.NewImageBuffer(image.TYPE_FLOAT, int32(paddedSize.Height), int32(paddedSize.Width))
+		if err != nil {
+			return err
+		}
+		outputBuffer[c] = *outBuf
 	}
 
 	for i := 0; i < 3; i++ {
@@ -985,8 +1004,8 @@ func (f *Frame) InitializeNoise(seed0 int64) error {
 	if f.LfGlobal.noiseParameters == nil || len(f.LfGlobal.noiseParameters) == 0 {
 		return nil
 	}
-	// FIXME(kpfaulkner) yet to do.
-	panic("not implemented")
+
+	return errors.New("noise not implemented")
 
 	//rowStride := util.CeilDiv(f.Header.Width, f.Header.groupDim)
 	//localNoiseBuffer := util.MakeMatrix3D[float32](3, int(f.Header.Height), int(f.Header.Width))
@@ -1040,8 +1059,7 @@ func (f *Frame) RenderSplines() error {
 	if f.LfGlobal.splines == nil {
 		return nil
 	}
-
-	panic("RenderSplines not implemented")
+	return errors.New("RenderSplines not implemented")
 }
 
 func (f *Frame) SynthesizeNoise() error {
@@ -1049,7 +1067,7 @@ func (f *Frame) SynthesizeNoise() error {
 		return nil
 	}
 
-	panic("SynthesizeNoise not implemented")
+	return errors.New("SynthesizeNoise not implemented")
 }
 
 func (f *Frame) getLFGroupSize(lfGroupID int32) (util.Dimension, error) {

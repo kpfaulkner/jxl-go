@@ -23,13 +23,13 @@ type ImageBuffer struct {
 	IntBuffer   [][]int32
 }
 
-func NewImageBuffer(bufferType int, height int32, width int32) *ImageBuffer {
+func NewImageBuffer(bufferType int, height int32, width int32) (*ImageBuffer, error) {
 
 	if bufferType != TYPE_INT && bufferType != TYPE_FLOAT {
-		panic("Invalid buffer type")
+		return nil, errors.New("Invalid buffer type")
 	}
 	if height < 0 || height > (1<<30) || width < 0 || width > (1<<30) {
-		panic("Invalid height/width")
+		return nil, errors.New("Invalid height/width")
 	}
 
 	ib := &ImageBuffer{
@@ -43,7 +43,7 @@ func NewImageBuffer(bufferType int, height int32, width int32) *ImageBuffer {
 	} else {
 		ib.FloatBuffer = util.MakeMatrix2D[float32](height, width)
 	}
-	return ib
+	return ib, nil
 }
 
 func NewImageBufferFromInts(buffer [][]int32) *ImageBuffer {

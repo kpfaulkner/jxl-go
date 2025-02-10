@@ -115,7 +115,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 	size := imageHeader.Size
 	jxl.canvas = make([]image2.ImageBuffer, imageHeader.GetColourChannelCount()+len(imageHeader.ExtraChannelInfo))
 	if imageHeader.AnimationHeader != nil {
-		panic("dont care about animation for now")
+		return nil, errors.New("animation not implemented")
 	}
 
 	if imageHeader.PreviewSize != nil {
@@ -123,7 +123,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		previewOptions.ParseOnly = true
 		frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
 		frame.ReadFrameHeader()
-		panic("not implemented previewheader yet")
+		return nil, errors.New("not implemented preview yet")
 	}
 
 	var matrix *color.OpsinInverseMatrix
@@ -242,7 +242,11 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 			//if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
 			if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
 				for c := 0; c < len(jxl.canvas); c++ {
-					jxl.canvas[c] = *image2.NewImageBuffer(imgFrame.Buffer[0].BufferType, int32(size.Height), int32(size.Width))
+					canvas, err := image2.NewImageBuffer(imgFrame.Buffer[0].BufferType, int32(size.Height), int32(size.Width))
+					if err != nil {
+						return nil, err
+					}
+					jxl.canvas[c] = *canvas
 				}
 			}
 			if header.FrameType == frame.REGULAR_FRAME || header.FrameType == frame.SKIP_PROGRESSIVE {
@@ -807,7 +811,11 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 
 		// check if just the zero value. Think dimension being 0 should be ok.
 		if refBuffer[c].Width == 0 && refBuffer[c].Height == 0 {
-			refBuffer[c] = *image2.NewImageBuffer(frameBuffer.BufferType, canvas[c].Height, canvas[c].Width)
+			refBuf, err := image2.NewImageBuffer(frameBuffer.BufferType, canvas[c].Height, canvas[c].Width)
+			if err != nil {
+				return err
+			}
+			refBuffer[c] = *refBuf
 		}
 		ref := refBuffer[c]
 
@@ -815,7 +823,11 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 			depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
 			alphaIdx := imageColours + int(info.AlphaChannel)
 			if refBuffer[alphaIdx].Width == 0 && refBuffer[alphaIdx].Height == 0 {
-				refBuffer[alphaIdx] = *image2.NewImageBuffer(image2.TYPE_FLOAT, canvas[c].Height, canvas[c].Width)
+				refBuf, err := image2.NewImageBuffer(image2.TYPE_FLOAT, canvas[c].Height, canvas[c].Width)
+				if err != nil {
+					return err
+				}
+				refBuffer[alphaIdx] = *refBuf
 			}
 			if !refBuffer[alphaIdx].IsFloat() {
 				refBuffer[alphaIdx].CastToFloatIfInt(^(^0 << depth))

@@ -252,7 +252,6 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 					}
 				}
 				layBlock(scratchBlock[0], frameBuffer[c], util.ZERO, ppf, tt.getPixelSize())
-				//panic("not implemented")
 			case METHOD_DCT4:
 				panic("not implemented")
 			default:

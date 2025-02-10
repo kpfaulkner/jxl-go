@@ -1,6 +1,8 @@
 package frame
 
 import (
+	"errors"
+
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -35,8 +37,8 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	extra := len(lf.frame.globalMetadata.ExtraChannelInfo)
 	if lf.frame.Header.Flags&PATCHES != 0 {
 
-		// TODO(kpfaulkner) not used yet with the lossless images I'm trying.
-		panic("Patches not implemented yet")
+		return nil, errors.New("Patches not implemented yet")
+
 		stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 10)
 		if err != nil {
 			return nil, err
@@ -58,13 +60,13 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	}
 
 	if lf.frame.Header.Flags&SPLINES != 0 {
-		panic("Splines not implemented yet")
+		return nil, errors.New("Splines not implemented yet")
 	} else {
 		lf.splines = nil
 	}
 
 	if lf.frame.Header.Flags&NOISE != 0 {
-		panic("noise not implemented yet")
+		return nil, errors.New("Noise not implemented yet")
 	} else {
 		lf.noiseParameters = nil
 	}
