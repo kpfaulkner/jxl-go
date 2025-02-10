@@ -81,7 +81,12 @@ func NewTransformInfo(reader *jxlio.Bitreader) (TransformInfo, error) {
 
 	ti := TransformInfo{}
 
-	tr := reader.MustReadBits(2)
+	var tr uint64
+	var err error
+
+	if tr, err = reader.ReadBits(2); err != nil {
+		return ti, err
+	}
 	if tr != SQUEEZE {
 		if beginC, err := reader.ReadU32(0, 3, 8, 6, 72, 10, 1096, 13); err != nil {
 			return ti, err

@@ -58,7 +58,11 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int32) (*
 				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
 			}
 			asd.frequencies = make([]int32, asd.alphabetSize)
-			asd.frequencies[v1] = int32(reader.MustReadBits(12))
+			if freq, err := reader.ReadBits(12); err != nil {
+				return nil, err
+			} else {
+				asd.frequencies[v1] = int32(freq)
+			}
 			asd.frequencies[v2] = 1<<12 - asd.frequencies[v1]
 			if asd.frequencies[v1] == 0 {
 				uniqPos = int32(v2)
@@ -111,7 +115,12 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int32) (*
 					break
 				}
 			}
-			shift := (reader.MustReadBits(uint32(l)) | 1<<l) - 1
+			var shift uint64
+			if shift, err = reader.ReadBits(uint32(l)); err != nil {
+				return nil, err
+			} else {
+				shift = (shift | 1<<l) - 1
+			}
 			if shift > 13 {
 				return nil, errors.New("Shift > 13")
 			}
@@ -181,7 +190,12 @@ func NewANSSymbolDistribution(reader *jxlio.Bitreader, logAlphabetSize int32) (*
 						if bitcount > int32(logCounts[i])-1 {
 							bitcount = int32(logCounts[i] - 1)
 						}
-						asd.frequencies[i] = int32(1<<(logCounts[i]-1) + reader.MustReadBits(uint32(bitcount))<<(logCounts[i]-1-bitcount))
+						if freq, err := reader.ReadBits(uint32(bitcount)); err != nil {
+							return nil, err
+						} else {
+							asd.frequencies[i] = int32(1<<(logCounts[i]-1) + int32(freq)<<(logCounts[i]-1-bitcount))
+						}
+
 					}
 				}
 				totalCount += asd.frequencies[i]

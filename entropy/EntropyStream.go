@@ -106,7 +106,11 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	if prefixCodes {
 		es.logAlphabetSize = 15
 	} else {
-		es.logAlphabetSize = 5 + int32(reader.MustReadBits(2))
+		if logAlphabetSize, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			es.logAlphabetSize = 5 + int32(logAlphabetSize)
+		}
 	}
 
 	configs := make([]*HybridIntegerConfig, len(es.dists))
@@ -125,14 +129,25 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 				return nil, err
 			}
 			if readBits {
-				n := reader.MustReadBits(4)
-				alphabetSizes[i] = 1 + int32(1<<n+reader.MustReadBits(uint32(n)))
+				var n uint64
+				if n, err = reader.ReadBits(4); err != nil {
+					return nil, err
+				}
+
+				if alphaSize, err := reader.ReadBits(uint32(n)); err != nil {
+					return nil, err
+				} else {
+					alphabetSizes[i] = 1 + int32(alphaSize)
+				}
 			} else {
 				alphabetSizes[i] = 1
 			}
 		}
 		for i := 0; i < len(es.dists); i++ {
-			es.dists[i] = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
+			es.dists[i], err = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		for i := 0; i < len(es.dists); i++ {
@@ -163,9 +178,17 @@ func ReadClusterMap(reader *jxlio.Bitreader, clusterMap []int, maxClusters int) 
 			return 0, err
 		}
 		if simpleClustering {
-			nbits := reader.MustReadBits(2)
+			var nbits uint64
+
+			if nbits, err = reader.ReadBits(2); err != nil {
+				return 0, err
+			}
 			for i := 0; i < numDists; i++ {
-				clusterMap[i] = int(reader.MustReadBits(uint32(nbits)))
+				if cm, err := reader.ReadBits(uint32(nbits)); err != nil {
+					return 0, err
+				} else {
+					clusterMap[i] = int(cm)
+				}
 			}
 		} else {
 			var useMtf bool
@@ -312,7 +335,11 @@ func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *Hybr
 	token = int32(uint32(token) >> config.LsbInToken)
 	token &= (1 << config.MsbInToken) - 1
 	token |= 1 << config.MsbInToken
-	return ((int32(token<<n)|int32(reader.MustReadBits(uint32(n))))<<int32(config.LsbInToken) | int32(low)), nil
+	if data, err := reader.ReadBits(uint32(n)); err != nil {
+		return 0, err
+	} else {
+		return ((int32(token<<n)|int32(data))<<int32(config.LsbInToken) | int32(low)), nil
+	}
 }
 
 func (es *EntropyStream) ValidateFinalState() bool {

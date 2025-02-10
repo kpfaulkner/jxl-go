@@ -91,7 +91,11 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 	if allDefault {
 		rf.epfIterations = 2
 	} else {
-		rf.epfIterations = uint32(reader.MustReadBits(2))
+		if epfItreations, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			rf.epfIterations = uint32(epfItreations)
+		}
 	}
 
 	if !allDefault && rf.epfIterations > 0 && encoding == VARDCT {
@@ -125,7 +129,7 @@ func NewRestorationFilterWithReader(reader *jxlio.Bitreader, encoding uint32) (*
 			}
 		}
 
-		reader.MustReadBits(32) // ??? what do we do with this data?
+		_, _ = reader.ReadBits(32) // ??? what do we do with this data?
 	}
 
 	if !allDefault && rf.epfIterations > 0 {

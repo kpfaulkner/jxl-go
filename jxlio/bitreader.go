@@ -244,16 +244,6 @@ func (br *Bitreader) ReadBool() (bool, error) {
 	return v == 1, nil
 }
 
-func (br *Bitreader) MustReadBits(bits uint32) uint64 {
-	v, err := br.ReadBits(bits)
-	if err != nil {
-
-		// really need to remove these panics and force error inspection
-		panic(err)
-	}
-	return v
-}
-
 func (br *Bitreader) ReadU64() (uint64, error) {
 	index, err := br.ReadBits(2)
 	if err != nil {
@@ -296,10 +286,19 @@ func (br *Bitreader) ReadU64() (uint64, error) {
 			break
 		}
 		if shift == 60 {
-			value |= uint64(br.MustReadBits(4)) << shift
+
+			if data, err := br.ReadBits(4); err != nil {
+				return 0, err
+			} else {
+				value |= data << shift
+			}
 			break
 		}
-		value |= uint64(br.MustReadBits(8)) << shift
+		if data, err := br.ReadBits(8); err != nil {
+			return 0, err
+		} else {
+			value |= data << shift
+		}
 		shift += 8
 	}
 	return value, nil

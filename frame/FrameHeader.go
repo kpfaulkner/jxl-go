@@ -78,8 +78,17 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		fh.Encoding = VARDCT
 		fh.Flags = 0
 	} else {
-		fh.FrameType = uint32(reader.MustReadBits(2))
-		fh.Encoding = uint32(reader.MustReadBits(1))
+		if frameType, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			fh.FrameType = uint32(frameType)
+		}
+
+		if encoding, err := reader.ReadBits(1); err != nil {
+			return nil, err
+		} else {
+			fh.Encoding = uint32(encoding)
+		}
 		if fh.Flags, err = reader.ReadU64(); err != nil {
 			return nil, err
 		}
@@ -97,7 +106,10 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	fh.jpegUpsamplingY = make([]int32, 3)
 	if fh.DoYCbCr && (fh.Flags&USE_LF_FRAME) == 0 {
 		for i := 0; i < 3; i++ {
-			mode := reader.MustReadBits(2)
+			var mode uint64
+			if mode, err = reader.ReadBits(2); err != nil {
+				return nil, err
+			}
 			//y := reader.MustReadBits(1)
 			//x := reader.MustReadBits(1)
 			//fh.jpegUpsampling[i] = util.NewIntPointWithXY(uint32(x^y), uint32(y))
@@ -120,9 +132,17 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 
 	fh.EcUpsampling = make([]uint32, len(parent.ExtraChannelInfo))
 	if !allDefault && (fh.Flags&USE_LF_FRAME) == 0 {
-		fh.Upsampling = 1 << reader.MustReadBits(2)
+		if upsampling, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			fh.Upsampling = 1 << upsampling
+		}
 		for i := 0; i < len(fh.EcUpsampling); i++ {
-			fh.EcUpsampling[i] = 1 << reader.MustReadBits(2)
+			if ecUpsampling, err := reader.ReadBits(2); err != nil {
+				return nil, err
+			} else {
+				fh.EcUpsampling[i] = 1 << ecUpsampling
+			}
 		}
 	} else {
 		fh.Upsampling = 1
@@ -130,7 +150,11 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if fh.Encoding == MODULAR {
-		fh.groupSizeShift = uint32(reader.MustReadBits(2))
+		if groupSizeShift, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			fh.groupSizeShift = uint32(groupSizeShift)
+		}
 	} else {
 		fh.groupSizeShift = 1
 	}
@@ -171,7 +195,11 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if fh.FrameType == LF_FRAME {
-		fh.LfLevel = uint32(reader.MustReadBits(2))
+		if lfLevel, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			fh.LfLevel = uint32(lfLevel)
+		}
 	} else {
 		fh.LfLevel = 0
 	}
@@ -281,7 +309,11 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 	}
 
 	if !allDefault && fh.FrameType != LF_FRAME && !fh.IsLast {
-		fh.SaveAsReference = uint32(reader.MustReadBits(2))
+		if saveAsReference, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			fh.SaveAsReference = uint32(saveAsReference)
+		}
 	} else {
 		fh.SaveAsReference = 0
 	}

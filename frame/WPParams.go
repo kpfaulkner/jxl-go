@@ -33,17 +33,68 @@ func NewWPParams(reader *jxlio.Bitreader) (*WPParams, error) {
 		wp.weight[2] = 12
 		wp.weight[3] = 12
 	} else {
-		wp.param1 = int(reader.MustReadBits(5))
-		wp.param2 = int(reader.MustReadBits(5))
-		wp.param3a = int32(reader.MustReadBits(5))
-		wp.param3b = int32(reader.MustReadBits(5))
-		wp.param3c = int32(reader.MustReadBits(5))
-		wp.param3d = int32(reader.MustReadBits(5))
-		wp.param3e = int32(reader.MustReadBits(5))
-		wp.weight[0] = int64(reader.MustReadBits(4))
-		wp.weight[1] = int64(reader.MustReadBits(4))
-		wp.weight[2] = int64(reader.MustReadBits(4))
-		wp.weight[3] = int64(reader.MustReadBits(4))
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param1 = int(param)
+		}
+
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param2 = int(param)
+		}
+
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param3a = int32(param)
+		}
+
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param3b = int32(param)
+		}
+
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param3c = int32(param)
+		}
+
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param3d = int32(param)
+		}
+
+		if param, err := reader.ReadBits(5); err != nil {
+			return nil, err
+		} else {
+			wp.param3e = int32(param)
+		}
+
+		if data, err := reader.ReadBits(4); err != nil {
+			return nil, err
+		} else {
+			wp.weight[0] = int64(data)
+		}
+		if data, err := reader.ReadBits(4); err != nil {
+			return nil, err
+		} else {
+			wp.weight[1] = int64(data)
+		}
+		if data, err := reader.ReadBits(4); err != nil {
+			return nil, err
+		} else {
+			wp.weight[2] = int64(data)
+		}
+		if data, err := reader.ReadBits(4); err != nil {
+			return nil, err
+		} else {
+			wp.weight[3] = int64(data)
+		}
 	}
 
 	return &wp, nil

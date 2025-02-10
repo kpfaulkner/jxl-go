@@ -114,7 +114,11 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 			return nil, err
 		}
 		if useGamma {
-			ceb.Tf = int32(reader.MustReadBits(24))
+			if tf, err := reader.ReadBits(24); err != nil {
+				return nil, err
+			} else {
+				ceb.Tf = int32(tf)
+			}
 		} else {
 			var tfEnum int32
 			if tfEnum, err = reader.ReadEnum(); err != nil {

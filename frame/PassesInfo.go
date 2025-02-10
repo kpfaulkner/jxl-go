@@ -39,12 +39,20 @@ func NewPassesInfoWithReader(reader *jxlio.Bitreader) (*PassesInfo, error) {
 
 	pi.shift = make([]uint32, pi.numPasses)
 	for i := uint32(0); i < pi.numPasses-1; i++ {
-		pi.shift[i] = uint32(reader.MustReadBits(2))
+		if shift, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			pi.shift[i] = uint32(shift)
+		}
 	}
 	pi.shift[pi.numPasses-1] = 0
 	pi.downSample = make([]uint32, pi.numDS+1)
 	for i := 0; i < int(pi.numDS); i++ {
-		pi.downSample[i] = 1 << reader.MustReadBits(2)
+		if downSample, err := reader.ReadBits(2); err != nil {
+			return nil, err
+		} else {
+			pi.downSample[i] = 1 << uint32(downSample)
+		}
 	}
 	pi.lastPass = make([]uint32, pi.numDS+1)
 	for i := 0; i < int(pi.numDS); i++ {

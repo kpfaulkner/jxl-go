@@ -17,8 +17,8 @@ type PrefixSymbolDistribution struct {
 	defaultSymbol int32
 }
 
-func NewPrefixSymbolDistributionWithReader(reader *jxlio.Bitreader, alphabetSize int32) (rcvr *PrefixSymbolDistribution) {
-	rcvr = &PrefixSymbolDistribution{
+func NewPrefixSymbolDistributionWithReader(reader *jxlio.Bitreader, alphabetSize int32) (*PrefixSymbolDistribution, error) {
+	rcvr := &PrefixSymbolDistribution{
 		SymbolDistributionBase: NewSymbolDistributionBase(),
 	}
 	rcvr.alphabetSize = alphabetSize
@@ -26,16 +26,21 @@ func NewPrefixSymbolDistributionWithReader(reader *jxlio.Bitreader, alphabetSize
 	if rcvr.alphabetSize == 1 {
 		rcvr.table = nil
 		rcvr.defaultSymbol = 0
-		return rcvr
+		return rcvr, nil
 	}
 
-	hskip := reader.MustReadBits(2)
+	var hskip uint64
+	var err error
+	if hskip, err = reader.ReadBits(2); err != nil {
+		return nil, err
+	}
+
 	if hskip == 1 {
 		rcvr.populateSimplePrefix(reader)
 	} else {
 		rcvr.populateComplexPrefix(reader, int32(hskip))
 	}
-	return
+	return rcvr, nil
 }
 func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitreader, hskip int32) error {
 
