@@ -137,7 +137,7 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 				if alphaSize, err := reader.ReadBits(uint32(n)); err != nil {
 					return nil, err
 				} else {
-					alphabetSizes[i] = 1 + int32(alphaSize)
+					alphabetSizes[i] = 1 + int32(1<<alphaSize)
 				}
 			} else {
 				alphabetSizes[i] = 1
