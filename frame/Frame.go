@@ -1023,11 +1023,11 @@ func (f *Frame) InitializeNoise(seed0 int64) error {
 }
 
 func (f *Frame) Upsample() error {
-	var err error
 	for c := 0; c < len(f.Buffer); c++ {
-		f.Buffer[c], err = f.performUpsampling(f.Buffer[c], c)
-		if err != nil {
+		if buf, err := f.performUpsampling(f.Buffer[c], c); err != nil {
 			return err
+		} else {
+			f.Buffer[c] = *buf
 		}
 	}
 	f.bounds.Size.Height *= f.Header.Upsampling
@@ -1038,7 +1038,7 @@ func (f *Frame) Upsample() error {
 	return nil
 }
 
-func (f *Frame) performUpsampling(buffer image.ImageBuffer, c int) (image.ImageBuffer, error) {
+func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuffer, error) {
 
 	colour := f.GetColorChannelCount()
 	var k uint32
@@ -1048,11 +1048,67 @@ func (f *Frame) performUpsampling(buffer image.ImageBuffer, c int) (image.ImageB
 		k = f.Header.EcUpsampling[c-colour]
 	}
 	if k == 1 {
-		return buffer, nil
+		return &ib, nil
 	}
 
-	// FIXME(kpfaulkner) not implemented
-	panic("not implemented")
+	var depth uint32
+	if c < colour {
+		depth = f.globalMetadata.BitDepth.BitsPerSample
+	} else {
+		depth = f.globalMetadata.ExtraChannelInfo[c-colour].BitDepth.BitsPerSample
+	}
+
+	if err := ib.CastToFloatIfInt(^(^0 << depth)); err != nil {
+		return nil, err
+	}
+
+	buffer := ib.FloatBuffer
+	l := util.CeilLog1p(k-1) - 1
+	up, err := f.globalMetadata.GetUpWeights()
+	if err != nil {
+		return nil, err
+	}
+	upWeights := up[l]
+	newBuffer := util.MakeMatrix2D[float32](len(buffer)*int(k), 0)
+	for y := 0; y < len(buffer); y++ {
+		for ky := 0; ky < int(k); ky++ {
+			newBuffer[y*int(k)+ky] = make([]float32, len(buffer[y])*int(k))
+			for x := 0; x < len(buffer[y]); x++ {
+				for kx := 0; kx < int(k); kx++ {
+					weights := upWeights[ky][kx]
+					total := float32(0.0)
+					min := float32(math.MaxFloat32)
+					max := float32(math.SmallestNonzeroFloat32)
+					for iy := 0; iy < 5; iy++ {
+						for ix := 0; ix < 5; ix++ {
+							newY := util.MirrorCoordinate(int32(y)+int32(iy)-2, int32(len(buffer)))
+							newX := util.MirrorCoordinate(int32(x)+int32(ix)-2, int32(len(buffer[newY])))
+							sample := buffer[newY][newX]
+							if sample < min {
+								min = sample
+							}
+							if sample > max {
+								max = sample
+							}
+							total += weights[iy][ix] * sample
+						}
+					}
+					var val float32
+					if total < min {
+						val = min
+					} else if total > max {
+						val = max
+					} else {
+						val = total
+					}
+					newBuffer[y*int(k)+ky][x*int(k)+kx] = val
+				}
+			}
+		}
+	}
+
+	return image.NewImageBufferFromFloats(newBuffer), nil
+
 }
 
 func (f *Frame) RenderSplines() error {

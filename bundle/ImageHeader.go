@@ -105,6 +105,8 @@ type ImageHeader struct {
 	Up4Weights []float32
 	Up8Weights []float32
 
+	UpWeights [][][][][]float32
+
 	EncodedICC []byte
 }
 
@@ -565,4 +567,59 @@ func getWidthFromRatio(ratio uint32, height uint32) (uint32, error) {
 	default:
 		return 0, fmt.Errorf("invalid ratio: %d", ratio)
 	}
+}
+
+func (h *ImageHeader) GetUpWeights() ([][][][][]float32, error) {
+	if h.UpWeights != nil {
+		return h.UpWeights, nil
+	}
+
+	h.UpWeights = make([][][][][]float32, 3)
+	for l := 0; l < 3; l++ {
+		k := 1 << (l + 1)
+		var upKWeights []float32
+		if k == 8 {
+			upKWeights = h.Up8Weights
+		}
+		if k == 4 {
+			upKWeights = h.Up4Weights
+		}
+		if k == 2 {
+			upKWeights = h.Up2Weights
+		}
+		if upKWeights == nil {
+			return nil, errors.New("Invalid UpWeights")
+		}
+		h.UpWeights[l] = util.MakeMatrix4D[float32](k, k, 5, 5)
+		for ky := 0; ky < k; ky++ {
+			for kx := 0; kx < k; kx++ {
+				for iy := 0; iy < 5; iy++ {
+					for ix := 0; ix < 5; ix++ {
+						var j int
+						if ky < k/2 {
+							j = iy + 5*ky
+						} else {
+							j = (4 - iy) + 5*(k-1-ky)
+						}
+						var i int
+						if kx < k/2 {
+							i = ix + 5*kx
+						} else {
+							i = (4 - ix) + 5*(k-1-kx)
+						}
+						var x int
+						if i < j {
+							x = j
+						} else {
+							x = i
+						}
+						y := x ^ j ^ i
+						index := 5*k*y/2 - y*(y-1)/2 + x - y
+						h.UpWeights[l][ky][kx][iy][ix] = upKWeights[index]
+					}
+				}
+			}
+		}
+	}
+	return h.UpWeights, nil
 }
