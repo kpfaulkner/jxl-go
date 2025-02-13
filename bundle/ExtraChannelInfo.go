@@ -57,11 +57,14 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 		}
 		eci.name = string(nameBuffer)
 
-		var alphaBool bool
-		if alphaBool, err = reader.ReadBool(); err != nil {
-			return nil, err
+		if eci.EcType == ALPHA {
+			var alphaBool bool
+			if alphaBool, err = reader.ReadBool(); err != nil {
+				return nil, err
+			}
+			eci.AlphaAssociated = alphaBool
 		}
-		eci.AlphaAssociated = (eci.EcType == ALPHA) && alphaBool
+
 	} else {
 		eci.EcType = ALPHA
 		eci.BitDepth = *NewBitDepthHeader()
