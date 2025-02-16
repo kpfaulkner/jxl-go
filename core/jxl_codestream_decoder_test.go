@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/color"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
@@ -142,7 +144,8 @@ func TestGetImageHeader(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			br := generateTestBitReader(t)
-			decoder := NewJXLCodestreamDecoder(br, nil)
+			opts := options.NewJXLOptions(nil)
+			decoder := NewJXLCodestreamDecoder(br, opts)
 
 			header, err := decoder.GetImageHeader()
 			if err != nil && tc.expectErr {
@@ -185,6 +188,44 @@ func TestGetImageHeader(t *testing.T) {
 			if !header.ColorEncoding.Prim.Matches(tc.expectedHeader.ColorEncoding.Prim) {
 				t.Errorf("expected primaries to match but they did not")
 			}
+		})
+	}
+}
+
+func TestDecode(t *testing.T) {
+
+	for _, tc := range []struct {
+		name      string
+		data      []uint8
+		expectErr bool
+	}{
+		{
+			name:      "success",
+			expectErr: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			br := generateTestBitReader(t)
+			opts := options.NewJXLOptions(nil)
+			decoder := NewJXLCodestreamDecoder(br, opts)
+
+			jxlImage, err := decoder.decode()
+			if err != nil && tc.expectErr {
+				// got what we wanted..
+				return
+			}
+
+			if err == nil && tc.expectErr {
+				t.Errorf("expected error but got none")
+			}
+
+			if err != nil && !tc.expectErr {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+			fmt.Printf("XXXXX jxlimage witdh %d\n", jxlImage.Width)
+
 		})
 	}
 }
