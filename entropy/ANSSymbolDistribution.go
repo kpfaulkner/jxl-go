@@ -264,7 +264,7 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int32) {
 func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *ANSState) (int32, error) {
 
 	var state int32
-	if stateObj.State == -1 {
+	if !stateObj.HasState {
 		s, err := reader.ReadBits(32)
 		if err != nil {
 			return 0, err
@@ -296,9 +296,6 @@ func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, stateObj *
 		}
 		state = state | int32(data)
 	}
-
-	//stateObj.State = 0xFFFFFFFF & uint64(state)
-	stateObj.State = state
-
+	stateObj.SetState(state)
 	return symbol, nil
 }

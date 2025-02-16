@@ -53,7 +53,7 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 	if es.usesLZ77 {
 		es.window = make([]int32, 1<<20)
 	}
-	es.ansState = &ANSState{State: -1}
+	es.ansState = &ANSState{State: -1, HasState: false}
 	return es
 }
 
@@ -67,7 +67,7 @@ func NewEntropyStreamWithReader(reader *jxlio.Bitreader, numDists int, disallowL
 	if es.usesLZ77, err = reader.ReadBool(); err != nil {
 		return nil, err
 	}
-	es.ansState = &ANSState{State: -1}
+	es.ansState = &ANSState{State: -1, HasState: false}
 	if es.usesLZ77 {
 		if disallowLZ77 {
 			return nil, errors.New("Nested distributions cannot use LZ77")
@@ -244,6 +244,10 @@ func ReadClusterMap(reader *jxlio.Bitreader, clusterMap []int, maxClusters int) 
 	return numClusters, nil
 }
 
+func (es *EntropyStream) GetState() *ANSState {
+	return es.ansState
+}
+
 func (es *EntropyStream) ReadSymbol(reader *jxlio.Bitreader, context int) (int32, error) {
 	return es.ReadSymbolWithMultiplier(reader, context, 0)
 }
@@ -343,5 +347,5 @@ func (es *EntropyStream) readHybridInteger(reader *jxlio.Bitreader, config *Hybr
 }
 
 func (es *EntropyStream) ValidateFinalState() bool {
-	return es.ansState.State == -1 || es.ansState.State == 0x130000
+	return !es.ansState.HasState || es.ansState.State == 0x130000
 }

@@ -435,7 +435,6 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	for y0 := uint32(0); y0 < mc.size.Height; y0++ {
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
-
 		for x0 := uint32(0); x0 < mc.size.Width; x0++ {
 			x := int32(x0)
 			var maxError int32
