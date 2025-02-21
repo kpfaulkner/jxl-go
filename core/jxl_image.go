@@ -114,10 +114,10 @@ func (jxl *JXLImage) SetIntChannelData(c int, data [][]int32) error {
 	return nil
 }
 
-// GetChannelType returns the type of the channel (Alpha, Depth, etc).
+// GetExtraChannelType returns the type of the channel (Alpha, Depth, etc).
 // Possible values are defined in ExtraChannelType.go
-func (jxl *JXLImage) GetChannelType(c int) (int32, error) {
-	if c < 0 || c >= len(jxl.Buffer) {
+func (jxl *JXLImage) GetExtraChannelType(c int) (int32, error) {
+	if c < 0 || c >= len(jxl.imageHeader.ExtraChannelInfo) {
 		return -1, fmt.Errorf("Invalid channel index %d", c)
 	}
 	return jxl.imageHeader.ExtraChannelInfo[c].EcType, nil
