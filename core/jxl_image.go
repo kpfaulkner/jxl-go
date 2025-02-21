@@ -117,9 +117,6 @@ func (jxl *JXLImage) NumExtraChannels() int {
 // ChannelToImage converts a single channel to grayscale Go image.Image interface.
 // Can be used for any channel (R,G,B, alpha, depth..... etc) but is really expected to be
 // used for NON "regular" channels (ie depth etc)
-// TODO(kpfaulkner) still need to confirm if generating an 8 bit grayscale image is appropriate
-// for this, or if Gray16... or even RGBA with generating the RGB values itself is the way to
-// proceed.
 func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
 	buffer, err := jxl.getBuffer(true)
 	if err != nil {
