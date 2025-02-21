@@ -1,5 +1,3 @@
-//go:build !skip
-
 package main
 
 import (
@@ -17,7 +15,7 @@ import (
 func main() {
 
 	// church image exercises different code pathways compared to lenna.jxl
-	file := `../testdata/church.jxl`
+	file := `../../testdata/church.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {

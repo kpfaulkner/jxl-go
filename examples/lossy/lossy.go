@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	file := `../testdata/lenna.jxl`
+	file := `../../testdata/lenna.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {

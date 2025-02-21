@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	file := `../testdata/lossless.jxl`
+	file := `../../testdata/lossless.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {
