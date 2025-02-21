@@ -87,6 +87,15 @@ func (jxl *JXLImage) GetFloatChannelData(c int) ([][]float32, error) {
 	return jxl.Buffer[c].FloatBuffer, nil
 }
 
+// SetFloatChannelData sets the floating point image data for a channel.
+func (jxl *JXLImage) SetFloatChannelData(c int, data [][]float32) error {
+	if c < 0 || c >= len(jxl.Buffer) {
+		return fmt.Errorf("Invalid channel index %d", c)
+	}
+	jxl.Buffer[c].FloatBuffer = data
+	return nil
+}
+
 // GetIntChannelData will return the integer image data for a channel.
 // The underlying image MAY not have any integer point data (this is all image dependant).
 func (jxl *JXLImage) GetIntChannelData(c int) ([][]int32, error) {
@@ -94,6 +103,24 @@ func (jxl *JXLImage) GetIntChannelData(c int) ([][]int32, error) {
 		return nil, fmt.Errorf("Invalid channel index %d", c)
 	}
 	return jxl.Buffer[c].IntBuffer, nil
+}
+
+// SetIntChannelData sets the integer image data for a channel.
+func (jxl *JXLImage) SetIntChannelData(c int, data [][]int32) error {
+	if c < 0 || c >= len(jxl.Buffer) {
+		return fmt.Errorf("Invalid channel index %d", c)
+	}
+	jxl.Buffer[c].IntBuffer = data
+	return nil
+}
+
+// GetChannelType returns the type of the channel (Alpha, Depth, etc).
+// Possible values are defined in ExtraChannelType.go
+func (jxl *JXLImage) GetChannelType(c int) (int32, error) {
+	if c < 0 || c >= len(jxl.Buffer) {
+		return -1, fmt.Errorf("Invalid channel index %d", c)
+	}
+	return jxl.imageHeader.ExtraChannelInfo[c].EcType, nil
 }
 
 // IsIntBased returns true if underlying data related to image is integer based.
