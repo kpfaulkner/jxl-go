@@ -14,7 +14,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-func generateTestBitReader(t *testing.T) *jxlio.Bitreader {
+func GenerateTestBitReader(t *testing.T) *jxlio.Bitreader {
 	data, err := os.ReadFile(`../testdata/unittest.jxl`)
 	if err != nil {
 		t.Errorf("error reading test jxl file : %v", err)
@@ -44,7 +44,7 @@ func TestReadSignatureAndBoxes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			br := generateTestBitReader(t)
+			br := GenerateTestBitReader(t)
 			decoder := NewJXLCodestreamDecoder(br, nil)
 			err := decoder.readSignatureAndBoxes()
 			if err != nil && tc.expectErr {
@@ -143,7 +143,7 @@ func TestGetImageHeader(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			br := generateTestBitReader(t)
+			br := GenerateTestBitReader(t)
 			opts := options.NewJXLOptions(nil)
 			decoder := NewJXLCodestreamDecoder(br, opts)
 
@@ -206,7 +206,7 @@ func TestDecode(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			br := generateTestBitReader(t)
+			br := GenerateTestBitReader(t)
 			opts := options.NewJXLOptions(nil)
 			decoder := NewJXLCodestreamDecoder(br, opts)
 

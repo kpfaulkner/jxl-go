@@ -18,13 +18,13 @@ var (
 )
 
 type OpsinInverseMatrix struct {
-	matrix             [][]float32
-	opsinBias          []float32
+	Matrix             [][]float32
+	OpsinBias          []float32
 	QuantBias          []float32
 	QuantBiasNumerator float32
-	primaries          CIEPrimaries
-	whitePoint         CIEXY
-	cbrtOpsinBias      []float32
+	Primaries          CIEPrimaries
+	WhitePoint         CIEXY
+	CbrtOpsinBias      []float32
 }
 
 func NewOpsinInverseMatrix() *OpsinInverseMatrix {
@@ -40,12 +40,12 @@ func NewOpsinInverseMatrixAllParams(
 	quantBiasNumerator float32) *OpsinInverseMatrix {
 
 	oim := &OpsinInverseMatrix{}
-	oim.matrix = matrix
-	oim.opsinBias = opsinBias
+	oim.Matrix = matrix
+	oim.OpsinBias = opsinBias
 	oim.QuantBias = quantBias
 	oim.QuantBiasNumerator = quantBiasNumerator
-	oim.primaries = primaries
-	oim.whitePoint = whitePoint
+	oim.Primaries = primaries
+	oim.WhitePoint = whitePoint
 	oim.bakeCbrtBias()
 	return oim
 }
@@ -58,22 +58,22 @@ func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) (*OpsinInverseMatr
 		return nil, err
 	}
 	if useMatrix {
-		oim.matrix = DEFAULT_MATRIX
-		oim.opsinBias = DEFAULT_OPSIN_BIAS
+		oim.Matrix = DEFAULT_MATRIX
+		oim.OpsinBias = DEFAULT_OPSIN_BIAS
 		oim.QuantBias = DEFAULT_QUANT_BIAS
 		oim.QuantBiasNumerator = DEFAULT_QBIAS_NUMERATOR
 	} else {
-		oim.matrix = util.MakeMatrix2D[float32](3, 3)
+		oim.Matrix = util.MakeMatrix2D[float32](3, 3)
 		for i := 0; i < 3; i++ {
 			for j := 0; j < 3; j++ {
-				if oim.matrix[i][j], err = reader.ReadF16(); err != nil {
+				if oim.Matrix[i][j], err = reader.ReadF16(); err != nil {
 					return nil, err
 				}
 			}
 		}
-		oim.opsinBias = make([]float32, 3)
+		oim.OpsinBias = make([]float32, 3)
 		for i := 0; i < 3; i++ {
-			if oim.opsinBias[i], err = reader.ReadF16(); err != nil {
+			if oim.OpsinBias[i], err = reader.ReadF16(); err != nil {
 				return nil, err
 			}
 		}
@@ -87,31 +87,31 @@ func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) (*OpsinInverseMatr
 			return nil, err
 		}
 	}
-	oim.primaries = *CM_PRI_SRGB
-	oim.whitePoint = *CM_WP_D65
+	oim.Primaries = *CM_PRI_SRGB
+	oim.WhitePoint = *CM_WP_D65
 	oim.bakeCbrtBias()
 
 	return oim, nil
 }
 
 func (oim *OpsinInverseMatrix) bakeCbrtBias() {
-	oim.cbrtOpsinBias = make([]float32, 3)
+	oim.CbrtOpsinBias = make([]float32, 3)
 	for c := 0; c < 3; c++ {
-		oim.cbrtOpsinBias[c] = util.SignedPow(oim.opsinBias[c], 1.0/3.0)
+		oim.CbrtOpsinBias[c] = util.SignedPow(oim.OpsinBias[c], 1.0/3.0)
 	}
 }
 
 func (oim *OpsinInverseMatrix) GetMatrix(prim *CIEPrimaries, white *CIEXY) (*OpsinInverseMatrix, error) {
-	conversion, err := GetConversionMatrix(*prim, *white, oim.primaries, oim.whitePoint)
+	conversion, err := GetConversionMatrix(*prim, *white, oim.Primaries, oim.WhitePoint)
 	if err != nil {
 		return nil, err
 	}
-	matrix, err := util.MatrixMultiply(conversion, oim.matrix)
+	matrix, err := util.MatrixMultiply(conversion, oim.Matrix)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.opsinBias, oim.QuantBias, oim.QuantBiasNumerator), nil
+	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.OpsinBias, oim.QuantBias, oim.QuantBiasNumerator), nil
 }
 
 func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget float32) error {
@@ -122,14 +122,14 @@ func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget f
 	itScale := 255.0 / intensityTarget
 	for y := 0; y < len(buffer[0]); y++ {
 		for x := 0; x < len(buffer[0][y]); x++ {
-			gammaL := buffer[1][y][x] + buffer[0][y][x] - oim.cbrtOpsinBias[0]
-			gammaM := buffer[1][y][x] - buffer[0][y][x] - oim.cbrtOpsinBias[1]
-			gammaS := buffer[2][y][x] - oim.cbrtOpsinBias[2]
-			mixL := gammaL*gammaL*gammaL + oim.opsinBias[0]
-			mixM := gammaM*gammaM*gammaM + oim.opsinBias[1]
-			mixS := gammaS*gammaS*gammaS + oim.opsinBias[2]
+			gammaL := buffer[1][y][x] + buffer[0][y][x] - oim.CbrtOpsinBias[0]
+			gammaM := buffer[1][y][x] - buffer[0][y][x] - oim.CbrtOpsinBias[1]
+			gammaS := buffer[2][y][x] - oim.CbrtOpsinBias[2]
+			mixL := gammaL*gammaL*gammaL + oim.OpsinBias[0]
+			mixM := gammaM*gammaM*gammaM + oim.OpsinBias[1]
+			mixS := gammaS*gammaS*gammaS + oim.OpsinBias[2]
 			for c := 0; c < 3; c++ {
-				buffer[c][y][x] = (mixL*oim.matrix[c][0] + mixM*oim.matrix[c][1] + mixS*oim.matrix[c][2]) * itScale
+				buffer[c][y][x] = (mixL*oim.Matrix[c][0] + mixM*oim.Matrix[c][1] + mixS*oim.Matrix[c][2]) * itScale
 			}
 		}
 	}

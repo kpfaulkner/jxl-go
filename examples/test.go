@@ -16,7 +16,8 @@ func main() {
 
 	// church image exercises different code pathways compared to lenna.jxl
 	//file := `c:/temp/ken-0-4.jxl`
-	file := `../testdata/unittest.jxl`
+	file := `../testdata/alpha-triangles.jxl`
+	//file := `../testdata/unittest.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {
