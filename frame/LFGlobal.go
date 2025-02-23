@@ -138,7 +138,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	subModularChannelCount := extra
 	ecStart := 0
 	if lf.frame.Header.Encoding == MODULAR {
-		if lf.frame.Header.DoYCbCr && !lf.frame.globalMetadata.XybEncoded &&
+		if !lf.frame.Header.DoYCbCr && !lf.frame.globalMetadata.XybEncoded &&
 			lf.frame.globalMetadata.ColorEncoding.ColorEncoding == color.CE_GRAY {
 			ecStart = 1
 		} else {

@@ -160,6 +160,8 @@ func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
 	if buffer[0].IsFloat() {
 		for y := 0; y < dy; y++ {
 			for x := 0; x < dx; x++ {
+
+				// Assumption of 8 bits per channel. Will do for now.
 				pix[pos] = uint8(buffer[channelNo].FloatBuffer[y][x] * 255)
 				pos++
 			}
@@ -240,14 +242,57 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 		}
 	}
 
+	var img image.Image
+	colourCount := jxl.imageHeader.GetColourChannelCount()
+	if colourCount == 1 {
+		img = jxl.createGrayScaleImage(buffer)
+	} else {
+		img = jxl.create24BitImage(buffer)
+	}
+	return img, nil
+}
+
+func (jxl *JXLImage) createGrayScaleImage(buffer []image2.ImageBuffer) image.Image {
+	img := image.NewGray(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
+	pix := img.Pix
+	dx := img.Bounds().Dx()
+	dy := img.Bounds().Dy()
+	pos := 0
+
+	if buffer[0].IsFloat() {
+		for y := 0; y < dy; y++ {
+			for x := 0; x < dx; x++ {
+
+				// assumption of 8 bits per channel but only 1 channel (grayscale)
+				pix[pos] = uint8(buffer[0].FloatBuffer[y][x] * 255)
+				pos++
+
+			}
+		}
+	} else {
+
+		for y := 0; y < dy; y++ {
+			for x := 0; x < dx; x++ {
+				pix[pos] = uint8(buffer[0].IntBuffer[y][x])
+				pos++
+			}
+		}
+	}
+	return img
+}
+
+func (jxl *JXLImage) create24BitImage(buffer []image2.ImageBuffer) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	pix := img.Pix
 	dx := img.Bounds().Dx()
 	dy := img.Bounds().Dy()
 	pos := 0
+
 	if buffer[0].IsFloat() {
 		for y := 0; y < dy; y++ {
 			for x := 0; x < dx; x++ {
+
+				// assumption of 8 bits per channel.
 				pix[pos] = uint8(buffer[0].FloatBuffer[y][x] * 255)
 				pos++
 				pix[pos] = uint8(buffer[1].FloatBuffer[y][x] * 255)
@@ -255,9 +300,13 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 				pix[pos] = uint8(buffer[2].FloatBuffer[y][x] * 255)
 				pos++
 
-				// FIXME(kpfaulkner) deal with alpha channels properly
-				pix[pos] = 255 // uint8(buffer[3].FloatBuffer[y][x] * 255)
-				pos++
+				if jxl.imageHeader.HasAlpha() {
+					// FIXME(kpfaulkner) deal with alpha channels properly
+					pix[pos] = 255 // uint8(buffer[3].FloatBuffer[y][x] * 255)
+					pos++
+				} else {
+					pos++
+				}
 			}
 		}
 	} else {
@@ -281,7 +330,7 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 			}
 		}
 	}
-	return img, nil
+	return img
 }
 
 func (jxl *JXLImage) isHDR() bool {
