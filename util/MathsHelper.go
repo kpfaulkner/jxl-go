@@ -44,8 +44,20 @@ func CeilLog1p[T constraints.Integer](x T) int {
 	return 64 - bits.LeadingZeros64(uint64(x))
 }
 
+func CeilLog1pUint64(x uint64) int {
+	return 64 - bits.LeadingZeros64(x)
+}
+
 func FloorLog1p[T constraints.Integer](x T) int64 {
 	c := int64(CeilLog1p[T](x))
+	if (x+1)&x != 0 {
+		return c - 1
+	}
+	return c
+}
+
+func FloorLog1pUint64(x uint64) int64 {
+	c := int64(CeilLog1pUint64(x))
 	if (x+1)&x != 0 {
 		return c - 1
 	}

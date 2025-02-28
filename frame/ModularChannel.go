@@ -130,7 +130,7 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	nn3 := mc.northNorth(x, y) << 3
 	tN := mc.errorNorth(x, y, 4)
 	tW := mc.errorWest(x, y, 4)
-	tNE := mc.errorNorthEast(x, y, 4)
+	tNE := mc.errorNorthEast(x, y, 4, tN)
 	tNW := mc.errorNorthWest(x, y, 4)
 	mc.subpred[0] = w3 + ne3 - n3
 	mc.subpred[1] = n3 - ((tW+tN+tNE)*(int32(wpParams.param1)))>>5
@@ -147,12 +147,13 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		ew := mc.errorWest(x, y, e)
 		enw := mc.errorNorthWest(x, y, e)
 		eww := mc.errorWestWest(x, y, e)
-		ene := mc.errorNorthEast(x, y, e)
+		ene := mc.errorNorthEast(x, y, e, en)
 		eSum := en + ew + enw + eww + ene
 		if x+1 == int32(mc.size.Width) {
 			eSum += mc.errorWest(x, y, e)
 		}
-		shift := util.FloorLog1p(int64(eSum)) - 5
+		//shift := util.FloorLog1p(int64(eSum)) - 5
+		shift := util.FloorLog1pUint64(uint64(eSum)) - 5
 		if shift < 0 {
 			shift = 0
 		}
@@ -168,17 +169,25 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	}
 	logWeight := util.FloorLog1p(int64(wSum)-1) - 4
 	wSum = 0
+	weight := mc.weight
 	for e := 0; e < 4; e++ {
-		mc.weight[e] = mc.weight[e] >> logWeight
-		wSum += mc.weight[e]
+		//mc.weight[e] = mc.weight[e] >> logWeight
+		//wSum += mc.weight[e]
+		weight[e] = weight[e] >> logWeight
+		wSum += weight[e]
 	}
-	s := int64((wSum >> 1) - 1)
+	//s := int64((wSum >> 1) - 1)
+	//for e := 0; e < 4; e++ {
+	//	s += int64(mc.subpred[e]) * int64(mc.weight[e])
+	//}
+
+	s := (wSum >> 1) - 1
 	for e := 0; e < 4; e++ {
-		s += int64(mc.subpred[e]) * int64(mc.weight[e])
+		s += mc.subpred[e] * mc.weight[e]
 	}
-	mc.pred[y][x] = int32((s * oneL24OverKP1[wSum-1]) >> 24)
+	mc.pred[y][x] = int32((int64(s) * oneL24OverKP1[wSum-1]) >> 24)
 	if (tN^tW)|(tN^tNW) <= 0 {
-		mc.pred[y][x] = util.Clamp(mc.pred[y][x], int32(w3), int32(n3), int32(ne3))
+		mc.pred[y][x] = util.Clamp(mc.pred[y][x], w3, n3, ne3)
 	}
 
 	maxError := tW
@@ -218,15 +227,35 @@ func (mc *ModularChannel) north(x int32, y int32) int32 {
 
 func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 
+	buf := mc.buffer
+	if x <= 0 {
+		if y > 0 {
+			return buf[y-1][x]
+		} else {
+			return 0
+		}
+
+	} else {
+		if y > 0 {
+			return buf[y-1][x-1]
+		} else {
+			return buf[y][x-1]
+		}
+	}
+}
+
+func (mc *ModularChannel) northWestOrig(x int32, y int32) int32 {
+
+	buf := mc.buffer
 	if x > 0 {
 		if y > 0 {
-			return mc.buffer[y-1][x-1]
+			return buf[y-1][x-1]
 		} else {
-			return mc.buffer[y][x-1]
+			return buf[y][x-1]
 		}
 	} else {
 		if y > 0 {
-			return mc.buffer[y-1][x]
+			return buf[y-1][x]
 		} else {
 			return 0
 		}
@@ -262,18 +291,37 @@ func (mc *ModularChannel) westWest(x int32, y int32) int32 {
 }
 
 func (mc *ModularChannel) errorNorth(x int32, y int32, e int32) int32 {
+	if y <= 0 {
+		return 0
+	}
+	return mc.err[e][y-1][x]
+
+}
+
+func (mc *ModularChannel) errorNorthOrig(x int32, y int32, e int32) int32 {
 	if y > 0 {
 		return mc.err[e][y-1][x]
 	}
 	return 0
 }
+
 func (mc *ModularChannel) errorWest(x int32, y int32, e int32) int32 {
 	if x > 0 {
 		return mc.err[e][y][x-1]
 	}
 	return 0
 }
+
 func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
+
+	if x <= 1 {
+		return 0
+	}
+
+	return mc.err[e][y][x-2]
+}
+
+func (mc *ModularChannel) errorWestWestOrig(x int32, y int32, e int32) int32 {
 	if x > 1 {
 		return mc.err[e][y][x-2]
 	}
@@ -287,8 +335,18 @@ func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 	return mc.errorNorth(x, y, e)
 }
 
-func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
+func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32, errNorth int32) int32 {
 	if x+1 < int32(mc.size.Width) && y > 0 {
+
+		return mc.err[e][y-1][x+1]
+	}
+
+	return errNorth
+}
+
+func (mc *ModularChannel) errorNorthEastOrig(x int32, y int32, e int32) int32 {
+	if x+1 < int32(mc.size.Width) && y > 0 {
+
 		return mc.err[e][y-1][x+1]
 	}
 
