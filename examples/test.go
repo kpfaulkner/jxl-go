@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 	"time"
-	"github.com/pkg/profile"
+	//"github.com/pkg/profile"
 	"github.com/kpfaulkner/jxl-go/core"
 	log "github.com/sirupsen/logrus"
 )
@@ -22,7 +22,7 @@ func main() {
 	//file := `../testdata/alpha-triangles.jxl`
 	//file := `../testdata/unittest.jxl`
 
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 
 	f, err := os.ReadFile(file)
 	if err != nil {
@@ -30,6 +30,7 @@ func main() {
 		return
 	}
 
+	start := time.Now()
 	var img image.Image
 	for count := 0; count < 100; count++ {
 		r := bytes.NewReader(f)
@@ -56,6 +57,8 @@ func main() {
 
 	}
 
+	end := time.Now()
+	fmt.Printf("decoding total time %d ms\n", end.Sub(start).Milliseconds())
 	buf := new(bytes.Buffer)
 	if err := png.Encode(buf, img); err != nil {
 		log.Fatalf("boomage %v", err)
