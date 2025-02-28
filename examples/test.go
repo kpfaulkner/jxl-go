@@ -15,11 +15,12 @@ import (
 func main() {
 
 	// church image exercises different code pathways compared to lenna.jxl
-	file := `c:/temp/ken-0-4.jxl`
+	//file := `c:/temp/ken-0-4.jxl`
 	//file := `c:/temp/dont_ask_why_i_have_this.jxl`
 	//file := `../testdata/patches.jxl`
 	//file := `../testdata/alpha-triangles.jxl`
 	//file := `../testdata/unittest.jxl`
+	file := `c:/temp/dither-layered.jxl`
 
 	f, err := os.ReadFile(file)
 	if err != nil {

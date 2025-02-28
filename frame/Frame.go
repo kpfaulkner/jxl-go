@@ -102,15 +102,19 @@ func (f *Frame) ReadTOC() error {
 	if f.permutatedTOC, err = f.reader.ReadBool(); err != nil {
 		return err
 	}
+
 	if f.permutatedTOC {
+		// problem in here? FIXME(kpfaulkner) need to check this.
 		tocStream, err := entropy.NewEntropyStreamWithReaderAndNumDists(f.reader, 8)
 		if err != nil {
 			return err
 		}
+
 		f.tocPermutation, err = readPermutation(f.reader, tocStream, tocEntries, 0)
 		if err != nil {
 			return err
 		}
+
 		if !tocStream.ValidateFinalState() {
 			return errors.New("invalid final ANS state decoding TOC")
 		}
@@ -123,8 +127,8 @@ func (f *Frame) ReadTOC() error {
 		//}
 	}
 	f.reader.ZeroPadToByte()
-	f.tocLengths = make([]uint32, tocEntries)
 
+	f.tocLengths = make([]uint32, tocEntries)
 	for i := 0; i < int(tocEntries); i++ {
 		if tocLengths, err := f.reader.ReadU32(0, 10, 1024, 14, 17408, 22, 4211712, 30); err != nil {
 			return err
@@ -178,9 +182,23 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 		return nil, errors.New("illegal end value in lehmer sequence")
 	}
 
+	for i := skip; i < uint32(end)+skip; i++ {
+		data, _ := reader.ReadBits(8)
+		if i == 25 {
+			fmt.Printf("snoop\n")
+		}
+		fmt.Printf("data index %d : %d\n", i, data)
+	}
+
 	lehmer := make([]uint32, size)
 	for i := skip; i < uint32(end)+skip; i++ {
-		ii, err := stream.ReadSymbol(reader, ctxFunc(int64(util.IfThenElse(i > skip, lehmer[i-1], 0))))
+		val := int64(0)
+		if i > skip {
+			val = int64(lehmer[i-1])
+		}
+		v := ctxFunc(val)
+		ii, err := stream.ReadSymbol(reader, v)
+		fmt.Printf("XXXX symbol %d : %d\n", i, ii)
 		if err != nil {
 			return nil, err
 		}
@@ -189,6 +207,9 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 			return nil, errors.New("illegal end value in lehmer sequence")
 		}
 	}
+
+	data, _ := reader.ReadBits(32)
+	fmt.Printf("data: %d\n", data)
 
 	var temp []uint32
 	permutation := make([]uint32, size)

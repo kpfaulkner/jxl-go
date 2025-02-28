@@ -2,6 +2,7 @@ package entropy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -261,6 +262,7 @@ func (es *EntropyStream) TryReadSymbol(reader *jxlio.Bitreader, context int) int
 }
 
 func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.Bitreader, context int, distanceMultiplier int32) (int32, error) {
+	fmt.Printf("readSymbol: context=%d, distanceMultiplier=%d\n", context, distanceMultiplier)
 	if es.numToCopy77 > 0 {
 		es.copyPos77++
 		hybridInt := es.window[es.copyPos77&0xFFFFF]
