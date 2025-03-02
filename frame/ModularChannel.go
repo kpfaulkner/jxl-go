@@ -131,7 +131,7 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	tN := mc.errorNorth(x, y, 4)
 	tW := mc.errorWest(x, y, 4)
 	tNE := mc.errorNorthEast(x, y, 4, tN)
-	tNW := mc.errorNorthWest(x, y, 4)
+	tNW := mc.errorNorthWest(x, y, 4, tN)
 	mc.subpred[0] = w3 + ne3 - n3
 	mc.subpred[1] = n3 - ((tW+tN+tNE)*(int32(wpParams.param1)))>>5
 	mc.subpred[2] = w3 - ((tW+tN+tNW)*(int32(wpParams.param2)))>>5
@@ -145,7 +145,7 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	for e := int32(0); e < 4; e++ {
 		en := mc.errorNorth(x, y, e)
 		ew := mc.errorWest(x, y, e)
-		enw := mc.errorNorthWest(x, y, e)
+		enw := mc.errorNorthWest(x, y, e, en)
 		eww := mc.errorWestWest(x, y, e)
 		ene := mc.errorNorthEast(x, y, e, en)
 		eSum := en + ew + enw + eww + ene
@@ -162,25 +162,16 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		c := oneL24OverKP1[b]
 		d := a * c
 		ee := int32(4 + d>>shift)
-		//mc.weight[e] = int32(4 + ((wpParams.weight[e] * oneL24OverKP1[eSum>>shift]) >> shift))
 		mc.weight[e] = ee
 		wSum += mc.weight[e]
-
 	}
 	logWeight := util.FloorLog1p(int64(wSum)-1) - 4
 	wSum = 0
 	weight := mc.weight
 	for e := 0; e < 4; e++ {
-		//mc.weight[e] = mc.weight[e] >> logWeight
-		//wSum += mc.weight[e]
 		weight[e] = weight[e] >> logWeight
 		wSum += weight[e]
 	}
-	//s := int64((wSum >> 1) - 1)
-	//for e := 0; e < 4; e++ {
-	//	s += int64(mc.subpred[e]) * int64(mc.weight[e])
-	//}
-
 	s := (wSum >> 1) - 1
 	for e := 0; e < 4; e++ {
 		s += mc.subpred[e] * mc.weight[e]
@@ -306,10 +297,10 @@ func (mc *ModularChannel) errorNorthOrig(x int32, y int32, e int32) int32 {
 }
 
 func (mc *ModularChannel) errorWest(x int32, y int32, e int32) int32 {
-	if x > 0 {
-		return mc.err[e][y][x-1]
+	if x <= 0 {
+		return 0
 	}
-	return 0
+	return mc.err[e][y][x-1]
 }
 
 func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
@@ -328,11 +319,18 @@ func (mc *ModularChannel) errorWestWestOrig(x int32, y int32, e int32) int32 {
 	return 0
 }
 
-func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
+func (mc *ModularChannel) errorNorthWestOrig(x int32, y int32, e int32) int32 {
 	if x > 0 && y > 0 {
 		return mc.err[e][y-1][x-1]
 	}
 	return mc.errorNorth(x, y, e)
+}
+
+func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32, errorNorth int32) int32 {
+	if x > 0 && y > 0 {
+		return mc.err[e][y-1][x-1]
+	}
+	return errorNorth
 }
 
 func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32, errNorth int32) int32 {
@@ -461,6 +459,7 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 		}
 	}
 }
+
 func (mc *ModularChannel) getLeafNode(refinedTree *MATree, channelIndex int32, streamIndex int32, x int32, y int32, maxError int32, parent *ModularStream) (*MATree, error) {
 
 	walkerFunc := mc.getWalkerFunc(channelIndex, streamIndex, x, y, maxError, parent)
@@ -487,12 +486,14 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 		mc.pred = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
 		mc.subpred = make([]int32, 4)
 		mc.weight = make([]int32, 4)
+	} else {
+		wpParams = nil
 	}
 
-	var err error
 	for y0 := uint32(0); y0 < mc.size.Height; y0++ {
 		y := int32(y0)
 		refinedTree := tree.compactifyWithY(channelIndex, streamIndex, int32(y))
+		var err error
 		for x0 := uint32(0); x0 < mc.size.Width; x0++ {
 			x := int32(x0)
 			var maxError int32
