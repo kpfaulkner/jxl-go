@@ -37,13 +37,13 @@ func TestExtraChannelInfo(t *testing.T) {
 					ExpBits:          0,
 				},
 				DimShift:        0,
-				name:            "",
+				Name:            "",
 				AlphaAssociated: false,
-				red:             0,
-				green:           0,
-				blue:            0,
-				solidity:        0,
-				cfaIndex:        1,
+				Red:             0,
+				Green:           0,
+				Blue:            0,
+				Solidity:        0,
+				CfaIndex:        1,
 			},
 		},
 	} {
@@ -85,8 +85,8 @@ func TestExtraChannelInfo(t *testing.T) {
 				t.Errorf("expected EcType %+v, got %+v", tc.expectedResult.EcType, eci.EcType)
 			}
 
-			if !tc.expectErr && eci.cfaIndex != tc.expectedResult.cfaIndex {
-				t.Errorf("expected cfaIndex %+v, got %+v", tc.expectedResult.cfaIndex, eci.cfaIndex)
+			if !tc.expectErr && eci.CfaIndex != tc.expectedResult.CfaIndex {
+				t.Errorf("expected CfaIndex %+v, got %+v", tc.expectedResult.CfaIndex, eci.CfaIndex)
 			}
 
 		})

@@ -252,7 +252,6 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	}
 	f.decoded = true
 
-	//f.buffers = make([][]uint8, len(f.tocLengths))
 	f.bitreaders = make([]*jxlio.Bitreader, len(f.tocLengths))
 	if len(f.tocLengths) != 1 {
 		for i := 0; i < len(f.tocLengths); i++ {

@@ -8,8 +8,8 @@ import (
 )
 
 type Extensions struct {
-	ExtensionsKey uint64
 	Payloads      [64][]byte
+	ExtensionsKey uint64
 }
 
 func NewExtensions() *Extensions {

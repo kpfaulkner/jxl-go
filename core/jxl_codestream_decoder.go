@@ -24,16 +24,17 @@ type BoxInfo struct {
 // JXLCodestreamDecoder decodes the JXL image
 type JXLCodestreamDecoder struct {
 	// bit reader... the actual thing that will read the bits/U16/U32/U64 etc.
-	bitReader *jxlio.Bitreader
 
-	foundSignature bool
-	boxHeaders     []ContainerBoxHeader
-	level          int
-	imageHeader    *bundle.ImageHeader
+	reference   [][]image2.ImageBuffer
+	lfBuffer    [][]image2.ImageBuffer
+	canvas      []image2.ImageBuffer
+	boxHeaders  []ContainerBoxHeader
+	bitReader   *jxlio.Bitreader
+	imageHeader *bundle.ImageHeader
+
 	options        options.JXLOptions
-	reference      [][]image2.ImageBuffer
-	lfBuffer       [][]image2.ImageBuffer
-	canvas         []image2.ImageBuffer
+	level          int
+	foundSignature bool
 }
 
 func NewJXLCodestreamDecoder(br *jxlio.Bitreader, opts *options.JXLOptions) *JXLCodestreamDecoder {
@@ -239,7 +240,6 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				panic("VARDCT not implemented yet")
 			}
 
-			//if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
 			if jxl.canvas[0].Height == 0 && jxl.canvas[0].Width == 0 {
 				for c := 0; c < len(jxl.canvas); c++ {
 					canvas, err := image2.NewImageBuffer(imgFrame.Buffer[0].BufferType, int32(size.Height), int32(size.Width))

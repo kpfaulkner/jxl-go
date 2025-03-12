@@ -23,7 +23,8 @@ func main() {
 	//file := `../testdata/alpha-triangles.jxl`
 	//file := `../testdata/unittest.jxl`
 
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
 
 	f, err := os.ReadFile(file)
 	if err != nil {
@@ -33,7 +34,7 @@ func main() {
 
 	start := time.Now()
 	var img image.Image
-	for count := 0; count < 100; count++ {
+	for count := 0; count < 1; count++ {
 		r := bytes.NewReader(f)
 		jxl := core.NewJXLDecoder(r, nil)
 		start := time.Now()

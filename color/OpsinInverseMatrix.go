@@ -21,10 +21,10 @@ type OpsinInverseMatrix struct {
 	Matrix             [][]float32
 	OpsinBias          []float32
 	QuantBias          []float32
-	QuantBiasNumerator float32
+	CbrtOpsinBias      []float32
 	Primaries          CIEPrimaries
 	WhitePoint         CIEXY
-	CbrtOpsinBias      []float32
+	QuantBiasNumerator float32
 }
 
 func NewOpsinInverseMatrix() *OpsinInverseMatrix {

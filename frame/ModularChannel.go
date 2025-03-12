@@ -14,8 +14,6 @@ var (
 )
 
 type ModularChannel struct {
-	//Width   int32
-	//Height  int32
 	hshift  int32
 	vshift  int32
 	origin  util.Point
@@ -68,7 +66,6 @@ func (mc *ModularChannel) allocate() {
 	}
 
 	if mc.size.Height == 0 || mc.size.Width == 0 {
-		//mc.buffer = make([][]int32, 0)
 		mc.buffer = util.MakeMatrix2D[int32](0, 0)
 	} else {
 		mc.buffer = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
@@ -130,8 +127,8 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	nn3 := mc.northNorth(x, y) << 3
 	tN := mc.errorNorth(x, y, 4)
 	tW := mc.errorWest(x, y, 4)
-	tNE := mc.errorNorthEast(x, y, 4, tN)
-	tNW := mc.errorNorthWest(x, y, 4, tN)
+	tNE := mc.errorNorthEast(x, y, 4)
+	tNW := mc.errorNorthWest(x, y, 4)
 	mc.subpred[0] = w3 + ne3 - n3
 	mc.subpred[1] = n3 - ((tW+tN+tNE)*(int32(wpParams.param1)))>>5
 	mc.subpred[2] = w3 - ((tW+tN+tNW)*(int32(wpParams.param2)))>>5
@@ -143,26 +140,15 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 
 	wSum := int32(0)
 	for e := int32(0); e < 4; e++ {
-		en := mc.errorNorth(x, y, e)
-		ew := mc.errorWest(x, y, e)
-		enw := mc.errorNorthWest(x, y, e, en)
-		eww := mc.errorWestWest(x, y, e)
-		ene := mc.errorNorthEast(x, y, e, en)
-		eSum := en + ew + enw + eww + ene
+		eSum := mc.errorNorth(x, y, e) + mc.errorWest(x, y, e) + mc.errorNorthWest(x, y, e) + mc.errorWestWest(x, y, e) + mc.errorNorthEast(x, y, e)
 		if x+1 == int32(mc.size.Width) {
 			eSum += mc.errorWest(x, y, e)
 		}
-		//shift := util.FloorLog1p(int64(eSum)) - 5
 		shift := util.FloorLog1pUint64(uint64(eSum)) - 5
 		if shift < 0 {
 			shift = 0
 		}
-		a := wpParams.weight[e]
-		b := eSum >> shift
-		c := oneL24OverKP1[b]
-		d := a * c
-		ee := int32(4 + d>>shift)
-		mc.weight[e] = ee
+		mc.weight[e] = int32(4 + (wpParams.weight[e]*oneL24OverKP1[eSum>>shift])>>shift)
 		wSum += mc.weight[e]
 	}
 	logWeight := util.FloorLog1p(int64(wSum)-1) - 4
@@ -326,20 +312,20 @@ func (mc *ModularChannel) errorNorthWestOrig(x int32, y int32, e int32) int32 {
 	return mc.errorNorth(x, y, e)
 }
 
-func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32, errorNorth int32) int32 {
+func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 	if x > 0 && y > 0 {
 		return mc.err[e][y-1][x-1]
 	}
-	return errorNorth
+	return mc.errorNorth(x, y, e)
 }
 
-func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32, errNorth int32) int32 {
+func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
 	if x+1 < int32(mc.size.Width) && y > 0 {
 
 		return mc.err[e][y-1][x+1]
 	}
 
-	return errNorth
+	return mc.errorNorth(x, y, e)
 }
 
 func (mc *ModularChannel) errorNorthEastOrig(x int32, y int32, e int32) int32 {

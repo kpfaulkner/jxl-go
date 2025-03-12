@@ -9,8 +9,8 @@ import (
 type ToneMapping struct {
 	IntensityTarget      float32
 	MinNits              float32
-	RelativeToMaxDisplay bool
 	LinearBelow          float32
+	RelativeToMaxDisplay bool
 }
 
 func NewToneMapping() *ToneMapping {

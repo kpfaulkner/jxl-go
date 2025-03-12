@@ -20,21 +20,21 @@ const (
 
 // JXLImage contains the core information about the JXL image.
 type JXLImage struct {
-	Width                uint32
-	Height               uint32
 	Buffer               []image2.ImageBuffer
-	ColorEncoding        int32
-	alphaIndex           int32
-	imageHeader          bundle.ImageHeader
-	primaries            int32
-	whitePoint           int32
+	iccProfile           []byte
+	bitDepths            []uint32
 	primariesXY          *color.CIEPrimaries
 	whiteXY              *color.CIEXY
+	imageHeader          bundle.ImageHeader
+	Width                uint32
+	Height               uint32
+	ColorEncoding        int32
+	alphaIndex           int32
+	primaries            int32
+	whitePoint           int32
 	transfer             int32
-	iccProfile           []byte
 	taggedTransfer       int32
 	alphaIsPremultiplied bool
-	bitDepths            []uint32
 }
 
 // NewJXLImageWithBuffer creates a new JXLImage with the given buffer and header.

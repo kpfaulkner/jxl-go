@@ -3,9 +3,9 @@ package bundle
 import "github.com/kpfaulkner/jxl-go/jxlio"
 
 type BitDepthHeader struct {
-	UsesFloatSamples bool
 	BitsPerSample    uint32
 	ExpBits          uint32
+	UsesFloatSamples bool
 }
 
 func NewBitDepthHeader() *BitDepthHeader {

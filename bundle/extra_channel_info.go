@@ -7,13 +7,13 @@ import (
 )
 
 type ExtraChannelInfo struct {
+	Name                       string
 	EcType                     int32
-	BitDepth                   BitDepthHeader
+	CfaIndex                   int32
 	DimShift                   int32
-	name                       string
+	Red, Green, Blue, Solidity float32
+	BitDepth                   BitDepthHeader
 	AlphaAssociated            bool
-	red, green, blue, solidity float32
-	cfaIndex                   int32
 }
 
 func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, error) {
@@ -55,7 +55,7 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 				nameBuffer[i] = byte(nb)
 			}
 		}
-		eci.name = string(nameBuffer)
+		eci.Name = string(nameBuffer)
 
 		if eci.EcType == ALPHA {
 			var alphaBool bool
@@ -69,39 +69,39 @@ func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, 
 		eci.EcType = ALPHA
 		eci.BitDepth = *NewBitDepthHeader()
 		eci.DimShift = 0
-		eci.name = ""
+		eci.Name = ""
 		eci.AlphaAssociated = false
 	}
 
 	if eci.EcType == SPOT_COLOR {
 		var err error
-		if eci.red, err = reader.ReadF16(); err != nil {
+		if eci.Red, err = reader.ReadF16(); err != nil {
 			return nil, err
 		}
-		if eci.green, err = reader.ReadF16(); err != nil {
+		if eci.Green, err = reader.ReadF16(); err != nil {
 			return nil, err
 		}
-		if eci.blue, err = reader.ReadF16(); err != nil {
+		if eci.Blue, err = reader.ReadF16(); err != nil {
 			return nil, err
 		}
-		if eci.solidity, err = reader.ReadF16(); err != nil {
+		if eci.Solidity, err = reader.ReadF16(); err != nil {
 			return nil, err
 		}
 	} else {
-		eci.red = 0
-		eci.green = 0
-		eci.blue = 0
-		eci.solidity = 0
+		eci.Red = 0
+		eci.Green = 0
+		eci.Blue = 0
+		eci.Solidity = 0
 	}
 
 	if eci.EcType == COLOR_FILTER_ARRAY {
 		if cfaIndex, err := reader.ReadU32(1, 0, 0, 2, 3, 4, 19, 8); err != nil {
 			return nil, err
 		} else {
-			eci.cfaIndex = int32(cfaIndex)
+			eci.CfaIndex = int32(cfaIndex)
 		}
 	} else {
-		eci.cfaIndex = 1
+		eci.CfaIndex = 1
 	}
 	return eci, nil
 }

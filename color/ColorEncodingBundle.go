@@ -7,14 +7,14 @@ import (
 )
 
 type ColorEncodingBundle struct {
-	UseIccProfile   bool
+	Prim            *CIEPrimaries
+	White           *CIEXY
 	ColorEncoding   int32
 	WhitePoint      int32
-	White           *CIEXY
 	Primaries       int32
-	Prim            *CIEPrimaries
 	Tf              int32
 	RenderingIntent int32
+	UseIccProfile   bool
 }
 
 func NewColorEncodingBundle() (*ColorEncodingBundle, error) {

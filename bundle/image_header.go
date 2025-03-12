@@ -80,34 +80,31 @@ var (
 )
 
 type ImageHeader struct {
-	Level           int32
-	Size            util.Dimension
-	Orientation     uint32
-	intrinsicSize   util.Dimension
-	PreviewSize     *util.Dimension
-	AnimationHeader *AnimationHeader
-	BitDepth        *BitDepthHeader
-
-	OrientedWidth       uint32
-	OrientedHeight      uint32
-	Modular16BitBuffers bool
-
-	ExtraChannelInfo []ExtraChannelInfo
-	XybEncoded       bool
-	ColorEncoding    *color.ColorEncodingBundle
 	AlphaIndices     []int32
+	Up2Weights       []float32
+	Up4Weights       []float32
+	Up8Weights       []float32
+	UpWeights        [][][][][]float32
+	ExtraChannelInfo []ExtraChannelInfo
+	EncodedICC       []byte
 
+	AnimationHeader    *AnimationHeader
+	PreviewSize        *util.Dimension
+	BitDepth           *BitDepthHeader
+	ColorEncoding      *color.ColorEncodingBundle
 	ToneMapping        *color.ToneMapping
 	Extensions         *Extensions
 	OpsinInverseMatrix *color.OpsinInverseMatrix
 
-	Up2Weights []float32
-	Up4Weights []float32
-	Up8Weights []float32
+	Level          int32
+	Orientation    uint32
+	OrientedWidth  uint32
+	OrientedHeight uint32
+	Size           util.Dimension
+	intrinsicSize  util.Dimension
 
-	UpWeights [][][][][]float32
-
-	EncodedICC []byte
+	XybEncoded          bool
+	Modular16BitBuffers bool
 }
 
 func NewImageHeader() *ImageHeader {
