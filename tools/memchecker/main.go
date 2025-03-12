@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/kpfaulkner/jxl-go/core"
 	"github.com/kpfaulkner/jxl-go/entropy"
 )
 
@@ -17,6 +16,8 @@ func memStats(input any) {
 
 	currentMaxAlignment := 1000000
 
+	totalBytes := 0
+	idealCurrentOffset := 0
 	//rValue := reflect.ValueOf(bitDepthHeader)
 	if rType.Kind() == reflect.Struct {
 		for i := 0; i < rType.NumField(); i++ {
@@ -26,21 +27,29 @@ func memStats(input any) {
 			fmt.Printf("    Size of      : %d bytes\n", rType.FieldByIndex([]int{i}).Type.Size())
 			fmt.Printf("    Alignment of : %d bytes", rType.FieldByIndex([]int{i}).Type.Align())
 
+			if idealCurrentOffset != int(rType.FieldByIndex([]int{i}).Offset) {
+				fmt.Printf("XXXX not ideal offset, %d vs %d\n", idealCurrentOffset, int(rType.FieldByIndex([]int{i}).Offset))
+			}
+
 			if rType.FieldByIndex([]int{i}).Type.Align() > currentMaxAlignment {
 				fmt.Printf("  ***check\n")
 			} else {
 				fmt.Printf("\n")
 			}
+			idealCurrentOffset += int(rType.FieldByIndex([]int{i}).Type.Size())
 			currentMaxAlignment = rType.FieldByIndex([]int{i}).Type.Align()
-			fmt.Println()
+			totalBytes += int(rType.FieldByIndex([]int{i}).Type.Size())
 
+			fmt.Println()
 		}
 	}
+
+	fmt.Printf("Total size calculated from field %d\n", totalBytes)
 }
 
 func main() {
-	memStats(core.JXLImage{})
+	//memStats(core.JXLImage{})
 
-	memStats(entropy.ANSState{})
+	memStats(entropy.EntropyStream{})
 
 }

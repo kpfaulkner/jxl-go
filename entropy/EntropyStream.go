@@ -23,18 +23,19 @@ var (
 )
 
 type EntropyStream struct {
-	usesLZ77        bool
+	window         []int32
+	clusterMap     []int
+	dists          []SymbolDistribution
+	lzLengthConfig *HybridIntegerConfig
+	ansState       *ANSState
+
+	logAlphabetSize int32
 	lz77MinSymbol   int32
 	lz77MinLength   int32
-	lzLengthConfig  *HybridIntegerConfig
-	window          []int32
-	clusterMap      []int
-	dists           []SymbolDistribution
-	logAlphabetSize int32
 	numToCopy77     int32
 	copyPos77       int32
 	numDecoded77    int32
-	ansState        *ANSState
+	usesLZ77        bool
 }
 
 func NewEntropyStreamWithReaderAndNumDists(reader *jxlio.Bitreader, numDists int) (*EntropyStream, error) {
