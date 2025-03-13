@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/kpfaulkner/jxl-go/entropy"
+	"github.com/kpfaulkner/jxl-go/frame"
 )
 
 // displays sizes of main structs to determine any padding wasteage
@@ -23,6 +23,7 @@ func memStats(input any) {
 		for i := 0; i < rType.NumField(); i++ {
 
 			fmt.Printf("  Name %s\n", rType.FieldByIndex([]int{i}).Name)
+			fmt.Printf("    Current ttl  : %d\n", totalBytes)
 			fmt.Printf("    Offset of    : %d bytes\n", rType.FieldByIndex([]int{i}).Offset)
 			fmt.Printf("    Size of      : %d bytes\n", rType.FieldByIndex([]int{i}).Type.Size())
 			fmt.Printf("    Alignment of : %d bytes", rType.FieldByIndex([]int{i}).Type.Align())
@@ -36,6 +37,7 @@ func memStats(input any) {
 			} else {
 				fmt.Printf("\n")
 			}
+
 			idealCurrentOffset += int(rType.FieldByIndex([]int{i}).Type.Size())
 			currentMaxAlignment = rType.FieldByIndex([]int{i}).Type.Align()
 			totalBytes += int(rType.FieldByIndex([]int{i}).Type.Size())
@@ -50,6 +52,12 @@ func memStats(input any) {
 func main() {
 	//memStats(core.JXLImage{})
 
-	memStats(entropy.EntropyStream{})
+	//memStats(entropy.EntropyStream{})
+	//memStats(color.OpsinInverseMatrix{})
 
+	//memStats(entropy.ANSSymbolDistribution{})
+
+	//memStats(frame.Pass{})
+	//memStats(frame.PassesInfo{})
+	memStats(frame.FrameHeader{})
 }

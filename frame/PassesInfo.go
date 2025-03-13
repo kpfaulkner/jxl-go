@@ -3,11 +3,11 @@ package frame
 import "github.com/kpfaulkner/jxl-go/jxlio"
 
 type PassesInfo struct {
-	numPasses  uint32
-	numDS      uint32
 	shift      []uint32
 	downSample []uint32
 	lastPass   []uint32
+	numPasses  uint32
+	numDS      uint32
 }
 
 func NewPassesInfo() *PassesInfo {

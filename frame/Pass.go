@@ -6,10 +6,10 @@ import (
 )
 
 type Pass struct {
-	minShift         uint32
-	maxShift         uint32
 	replacedChannels []*ModularChannel
 	hfPass           *HFPass
+	minShift         uint32
+	maxShift         uint32
 }
 
 func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, prevMinShift uint32) (Pass, error) {

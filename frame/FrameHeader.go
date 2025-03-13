@@ -29,40 +29,37 @@ const (
 )
 
 type FrameHeader struct {
-	FrameType  uint32
-	Width      uint32
-	Height     uint32
-	Upsampling uint32
-	LfLevel    uint32
-	groupDim   uint32
-	passes     *PassesInfo
-	Encoding   uint32
-	Flags      uint64
-	DoYCbCr    bool
-	//jpegUpsampling  []util.IntPoint
-	jpegUpsamplingX []int32
-	jpegUpsamplingY []int32
-
-	EcUpsampling   []uint32
-	groupSizeShift uint32
-	lfGroupDim     uint32
-	logGroupDim    uint32
-	logLFGroupDIM  uint32
-	xqmScale       uint32
-	bqmScale       uint32
-	haveCrop       bool
-	//Origin            util.IntPoint
+	jpegUpsamplingX   []int32
+	jpegUpsamplingY   []int32
+	EcUpsampling      []uint32
 	EcBlendingInfo    []BlendingInfo
+	name              string
+	Bounds            util.Rectangle
+	restorationFilter *RestorationFilter
+	extensions        *bundle.Extensions
+	passes            *PassesInfo
 	BlendingInfo      *BlendingInfo
-	IsLast            bool
+	Flags             uint64
+	FrameType         uint32
+	Width             uint32
+	Height            uint32
+	Upsampling        uint32
+	LfLevel           uint32
+	groupDim          uint32
+	Encoding          uint32
+	groupSizeShift    uint32
+	lfGroupDim        uint32
+	logGroupDim       uint32
+	logLFGroupDIM     uint32
+	xqmScale          uint32
+	bqmScale          uint32
 	Duration          uint32
 	timecode          uint32
 	SaveAsReference   uint32
 	SaveBeforeCT      bool
-	name              string
-	restorationFilter *RestorationFilter
-	extensions        *bundle.Extensions
-	Bounds            util.Rectangle
+	DoYCbCr           bool
+	haveCrop          bool
+	IsLast            bool
 }
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeader) (*FrameHeader, error) {
