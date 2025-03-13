@@ -39,32 +39,31 @@ type Inp struct {
 }
 
 type Frame struct {
-	globalMetadata   *bundle.ImageHeader
-	options          *options.JXLOptions
-	reader           *jxlio.Bitreader
-	Header           *FrameHeader
-	width            uint32
-	height           uint32
-	bounds           util.Rectangle
+	tocPermutation []uint32
+	tocLengths     []uint32
+	lfGroups       []*LFGroup
+	buffers        [][]uint8
+	Buffer         []image.ImageBuffer
+	passes         []Pass
+	bitreaders     []*jxlio.Bitreader
+	bounds         util.Rectangle
+	globalMetadata *bundle.ImageHeader
+	options        *options.JXLOptions
+	reader         *jxlio.Bitreader
+	Header         *FrameHeader
+	globalTree     *MATree
+	hfGlobal       *HFGlobal
+	LfGlobal       *LFGlobal
+	width          uint32
+	height         uint32
+
 	groupRowStride   uint32
 	lfGroupRowStride uint32
 	numGroups        uint32
 	numLFGroups      uint32
 	permutatedTOC    bool
-	tocPermutation   []uint32
-	tocLengths       []uint32
 
-	lfGroups []*LFGroup
-	buffers  [][]uint8
-	decoded  bool
-	LfGlobal *LFGlobal
-
-	// for final image? channel/y/x ?
-	Buffer     []image.ImageBuffer
-	globalTree *MATree
-	hfGlobal   *HFGlobal
-	passes     []Pass
-	bitreaders []*jxlio.Bitreader
+	decoded bool
 }
 
 func (f *Frame) ReadFrameHeader() (FrameHeader, error) {

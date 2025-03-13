@@ -29,7 +29,7 @@ func memStats(input any) {
 			fmt.Printf("    Alignment of : %d bytes", rType.FieldByIndex([]int{i}).Type.Align())
 
 			if idealCurrentOffset != int(rType.FieldByIndex([]int{i}).Offset) {
-				fmt.Printf("XXXX not ideal offset, %d vs %d\n", idealCurrentOffset, int(rType.FieldByIndex([]int{i}).Offset))
+				fmt.Printf(" XXXX not ideal offset, %d vs %d\n", idealCurrentOffset, int(rType.FieldByIndex([]int{i}).Offset))
 			}
 
 			if rType.FieldByIndex([]int{i}).Type.Align() > currentMaxAlignment {
@@ -59,5 +59,8 @@ func main() {
 
 	//memStats(frame.Pass{})
 	//memStats(frame.PassesInfo{})
-	memStats(frame.FrameHeader{})
+	//memStats(frame.FrameHeader{})
+	//memStats(frame.MATree{})
+	//memStats(jxlio.Bitreader{})
+	memStats(frame.Frame{})
 }

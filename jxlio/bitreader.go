@@ -9,13 +9,13 @@ import (
 )
 
 type Bitreader struct {
+	buffer []byte
 	// stream/reader we're using most of the time
 	stream      io.ReadSeeker
-	buffer      []byte
+	bitsRead    uint64
+	tempIndex   int
 	index       uint8
 	currentByte uint8
-	tempIndex   int
-	bitsRead    uint64
 }
 
 func NewBitreaderWithIndex(in io.ReadSeeker, index int) *Bitreader {
