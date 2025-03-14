@@ -10,7 +10,6 @@ import (
 	"time"
 	//"github.com/pkg/profile"
 	"github.com/kpfaulkner/jxl-go/core"
-	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +23,7 @@ func main() {
 	//file := `../testdata/unittest.jxl`
 
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
-	defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+	//defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.ProfilePath(".")).Stop()
 
 	f, err := os.ReadFile(file)
@@ -35,7 +34,7 @@ func main() {
 
 	start := time.Now()
 	var img image.Image
-	for count := 0; count < 1; count++ {
+	for count := 0; count < 100; count++ {
 		r := bytes.NewReader(f)
 		jxl := core.NewJXLDecoder(r, nil)
 		start := time.Now()
