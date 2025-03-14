@@ -496,8 +496,9 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 			channel.allocate()
 			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
 			newChannel := newChannelInfo.buffer
-			for y := 0; y < len(newChannel); y++ {
-				copy(channel.buffer[int32(y)+newChannelInfo.origin.Y], newChannel[y])
+			for y := int32(0); y < newChannel.Height; y++ {
+				//copy(channel.buffer[int32(y)+newChannelInfo.origin.Y], newChannel[y])
+				channel.buffer.SetRow(int32(y)+newChannelInfo.origin.Y, newChannel.GetRow(y))
 			}
 		}
 	}
@@ -611,9 +612,16 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			for group := 0; group < int(f.numGroups); group++ {
 				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
 				buff := newChannelInfo.buffer
-				for y := 0; y < len(buff); y++ {
-					idx := y + int(newChannelInfo.origin.Y)
-					copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+				for y := int32(0); y < buff.Height; y++ {
+					idx := y + newChannelInfo.origin.Y
+					//copy(channel.buffer[idx][newChannelInfo.origin.X:], buff[y][:len(buff[y])])
+
+					// FIXME(kpfaulkner) check this.
+					// slower... but no helper functions atm
+					data := channel.buffer.GetRow(idx)
+					newData := buff.GetRow(y)
+					copy(data[newChannelInfo.origin.X:], newData[:len(newData)])
+					channel.buffer.SetRow(idx, data)
 				}
 			}
 			j++
