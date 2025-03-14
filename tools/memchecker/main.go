@@ -62,5 +62,7 @@ func main() {
 	//memStats(frame.FrameHeader{})
 	//memStats(frame.MATree{})
 	//memStats(jxlio.Bitreader{})
-	memStats(frame.Frame{})
+	//memStats(frame.Frame{})
+	//memStats(frame.PassGroup{})
+	memStats(frame.Quantizer{})
 }

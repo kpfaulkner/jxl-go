@@ -25,6 +25,7 @@ func main() {
 
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
+	//defer profile.Start(profile.MemProfileAllocs, profile.ProfilePath(".")).Stop()
 
 	f, err := os.ReadFile(file)
 	if err != nil {
