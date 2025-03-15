@@ -104,7 +104,7 @@ func NewPassGroupWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, 
 	return pg, nil
 }
 
-func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) error {
+func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *PassGroup) error {
 
 	header := g.frame.Header
 	if prev != nil {

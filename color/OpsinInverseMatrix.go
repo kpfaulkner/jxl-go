@@ -114,22 +114,22 @@ func (oim *OpsinInverseMatrix) GetMatrix(prim *CIEPrimaries, white *CIEXY) (*Ops
 	return NewOpsinInverseMatrixAllParams(*prim, *white, matrix, oim.OpsinBias, oim.QuantBias, oim.QuantBiasNumerator), nil
 }
 
-func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget float32) error {
+func (oim *OpsinInverseMatrix) InvertXYB(buffer []*util.Matrix[float32], intensityTarget float32) error {
 
 	if len(buffer) < 3 {
 		return errors.New("Can only XYB on 3 channels")
 	}
 	itScale := 255.0 / intensityTarget
-	for y := 0; y < len(buffer[0]); y++ {
-		for x := 0; x < len(buffer[0][y]); x++ {
-			gammaL := buffer[1][y][x] + buffer[0][y][x] - oim.CbrtOpsinBias[0]
-			gammaM := buffer[1][y][x] - buffer[0][y][x] - oim.CbrtOpsinBias[1]
-			gammaS := buffer[2][y][x] - oim.CbrtOpsinBias[2]
+	for y := int32(0); y < buffer[0].Height; y++ {
+		for x := int32(0); x < buffer[0].Width; x++ {
+			gammaL := buffer[1].Get(y, x) + buffer[0].Get(y, x) - oim.CbrtOpsinBias[0]
+			gammaM := buffer[1].Get(y, x) - buffer[0].Get(y, x) - oim.CbrtOpsinBias[1]
+			gammaS := buffer[2].Get(y, x) - oim.CbrtOpsinBias[2]
 			mixL := gammaL*gammaL*gammaL + oim.OpsinBias[0]
 			mixM := gammaM*gammaM*gammaM + oim.OpsinBias[1]
 			mixS := gammaS*gammaS*gammaS + oim.OpsinBias[2]
 			for c := 0; c < 3; c++ {
-				buffer[c][y][x] = (mixL*oim.Matrix[c][0] + mixM*oim.Matrix[c][1] + mixS*oim.Matrix[c][2]) * itScale
+				buffer[c].Set(y, x, (mixL*oim.Matrix[c][0]+mixM*oim.Matrix[c][1]+mixS*oim.Matrix[c][2])*itScale)
 			}
 		}
 	}

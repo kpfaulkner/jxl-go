@@ -365,23 +365,27 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 
 		if isModularXYB && cIn == 2 {
 			outBuffer := f.Buffer[cOut].FloatBuffer
-			for y := uint32(0); y < f.bounds.Size.Height; y++ {
-				for x := uint32(0); x < f.bounds.Size.Width; x++ {
-					outBuffer[y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
+			for y := int32(0); y < int32(f.bounds.Size.Height); y++ {
+				for x := int32(0); x < int32(f.bounds.Size.Width); x++ {
+					outBuffer.Set(y, x, scaleFactor*float32(modularBuffer[0][y][x]+modularBuffer[2][y][x]))
 				}
 			}
 		} else if f.Buffer[cOut].IsFloat() {
 
 			outBuffer := f.Buffer[cOut].FloatBuffer
-			for y := uint32(0); y < f.bounds.Size.Height; y++ {
-				for x := uint32(0); x < f.bounds.Size.Width; x++ {
-					outBuffer[y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
+			for y := int32(0); y < int32(f.bounds.Size.Height); y++ {
+				for x := int32(0); x < int32(f.bounds.Size.Width); x++ {
+					outBuffer.Set(y, x, scaleFactor*float32(modularBuffer[cIn][y][x]))
 				}
 			}
 		} else {
 			outBuffer := f.Buffer[cOut].IntBuffer
-			for y := uint32(0); y < f.bounds.Size.Height; y++ {
-				copy(outBuffer[y], modularBuffer[cIn][y])
+			for y := int32(0); y < int32(f.bounds.Size.Height); y++ {
+
+				//copy(outBuffer[y], modularBuffer[cIn][y])
+				dest := outBuffer.GetRow(y)
+				src := modularBuffer[cIn][y]
+				copy(dest, src)
 			}
 		}
 	}
@@ -631,7 +635,12 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	if f.Header.Encoding == VARDCT {
 
 		// get floating point version of frame buffer
-		buffers := util.MakeMatrix3D[float32](3, 0, 0)
+		//buffers := util.MakeMatrix3D[float32](3, 0, 0)
+		buffers := make([]*util.Matrix[float32], 3)
+		for i := 0; i < 3; i++ {
+			buffers[i] = util.New2DMatrix[float32](0, 0)
+		}
+
 		for c := 0; c < 3; c++ {
 			f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
 			buffers[c] = f.Buffer[c].FloatBuffer
@@ -704,8 +713,8 @@ func (f *Frame) invertSubsampling() error {
 				return err
 			}
 			newChannel := newBuffer.FloatBuffer
-			for y := 0; y < len(oldChannel); y++ {
-				oldRow := oldChannel[y]
+			for y := int32(0); y < oldChannel.Height; y++ {
+				oldRow := oldChannel.GetRow(y)
 				newRow := make([]float32, len(oldRow)*2)
 				for x := 0; x < len(oldRow); x++ {
 					b75 := 0.075 * oldRow[x]
@@ -720,7 +729,7 @@ func (f *Frame) invertSubsampling() error {
 					}
 					newRow[2*x+1] = b75 + 0.25*oldRow[xx]
 				}
-				newChannel[y] = newRow
+				newChannel.SetRow(y, newRow)
 			}
 			f.Buffer[c] = *newBuffer
 		}
@@ -735,18 +744,18 @@ func (f *Frame) invertSubsampling() error {
 				return err
 			}
 			newChannel := newBuffer.FloatBuffer
-			for y := 0; y < len(oldChannel); y++ {
-				oldRow := oldChannel[y]
-				xx := 0
+			for y := int32(0); y < oldChannel.Height; y++ {
+				oldRow := oldChannel.GetRow(y)
+				yy := int32(0)
 				if y == 0 {
-					xx = y - 1
+					yy = y - 1
 				}
-				oldRowPrev := oldChannel[xx]
-				xx = len(oldChannel) - 1
-				if y+1 == len(oldChannel) {
-					xx = y + 1
+				oldRowPrev := oldChannel.GetRow(yy)
+				yy = oldChannel.Height - 1
+				if y+1 == oldChannel.Height {
+					yy = y + 1
 				}
-				oldRowNext := oldChannel[xx]
+				oldRowNext := oldChannel.GetRow(yy)
 				firstNewRow := make([]float32, len(oldRow))
 				secondNewRow := make([]float32, len(oldRow))
 				for x := 0; x < len(oldRow); x++ {
@@ -754,8 +763,8 @@ func (f *Frame) invertSubsampling() error {
 					firstNewRow[x] = b75 + 0.25*oldRowPrev[x]
 					secondNewRow[x] = b75 + 0.25*oldRowNext[x]
 				}
-				newChannel[2*y] = firstNewRow
-				newChannel[2*y+1] = secondNewRow
+				newChannel.SetRow(2*y, firstNewRow)
+				newChannel.SetRow(2*y+1, secondNewRow)
 			}
 			f.Buffer[c] = *newBuffer
 		}
@@ -803,10 +812,10 @@ func (f *Frame) performGabConvolution() error {
 				south = y + 1
 			}
 
-			buffR := buffC[y]
-			buffN := buffC[north]
-			buffS := buffC[south]
-			newBuffR := newBufferF[y]
+			buffR := buffC.GetRow(y)
+			buffN := buffC.GetRow(north)
+			buffS := buffC.GetRow(south)
+			newBuffR := newBufferF.GetRow(y)
 
 			for x := int32(0); x < width; x++ {
 				var west int32
@@ -913,7 +922,7 @@ func (f *Frame) performEdgePreservingFilter() error {
 				s := inverseSigma[y>>3][x>>3]
 				if s > (1.0 / 0.3) {
 					for c := 0; c < len(outputBuffers); c++ {
-						outputBuffers[c][y][x] = inputBuffers[c][y][x]
+						outputBuffers[c].Set(y, x, inputBuffers[c].Get(y, x))
 					}
 					continue
 				}
@@ -933,11 +942,11 @@ func (f *Frame) performEdgePreservingFilter() error {
 					mY := util.MirrorCoordinate(y+cross.Y, int32(paddedSize.Height))
 					mX := util.MirrorCoordinate(x+cross.X, int32(paddedSize.Width))
 					for c := int32(0); c < colours; c++ {
-						sumChannels[c] += inputBuffers[c][mY][mX] * weight
+						sumChannels[c] += inputBuffers[c].Get(mY, mX) * weight
 					}
 				}
 				for c := 0; c < len(outputBuffers); c++ {
-					outputBuffers[c][y][x] = sumChannels[c] / sumWeights
+					outputBuffers[c].Set(y, x, sumChannels[c]/sumWeights)
 				}
 			}
 		}
@@ -968,7 +977,7 @@ func (f *Frame) epfWeight(sigmaScale float32, distance float32, inverseSigma flo
 	return v
 }
 
-func (f *Frame) epfDistance1(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, dCross util.Point, frameSize util.Dimension) float32 {
+func (f *Frame) epfDistance1(buffer []*util.Matrix[float32], colours int32, basePosY int32, basePosX int32, dCross util.Point, frameSize util.Dimension) float32 {
 	dist := float32(0)
 	for c := int32(0); c < colours; c++ {
 		buffC := buffer[c]
@@ -978,29 +987,38 @@ func (f *Frame) epfDistance1(buffer [][][]float32, colours int32, basePosY int32
 			pX := util.MirrorCoordinate(basePosX+cross.X, int32(frameSize.Width))
 			dY := util.MirrorCoordinate(basePosY+dCross.Y+cross.Y, int32(frameSize.Height))
 			dX := util.MirrorCoordinate(basePosX+dCross.X+cross.X, int32(frameSize.Width))
-			dist += float32(math.Abs(float64(buffC[pY][pX]-buffC[dY][dX]))) * scale
+			dist += float32(math.Abs(float64(buffC.Get(pY, pX)-buffC.Get(dY, dX)))) * scale
 		}
 	}
 	return dist
 }
 
-func (f *Frame) epfDistance2(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
+func (f *Frame) epfDistance2(buffer []*util.Matrix[float32], colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
 	dist := float32(0)
 	for c := int32(0); c < colours; c++ {
 		buffC := buffer[c]
 
 		dY := util.MirrorCoordinate(basePosY+cross.Y, int32(frameSize.Height))
 		dX := util.MirrorCoordinate(basePosX+cross.X, int32(frameSize.Width))
-		dist += float32(math.Abs(float64(buffC[basePosY][basePosX]-buffC[dY][dX]))) * f.Header.restorationFilter.epfChannelScale[c]
+		dist += float32(math.Abs(float64(buffC.Get(basePosY, basePosX)-buffC.Get(dY, dX)))) * f.Header.restorationFilter.epfChannelScale[c]
 	}
 	return dist
 }
 
-func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) [][][]float32 {
-	data := util.MakeMatrix3D[float32](int(colours), int(buffer[0].Height), int(buffer[0].Width))
+func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) []*util.Matrix[float32] {
+	//data := util.MakeMatrix3D[float32](int(colours), int(buffer[0].Height), int(buffer[0].Width))
+	data := make([]*util.Matrix[float32], colours)
+	for i := 0; i < int(colours); i++ {
+		data[i] = util.New2DMatrix[float32](buffer[0].Height, buffer[0].Width)
+	}
+
+	//data := util.New2DMatrix[float32]
 	for c := int32(0); c < colours; c++ {
 		for y := int32(0); y < buffer[c].Height; y++ {
-			copy(data[c][y], buffer[c].FloatBuffer[y])
+			dest := data[c].GetRow(y)
+			src := buffer[c].FloatBuffer.GetRow(y)
+			copy(dest, src)
+			//copy(data[c][y], buffer[c].FloatBuffer[y])
 		}
 	}
 	return data
@@ -1075,21 +1093,23 @@ func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuff
 		return nil, err
 	}
 	upWeights := up[l]
-	newBuffer := util.MakeMatrix2D[float32](len(buffer)*int(k), 0)
-	for y := 0; y < len(buffer); y++ {
-		for ky := 0; ky < int(k); ky++ {
-			newBuffer[y*int(k)+ky] = make([]float32, len(buffer[y])*int(k))
-			for x := 0; x < len(buffer[y]); x++ {
-				for kx := 0; kx < int(k); kx++ {
+	//newBuffer := util.MakeMatrix2D[float32](len(buffer)*int(k), 0)
+	newBuffer := util.New2DMatrix[float32](buffer.Height*int32(k), 0)
+	for y := int32(0); y < buffer.Height; y++ {
+		for ky := int32(0); ky < int32(k); ky++ {
+			newRow := make([]float32, buffer.Width*int32(k))
+			newBuffer.SetRow(y*int32(k)+ky, newRow)
+			for x := int32(0); x < buffer.Width; x++ {
+				for kx := int32(0); kx < int32(k); kx++ {
 					weights := upWeights[ky][kx]
 					total := float32(0.0)
 					min := float32(math.MaxFloat32)
 					max := float32(math.SmallestNonzeroFloat32)
 					for iy := 0; iy < 5; iy++ {
 						for ix := 0; ix < 5; ix++ {
-							newY := util.MirrorCoordinate(int32(y)+int32(iy)-2, int32(len(buffer)))
-							newX := util.MirrorCoordinate(int32(x)+int32(ix)-2, int32(len(buffer[newY])))
-							sample := buffer[newY][newX]
+							newY := util.MirrorCoordinate(y+int32(iy)-2, buffer.Height)
+							newX := util.MirrorCoordinate(x+int32(ix)-2, buffer.Width)
+							sample := buffer.Get(newY, newX)
 							if sample < min {
 								min = sample
 							}
@@ -1107,7 +1127,7 @@ func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuff
 					} else {
 						val = total
 					}
-					newBuffer[y*int(k)+ky][x*int(k)+kx] = val
+					newBuffer.Set(y*int32(k)+ky, x*int32(k)+kx, val)
 				}
 			}
 		}
@@ -1203,17 +1223,17 @@ func (f *Frame) getColourChannelCount() int32 {
 func (f *Frame) generateSignaturesForBuffer(idx int) []string {
 	sigs := []string{}
 	var c = f.Buffer[idx]
-	for y := int32(0); y < int32(len(c.FloatBuffer)); y++ {
+	for y := int32(0); y < c.FloatBuffer.Height; y++ {
 		sig := float64(0)
-		xx := c.FloatBuffer[y]
+		xx := c.FloatBuffer.GetRow(y)
 		if y == 288 {
 			var cc float32
 			for x := int32(0); x < int32(len(xx)); x++ {
-				cc += c.FloatBuffer[y][x]
+				cc += c.FloatBuffer.Get(y, x)
 				nanCheck := fmt.Sprintf("%.4f", cc)
 				if nanCheck == "NaN" {
 					fmt.Print("NAN!\n")
-					checkVal := c.FloatBuffer[y][x]
+					checkVal := c.FloatBuffer.Get(y, x)
 					fmt.Printf("Nan check value %f\n", checkVal)
 					//fmt.Printf("range %+v\n", c.FloatBuffer[y][x-10:x+10])
 				}
@@ -1222,7 +1242,7 @@ func (f *Frame) generateSignaturesForBuffer(idx int) []string {
 		}
 
 		for x := int32(0); x < int32(len(xx)); x++ {
-			sig += float64(c.FloatBuffer[y][x])
+			sig += float64(c.FloatBuffer.Get(y, x))
 		}
 		sigs = append(sigs, fmt.Sprintf("%.4f", sig))
 	}

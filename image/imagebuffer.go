@@ -19,8 +19,8 @@ type ImageBuffer struct {
 	// image data can be either float or int based. Keep separate buffers and just
 	// reference each one as required. If conversion will be required then that might get
 	// expensive, but will optimise/revisit later.
-	FloatBuffer [][]float32
-	IntBuffer   [][]int32
+	FloatBuffer *util.Matrix[float32]
+	IntBuffer   *util.Matrix[int32]
 }
 
 func NewImageBuffer(bufferType int, height int32, width int32) (*ImageBuffer, error) {
@@ -46,21 +46,21 @@ func NewImageBuffer(bufferType int, height int32, width int32) (*ImageBuffer, er
 	return ib, nil
 }
 
-func NewImageBufferFromInts(buffer [][]int32) *ImageBuffer {
+func NewImageBufferFromInts(buffer *util.Matrix[int32]) *ImageBuffer {
 	ib := &ImageBuffer{}
 	ib.IntBuffer = buffer
 	ib.BufferType = TYPE_INT
-	ib.Height = int32(len(buffer))
-	ib.Width = int32(len(buffer[0]))
+	ib.Height = buffer.Height
+	ib.Width = buffer.Width
 	return ib
 }
 
-func NewImageBufferFromFloats(buffer [][]float32) *ImageBuffer {
+func NewImageBufferFromFloats(buffer *util.Matrix[float32]) *ImageBuffer {
 	ib := &ImageBuffer{}
 	ib.FloatBuffer = buffer
 	ib.BufferType = TYPE_FLOAT
-	ib.Height = int32(len(buffer))
-	ib.Width = int32(len(buffer[0]))
+	ib.Height = buffer.Height
+	ib.Width = buffer.Width
 	return ib
 }
 

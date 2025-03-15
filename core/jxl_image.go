@@ -80,7 +80,7 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 
 // GetFloatChannelData will return the floating point image data for a channel.
 // The underlying image MAY not have any floating point data (this is all image dependant).
-func (jxl *JXLImage) GetFloatChannelData(c int) ([][]float32, error) {
+func (jxl *JXLImage) GetFloatChannelData(c int) (*util.Matrix[float32], error) {
 	if c < 0 || c >= len(jxl.Buffer) {
 		return nil, fmt.Errorf("Invalid channel index %d", c)
 	}
@@ -88,7 +88,7 @@ func (jxl *JXLImage) GetFloatChannelData(c int) ([][]float32, error) {
 }
 
 // SetFloatChannelData sets the floating point image data for a channel.
-func (jxl *JXLImage) SetFloatChannelData(c int, data [][]float32) error {
+func (jxl *JXLImage) SetFloatChannelData(c int, data *util.Matrix[float32]) error {
 	if c < 0 || c >= len(jxl.Buffer) {
 		return fmt.Errorf("Invalid channel index %d", c)
 	}
@@ -98,7 +98,7 @@ func (jxl *JXLImage) SetFloatChannelData(c int, data [][]float32) error {
 
 // GetIntChannelData will return the integer image data for a channel.
 // The underlying image MAY not have any integer point data (this is all image dependant).
-func (jxl *JXLImage) GetIntChannelData(c int) ([][]int32, error) {
+func (jxl *JXLImage) GetIntChannelData(c int) (*util.Matrix[int32], error) {
 	if c < 0 || c >= len(jxl.Buffer) {
 		return nil, fmt.Errorf("Invalid channel index %d", c)
 	}
@@ -106,7 +106,7 @@ func (jxl *JXLImage) GetIntChannelData(c int) ([][]int32, error) {
 }
 
 // SetIntChannelData sets the integer image data for a channel.
-func (jxl *JXLImage) SetIntChannelData(c int, data [][]int32) error {
+func (jxl *JXLImage) SetIntChannelData(c int, data *util.Matrix[int32]) error {
 	if c < 0 || c >= len(jxl.Buffer) {
 		return fmt.Errorf("Invalid channel index %d", c)
 	}
@@ -154,23 +154,23 @@ func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
 	}
 	img := image.NewGray(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	pix := img.Pix
-	dx := img.Bounds().Dx()
-	dy := img.Bounds().Dy()
+	dx := int32(img.Bounds().Dx())
+	dy := int32(img.Bounds().Dy())
 	pos := 0
 	if buffer[0].IsFloat() {
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
+		for y := int32(0); y < dy; y++ {
+			for x := int32(0); x < dx; x++ {
 
 				// Assumption of 8 bits per channel. Will do for now.
-				pix[pos] = uint8(buffer[channelNo].FloatBuffer[y][x] * 255)
+				pix[pos] = uint8(buffer[channelNo].FloatBuffer.Get(y, x) * 255)
 				pos++
 			}
 		}
 	} else {
 
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
-				pix[pos] = uint8(buffer[channelNo].IntBuffer[y][x])
+		for y := int32(0); y < dy; y++ {
+			for x := int32(0); x < dx; x++ {
+				pix[pos] = uint8(buffer[channelNo].IntBuffer.Get(y, x))
 				pos++
 			}
 		}
@@ -255,25 +255,25 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 func (jxl *JXLImage) createGrayScaleImage(buffer []image2.ImageBuffer) image.Image {
 	img := image.NewGray(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	pix := img.Pix
-	dx := img.Bounds().Dx()
-	dy := img.Bounds().Dy()
+	dx := int32(img.Bounds().Dx())
+	dy := int32(img.Bounds().Dy())
 	pos := 0
 
 	if buffer[0].IsFloat() {
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
+		for y := int32(0); y < dy; y++ {
+			for x := int32(0); x < dx; x++ {
 
 				// assumption of 8 bits per channel but only 1 channel (grayscale)
-				pix[pos] = uint8(buffer[0].FloatBuffer[y][x] * 255)
+				pix[pos] = uint8(buffer[0].FloatBuffer.Get(y, x) * 255)
 				pos++
 
 			}
 		}
 	} else {
 
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
-				pix[pos] = uint8(buffer[0].IntBuffer[y][x])
+		for y := int32(0); y < dy; y++ {
+			for x := int32(0); x < dx; x++ {
+				pix[pos] = uint8(buffer[0].IntBuffer.Get(y, x))
 				pos++
 			}
 		}
@@ -284,20 +284,20 @@ func (jxl *JXLImage) createGrayScaleImage(buffer []image2.ImageBuffer) image.Ima
 func (jxl *JXLImage) create24BitImage(buffer []image2.ImageBuffer) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	pix := img.Pix
-	dx := img.Bounds().Dx()
-	dy := img.Bounds().Dy()
+	dx := int32(img.Bounds().Dx())
+	dy := int32(img.Bounds().Dy())
 	pos := 0
 
 	if buffer[0].IsFloat() {
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
+		for y := int32(0); y < dy; y++ {
+			for x := int32(0); x < dx; x++ {
 
 				// assumption of 8 bits per channel.
-				pix[pos] = uint8(buffer[0].FloatBuffer[y][x] * 255)
+				pix[pos] = uint8(buffer[0].FloatBuffer.Get(y, x) * 255)
 				pos++
-				pix[pos] = uint8(buffer[1].FloatBuffer[y][x] * 255)
+				pix[pos] = uint8(buffer[1].FloatBuffer.Get(y, x) * 255)
 				pos++
-				pix[pos] = uint8(buffer[2].FloatBuffer[y][x] * 255)
+				pix[pos] = uint8(buffer[2].FloatBuffer.Get(y, x) * 255)
 				pos++
 
 				if jxl.imageHeader.HasAlpha() {
@@ -311,17 +311,17 @@ func (jxl *JXLImage) create24BitImage(buffer []image2.ImageBuffer) image.Image {
 		}
 	} else {
 
-		for y := 0; y < dy; y++ {
-			for x := 0; x < dx; x++ {
-				pix[pos] = uint8(buffer[0].IntBuffer[y][x])
+		for y := int32(0); y < dy; y++ {
+			for x := int32(0); x < dx; x++ {
+				pix[pos] = uint8(buffer[0].IntBuffer.Get(y, x))
 				pos++
-				pix[pos] = uint8(buffer[1].IntBuffer[y][x])
+				pix[pos] = uint8(buffer[1].IntBuffer.Get(y, x))
 				pos++
-				pix[pos] = uint8(buffer[2].IntBuffer[y][x])
+				pix[pos] = uint8(buffer[2].IntBuffer.Get(y, x))
 				pos++
 
 				if jxl.imageHeader.HasAlpha() {
-					pix[pos] = uint8(buffer[3].IntBuffer[y][x])
+					pix[pos] = uint8(buffer[3].IntBuffer.Get(y, x))
 					pos++
 				} else {
 					pix[pos] = 255
@@ -380,15 +380,15 @@ func (jxl *JXLImage) getBuffer(makeCopy bool) ([]image2.ImageBuffer, error) {
 		buffer[c] = *buf
 		// very stupid... will optimise later TODO(kpfaulkner)
 		if buffer[c].IsInt() {
-			for y := 0; y < int(jxl.Buffer[c].Height); y++ {
-				for x := 0; x < int(jxl.Buffer[c].Width); x++ {
-					buffer[c].IntBuffer[y][x] = jxl.Buffer[c].IntBuffer[y][x]
+			for y := int32(0); y < jxl.Buffer[c].Height; y++ {
+				for x := int32(0); x < jxl.Buffer[c].Width; x++ {
+					buffer[c].IntBuffer.Set(y, x, jxl.Buffer[c].IntBuffer.Get(y, x))
 				}
 			}
 		} else {
-			for y := 0; y < int(jxl.Buffer[c].Height); y++ {
-				for x := 0; x < int(jxl.Buffer[c].Width); x++ {
-					buffer[c].FloatBuffer[y][x] = jxl.Buffer[c].FloatBuffer[y][x]
+			for y := int32(0); y < jxl.Buffer[c].Height; y++ {
+				for x := int32(0); x < jxl.Buffer[c].Width; x++ {
+					buffer[c].FloatBuffer.Set(y, x, jxl.Buffer[c].FloatBuffer.Get(y, x))
 				}
 			}
 		}
@@ -438,16 +438,20 @@ func (jxl *JXLImage) transferInPlace(transferFunction func(float64) float64) err
 		colours = 1
 	}
 
-	buffers := util.MakeMatrix3D[float32](colours, 0, 0)
+	buffers := make([]*util.Matrix[float32], 5)
+	for i := 0; i < 5; i++ {
+		buffers[i] = util.New2DMatrix[float32](0, 0)
+	}
+	//buffers := util.MakeMatrix3D[float32](colours, 0, 0)
 	for c := 0; c < colours; c++ {
 		jxl.Buffer[c].CastToFloatIfInt(int32(jxl.bitDepths[c]))
 		buffers[c] = jxl.Buffer[c].FloatBuffer
 	}
 
 	for c := 0; c < colours; c++ {
-		for y := 0; y < int(jxl.Height); y++ {
-			for x := 0; x < int(jxl.Width); x++ {
-				buffers[c][y][x] = float32(transferFunction(float64(buffers[c][y][x])))
+		for y := int32(0); y < int32(jxl.Height); y++ {
+			for x := int32(0); x < int32(jxl.Width); x++ {
+				buffers[c].Set(y, x, float32(transferFunction(float64(buffers[c].Get(y, x)))))
 			}
 		}
 	}

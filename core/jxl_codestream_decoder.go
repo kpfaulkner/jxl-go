@@ -394,8 +394,11 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 					if refBuffer[0].IsInt() && frameBuffer[d].IsInt() {
 						refBufferI := refBuffer[d].IntBuffer
 						frameBufferI := frameBuffer[d].IntBuffer
-						for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
-							copy(frameBufferI[y+uint32(patch.Bounds.Origin.Y)][patch.Bounds.Origin.X:], refBufferI[y0+int32(y)][x0:])
+						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+							dest := frameBufferI.GetRow(y + patch.Bounds.Origin.Y)
+							src := refBufferI.GetRow(y0 + y)
+							//copy(frameBufferI[y+uint32(patch.Bounds.Origin.Y)][patch.Bounds.Origin.X:], refBufferI[y0+int32(y)][x0:])
+							copy(dest[patch.Bounds.Origin.X:], src[x0:])
 						}
 						toFloat = false
 					}
@@ -406,7 +409,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 						frameBufferI := frameBuffer[d].IntBuffer
 						for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
-								frameBufferI[int32(y0)+y][int32(x0)+x] += refBufferI[patch.Bounds.Origin.Y+y][patch.Bounds.Origin.X+x]
+								frameBufferI.IncrementBy(y0+y, x0+x, refBufferI.Get(patch.Bounds.Origin.Y+y, patch.Bounds.Origin.X+x))
 							}
 						}
 						toFloat = false
@@ -425,8 +428,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 					refBuffer[d].CastToFloatIfInt(max)
 					frameBuffer[d].CastToFloatIfInt(max)
 				}
-				var refBufferF [][]float32
-				var frameBufferF [][]float32
+				var refBufferF *util.Matrix[float32]
+				var frameBufferF *util.Matrix[float32]
 				if toFloat {
 					refBufferF = refBuffer[d].FloatBuffer
 					frameBufferF = frameBuffer[d].FloatBuffer
@@ -434,8 +437,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 					refBufferF = nil
 					frameBufferF = nil
 				}
-				var alphaBufferOld [][]float32
-				var alphaBufferNew [][]float32
+				var alphaBufferOld *util.Matrix[float32]
+				var alphaBufferNew *util.Matrix[float32]
 				if info.Mode > 3 && hasAlpha {
 					depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
 					if err := frameBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfInt(^(^0 << depth)); err != nil {
@@ -457,7 +460,10 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 						break
 					}
 					for y := 0; y < int(patch.Bounds.Size.Height); y++ {
-						copy(frameBufferF[y+int(patch.Bounds.Origin.Y)][int(patch.Bounds.Origin.X):], refBufferF[int(y0)+y][x0:])
+						// copy(frameBufferF[y+int(patch.Bounds.Origin.Y)][int(patch.Bounds.Origin.X):], refBufferF[int(y0)+y][x0:])
+						dest := frameBufferF.GetRow(int32(y) + patch.Bounds.Origin.Y)
+						src := refBufferF.GetRow(y0 + int32(y))
+						copy(dest[patch.Bounds.Origin.X:], src[x0:])
 					}
 					break
 				case 2:
@@ -466,14 +472,16 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 					}
 					for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
 						for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
-							frameBufferF[y0+y][x0+x] += refBufferF[patch.Bounds.Origin.Y+y][patch.Bounds.Origin.X+x]
+							frameBufferF.IncrementBy(y0+y, x0+x, refBufferF.Get(patch.Bounds.Origin.Y+y, patch.Bounds.Origin.X+x))
 						}
 					}
 					break
 				case 3:
-					for y := uint32(0); y < patch.Bounds.Size.Height; y++ {
-						for x := uint32(0); x < patch.Bounds.Size.Width; x++ {
-							frameBufferF[uint32(y0)+y][uint32(x0)+x] *= refBufferF[uint32(patch.Bounds.Origin.Y)+y][uint32(patch.Bounds.Origin.X)+x]
+					for y := int32(0); y < int32(patch.Bounds.Size.Height); y++ {
+						for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
+							multiplier := refBufferF.Get(patch.Bounds.Origin.Y+y, patch.Bounds.Origin.X+x)
+							orig := frameBufferF.Get(y0+y, x0+x)
+							frameBufferF.Set(y0+y, x0+x, orig*multiplier)
 						}
 					}
 					break
@@ -483,9 +491,9 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 							newY := y + patch.Bounds.Origin.Y
 							oldY := y + int32(y0)
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
-								oldX := x + int32(x0)
+								oldX := x + x0
 								newX := x + patch.Bounds.Origin.X
-								newAlpha := alphaBufferNew[newY][newX]
+								newAlpha := alphaBufferNew.Get(newY, newX)
 								if info.Clamp {
 									if newAlpha < 0 {
 										newAlpha = 0
@@ -493,8 +501,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 										newAlpha = 1
 									}
 								}
-								frameBufferF[oldY][oldX] = alphaBufferOld[oldY][oldY] +
-									newAlpha*(1-alphaBufferOld[oldY][oldX])
+								frameBufferF.Set(oldY, oldX, alphaBufferOld.Get(oldY, oldX)+
+									newAlpha*(1-alphaBufferOld.Get(oldY, oldX)))
 							}
 						}
 					} else if premult {
@@ -504,7 +512,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
 								newX := x + patch.Bounds.Origin.X
 								oldX := x + int32(x0)
-								newAlpha := alphaBufferNew[newY][newX]
+								newAlpha := alphaBufferNew.Get(newY, newX)
 								if info.Clamp {
 									if newAlpha < 0 {
 										newAlpha = 0
@@ -512,7 +520,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 										newAlpha = 1
 									}
 								}
-								frameBufferF[oldY][oldX] = refBufferF[newY][newX] + frameBufferF[oldY][oldX]*(1-newAlpha)
+								frameBufferF.Set(oldY, oldX, refBufferF.Get(newY, newX)+frameBufferF.Get(oldY, oldX)*(1-newAlpha))
 							}
 						}
 					} else {
@@ -525,8 +533,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 								var oldAlpha float32
 								var newAlpha float32
 								if hasAlpha {
-									oldAlpha = alphaBufferOld[oldY][oldX]
-									newAlpha = alphaBufferNew[newY][newX]
+									oldAlpha = alphaBufferOld.Get(oldY, oldX)
+									newAlpha = alphaBufferNew.Get(newY, newX)
 								} else {
 									oldAlpha = 1
 									newAlpha = 1
@@ -541,7 +549,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 									}
 								}
 								alpha := oldAlpha + newAlpha*(1-oldAlpha)
-								frameBufferF[oldY][oldX] = (refBufferF[newY][newX]*newAlpha + frameBufferF[oldY][oldX]*oldAlpha*(1-newAlpha)) / alpha
+								frameBufferF.Set(oldY, oldX, (refBufferF.Get(newY, newX)*newAlpha+frameBufferF.Get(oldY, oldX)*oldAlpha*(1-newAlpha))/alpha)
 							}
 						}
 					}
@@ -554,8 +562,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
 								oldX := x + int32(x0)
 								newX := x + patch.Bounds.Origin.X
-								frameBufferF[oldY][oldX] = alphaBufferOld[oldY][oldY] +
-									alphaBufferNew[newY][newX]*(1-alphaBufferOld[oldY][oldX])
+								frameBufferF.Set(oldY, oldX, alphaBufferOld.Get(oldY, oldX)+
+									alphaBufferNew.Get(newY, newX)*(1-alphaBufferOld.Get(oldY, oldX)))
 							}
 						}
 					} else if premult {
@@ -565,7 +573,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
 								newX := x + patch.Bounds.Origin.X
 								oldX := x + int32(x0)
-								newAlpha := alphaBufferNew[newY][newX]
+								newAlpha := alphaBufferNew.Get(newY, newX)
 								if info.Clamp {
 									if newAlpha < 0 {
 										newAlpha = 0
@@ -573,7 +581,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 										newAlpha = 1
 									}
 								}
-								frameBufferF[oldY][oldX] = frameBufferF[oldY][oldX] + refBufferF[newY][newX]*(1-newAlpha)
+								frameBufferF.Set(oldY, oldX, frameBufferF.Get(oldY, oldX)+refBufferF.Get(newY, newX)*(1-newAlpha))
 							}
 						}
 					} else {
@@ -586,14 +594,14 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 								var oldAlpha float32
 								var newAlpha float32
 								if hasAlpha {
-									oldAlpha = alphaBufferOld[oldY][oldX]
-									newAlpha = alphaBufferNew[newY][newX]
+									oldAlpha = alphaBufferOld.Get(oldY, oldX)
+									newAlpha = alphaBufferNew.Get(newY, newX)
 								} else {
 									oldAlpha = 1
 									newAlpha = 1
 								}
 								alpha := oldAlpha + newAlpha*(1-oldAlpha)
-								frameBufferF[oldY][oldX] = (frameBufferF[oldY][oldX]*newAlpha + refBufferF[newY][newX]*oldAlpha*(1-newAlpha)) / alpha
+								frameBufferF.Set(oldY, oldX, (frameBufferF.Get(oldY, oldX)*newAlpha+refBufferF.Get(newY, newX)*oldAlpha*(1-newAlpha))/alpha)
 							}
 						}
 					}
@@ -606,7 +614,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
 								oldX := x + int32(x0)
 								newX := x + patch.Bounds.Origin.X
-								newAlpha := alphaBufferNew[newY][newX]
+								newAlpha := alphaBufferNew.Get(newY, newX)
 								if info.Clamp {
 									if newAlpha < 0 {
 										newAlpha = 0
@@ -618,7 +626,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 								if !hasAlpha {
 									v = newAlpha
 								}
-								frameBufferF[oldY][oldX] = v
+								frameBufferF.Set(oldY, oldX, v)
 							}
 						}
 					} else {
@@ -628,7 +636,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 							for x := int32(0); x < int32(patch.Bounds.Size.Width); x++ {
 								newX := x + patch.Bounds.Origin.X
 								oldX := x + int32(x0)
-								newAlpha := alphaBufferNew[newY][newX]
+								newAlpha := alphaBufferNew.Get(newY, newX)
 								if info.Clamp {
 									if newAlpha < 0 {
 										newAlpha = 0
@@ -636,7 +644,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 										newAlpha = 1
 									}
 								}
-								frameBufferF[oldY][oldX] += refBufferF[newY][newX]
+								frameBufferF.IncrementBy(oldY, oldX, refBufferF.Get(newY, newX))
 							}
 						}
 					}
@@ -650,9 +658,9 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 
 								v := float32(1.0)
 								if !hasAlpha {
-									v = alphaBufferOld[oldY][oldX]
+									v = alphaBufferOld.Get(oldY, oldX)
 								}
-								frameBufferF[oldY][oldX] = v
+								frameBufferF.Set(oldY, oldX, v)
 							}
 						}
 					} else {
@@ -665,8 +673,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 								var oldAlpha float32
 								var newAlpha float32
 								if hasAlpha {
-									oldAlpha = alphaBufferOld[oldY][oldX]
-									newAlpha = alphaBufferNew[newY][newX]
+									oldAlpha = alphaBufferOld.Get(oldY, oldX)
+									newAlpha = alphaBufferNew.Get(newY, newX)
 								} else {
 									oldAlpha = 1
 									newAlpha = 1
@@ -679,7 +687,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 									}
 								}
 								alpha := oldAlpha + newAlpha*(1-oldAlpha)
-								frameBufferF[oldY][oldX] = refBufferF[newY][newX] + alpha*frameBufferF[oldY][oldX]
+								frameBufferF.Set(oldY, oldX, refBufferF.Get(newY, newX)+alpha*frameBufferF.Get(oldY, oldX))
 							}
 						}
 					}
@@ -700,7 +708,11 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 	}
 
 	buffer := frame.Buffer
-	buffers := util.MakeMatrix3D[float32](3, 0, 0)
+	//buffers := util.MakeMatrix3D[float32](3, 0, 0)
+	buffers := make([]*util.Matrix[float32], 3)
+	for i := 0; i < 3; i++ {
+		buffers[i] = util.New2DMatrix[float32](0, 0)
+	}
 	depth := jxl.imageHeader.BitDepth.BitsPerSample
 	for c := 0; c < 3; c++ {
 		if buffer[c].IsInt() {
@@ -723,14 +735,14 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInve
 		if err != nil {
 			return err
 		}
-		for y := uint32(0); y < size.Height; y++ {
-			for x := uint32(0); x < size.Width; x++ {
-				cb := buffers[0][y][x]
-				yh := buffers[1][y][x] + 0.50196078431372549019
-				cr := buffers[2][y][x]
-				buffers[0][y][x] = yh + 1.402*cr
-				buffers[1][y][x] = yh - 0.34413628620102214650*cb - 0.71413628620102214650*cr
-				buffers[2][y][x] = yh + 1.772*cb
+		for y := int32(0); y < int32(size.Height); y++ {
+			for x := int32(0); x < int32(size.Width); x++ {
+				cb := buffers[0].Get(y, x)
+				yh := buffers[1].Get(y, x) + 0.50196078431372549019
+				cr := buffers[2].Get(y, x)
+				buffers[0].Set(y, x, yh+1.402*cr)
+				buffers[1].Set(y, x, yh-0.34413628620102214650*cb-0.71413628620102214650*cr)
+				buffers[2].Set(y, x, yh+1.772*cb)
 			}
 		}
 	}
@@ -860,7 +872,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 				return err
 			}
 		}
-		var cf, rf, ff, oaf, naf [][]float32
+		var cf, rf, ff, oaf, naf *util.Matrix[float32]
 		if info.Mode != frame.BLEND_ADD || frameBuffer.IsFloat() {
 			cf = canvas[c].FloatBuffer
 			rf = ref.FloatBuffer
@@ -896,8 +908,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 					var oldAlpha float32
 					var newAlpha float32
 					if hasAlpha {
-						oldAlpha = oaf[cy][cx]
-						newAlpha = naf[fy][fx]
+						oldAlpha = oaf.Get(cy, cx)
+						newAlpha = naf.Get(fy, fx)
 					} else {
 						oldAlpha = 1.0
 						newAlpha = 1.0
@@ -910,17 +922,17 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 						}
 					}
 					alpha := float32(1)
-					oldSample := rf[cy][cx]
-					newSample := ff[fy][fx]
+					oldSample := rf.Get(cy, cx)
+					newSample := ff.Get(fy, fx)
 					if isAlpha || hasAlpha && !premult {
 						alpha = oldAlpha + newAlpha*(1-oldAlpha)
 					}
 					if isAlpha {
-						cf[cy][cx] = alpha
+						cf.Set(cy, cx, alpha)
 					} else if !hasAlpha || premult {
-						cf[cy][cx] = newSample + oldSample*(1-newAlpha)
+						cf.Set(cy, cx, newSample+oldSample*(1-newAlpha))
 					} else {
-						cf[cy][cx] = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / alpha
+						cf.Set(cy, cx, (newSample*newAlpha+oldSample*oldAlpha*(1-newAlpha))/alpha)
 					}
 				}
 			}
@@ -943,8 +955,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 					var oldAlpha float32
 					var newAlpha float32
 					if hasAlpha {
-						oldAlpha = oaf[cy][cx]
-						newAlpha = naf[fy][fx]
+						oldAlpha = oaf.Get(cy, cx)
+						newAlpha = naf.Get(fy, fx)
 					} else {
 						oldAlpha = 1.0
 						newAlpha = 1.0
@@ -956,15 +968,15 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 							newAlpha = 1
 						}
 					}
-					oldSample := rf[cy][cx]
-					newSample := ff[fy][fx]
+					oldSample := rf.Get(cy, cx)
+					newSample := ff.Get(fy, fx)
 					alpha := float32(0)
 					if isAlpha {
 						alpha = oldAlpha
 					} else {
 						alpha = oldSample + newAlpha*newSample
 					}
-					cf[cy][cx] = alpha
+					cf.Set(cy, cx, alpha)
 				}
 			}
 			break
@@ -985,12 +997,18 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas *image2.ImageBuffer, start 
 	}
 
 	if canvas.IsInt() {
-		for y := uint32(0); y < size.Height; y++ {
-			copy(canvas.IntBuffer[y+uint32(start.Y)][start.X:], frameBuffer.IntBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
+		for y := int32(0); y < int32(size.Height); y++ {
+			dest := canvas.IntBuffer.GetRow(y + start.Y)
+			src := frameBuffer.IntBuffer.GetRow(y + off.Y)
+			copy(dest[start.X:], src[off.X:off.X+int32(size.Width)])
+			//copy(canvas.IntBuffer[y+uint32(start.Y)][start.X:], frameBuffer.IntBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 		}
 	} else {
-		for y := uint32(0); y < size.Height; y++ {
-			copy(canvas.FloatBuffer[y+uint32(start.Y)][start.X:], frameBuffer.FloatBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
+		for y := int32(0); y < int32(size.Height); y++ {
+			dest := canvas.FloatBuffer.GetRow(y + start.Y)
+			src := frameBuffer.FloatBuffer.GetRow(y + off.Y)
+			copy(dest[start.X:], src[off.X:off.X+int32(size.Width)])
+			//copy(canvas.FloatBuffer[y+uint32(start.Y)][start.X:], frameBuffer.FloatBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 		}
 	}
 	return nil
@@ -1014,18 +1032,18 @@ func (jxl *JXLCodestreamDecoder) transposeBuffer(src image2.ImageBuffer, orienta
 	return image2.ImageBuffer{}, errors.New("unable to transpose buffer")
 }
 
-func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation uint32) ([][]int32, error) {
+func (jxl *JXLCodestreamDecoder) transposeBufferInt(src *util.Matrix[int32], orientation uint32) (*util.Matrix[int32], error) {
 
-	srcHeight := len(src)
-	srcWidth := len(src[0])
+	srcHeight := src.Height
+	srcWidth := src.Width
 	srcH1 := srcHeight - 1
 	srcW1 := srcWidth - 1
 
-	var dest [][]int32
+	var dest *util.Matrix[int32]
 	if orientation > 4 {
-		dest = util.MakeMatrix2D[int32](srcWidth, srcHeight)
+		dest = util.New2DMatrix[int32](srcWidth, srcHeight)
 	} else if orientation > 1 {
-		dest = util.MakeMatrix2D[int32](srcHeight, srcWidth)
+		dest = util.New2DMatrix[int32](srcHeight, srcWidth)
 	} else {
 		dest = nil
 	}
@@ -1034,49 +1052,56 @@ func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation u
 	case 1:
 		return src, nil
 	case 2:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[y][srcW1-x] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(y, srcW1-x, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 3:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[srcH1-y][srcW1-x] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(srcH1-y, srcW1-x, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 4:
-		for y := 0; y < srcHeight; y++ {
-			copy(dest[srcH1-y], src[y])
+		for y := int32(0); y < srcHeight; y++ {
+			//copy(dest[srcH1-y], src[y])
+			dest := dest.GetRow(srcH1 - y)
+			src := src.GetRow(y)
+			copy(dest, src)
 		}
 		return dest, nil
 	case 5:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[x][y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				//dest[x][y] = src[y][x]
+				dest.Set(x, y, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 6:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[x][srcH1-y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				//dest[x][srcH1-y] = src[y][x]
+				dest.Set(x, srcH1-y, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 7:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[srcW1-x][srcH1-y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				//dest[srcW1-x][srcH1-y] = src[y][x]
+				dest.Set(srcW1-x, srcH1-y, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 8:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[srcW1-x][y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				//dest[srcW1-x][y] = src[y][x]
+				dest.Set(srcW1-x, y, src.Get(y, x))
 			}
 		}
 		return dest, nil
@@ -1087,18 +1112,18 @@ func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation u
 	return nil, nil
 }
 
-func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientation uint32) ([][]float32, error) {
+func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src *util.Matrix[float32], orientation uint32) (*util.Matrix[float32], error) {
 
-	srcHeight := len(src)
-	srcWidth := len(src[0])
+	srcHeight := src.Height
+	srcWidth := src.Width
 	srcH1 := srcHeight - 1
 	srcW1 := srcWidth - 1
 
-	var dest [][]float32
+	var dest *util.Matrix[float32]
 	if orientation > 4 {
-		dest = util.MakeMatrix2D[float32](srcWidth, srcHeight)
+		dest = util.New2DMatrix[float32](srcWidth, srcHeight)
 	} else if orientation > 1 {
-		dest = util.MakeMatrix2D[float32](srcHeight, srcWidth)
+		dest = util.New2DMatrix[float32](srcHeight, srcWidth)
 	} else {
 		dest = nil
 	}
@@ -1107,49 +1132,52 @@ func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientati
 	case 1:
 		return src, nil
 	case 2:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[y][srcW1-x] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(y, srcW1-x, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 3:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[srcH1-y][srcW1-x] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(srcH1-y, srcW1-x, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 4:
-		for y := 0; y < srcHeight; y++ {
-			copy(dest[srcH1-y], src[y])
+		for y := int32(0); y < srcHeight; y++ {
+			//copy(dest[srcH1-y], src[y])
+			dest := dest.GetRow(srcH1 - y)
+			src := src.GetRow(y)
+			copy(dest, src)
 		}
 		return dest, nil
 	case 5:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[x][y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(x, y, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 6:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[x][srcH1-y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(x, srcH1-y, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 7:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[srcW1-x][srcH1-y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(srcW1-x, srcH1-y, src.Get(y, x))
 			}
 		}
 		return dest, nil
 	case 8:
-		for y := 0; y < srcHeight; y++ {
-			for x := 0; x < srcWidth; x++ {
-				dest[srcW1-x][y] = src[y][x]
+		for y := int32(0); y < srcHeight; y++ {
+			for x := int32(0); x < srcWidth; x++ {
+				dest.Set(srcW1-x, y, src.Get(y, x))
 			}
 		}
 		return dest, nil
