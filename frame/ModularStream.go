@@ -457,47 +457,49 @@ func (ms *ModularStream) applyTransforms() error {
 
 			case 1:
 				rct = func(x int32, y int32) error {
-					v[2].buffer[y][x] += v[0].buffer[y][x]
+					v[2].buffer.IncrementBy(y, x, v[0].buffer.Get(y, x))
 					return nil
 				}
 			case 2:
 				rct = func(x int32, y int32) error {
-					v[1].buffer[y][x] += v[0].buffer[y][x]
+					v[1].buffer.IncrementBy(y, x, v[0].buffer.Get(y, x))
 					return nil
 				}
 				break
 			case 3:
 				rct = func(x int32, y int32) error {
-					a := v[0].buffer[y][x]
-					v[2].buffer[y][x] += a
-					v[1].buffer[y][x] += a
+					a := v[0].buffer.Get(y, x)
+
+					v[2].buffer.IncrementBy(y, x, a)
+					v[1].buffer.IncrementBy(y, x, a)
 					return nil
 				}
 				break
 			case 4:
 				rct = func(x int32, y int32) error {
-					v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1
+					v[1].buffer.IncrementBy(y, x, (v[0].buffer.Get(y, x)+v[2].buffer.Get(y, x))>>1)
 					return nil
 				}
 				break
 			case 5:
 				rct = func(x int32, y int32) error {
-					a := v[0].buffer[y][x]
-					ac := a + v[2].buffer[y][x]
-					v[1].buffer[y][x] += (a + ac) >> 1
-					v[2].buffer[y][x] = ac
+					a := v[0].buffer.Get(y, x)
+					ac := a + v[2].buffer.Get(y, x)
+
+					v[1].buffer.IncrementBy(y, x, (a+ac)>>1)
+					v[2].buffer.Set(y, x, ac)
 					return nil
 				}
 				break
 			case 6:
 				rct = func(x int32, y int32) error {
-					b := v[1].buffer[y][x]
-					c := v[2].buffer[y][x]
-					tmp := v[0].buffer[y][x] - (c >> 1)
+					b := v[1].buffer.Get(y, x)
+					c := v[2].buffer.Get(y, x)
+					tmp := v[0].buffer.Get(y, x) - (c >> 1)
 					f := tmp - (b >> 1)
-					v[0].buffer[y][x] = f + b
-					v[1].buffer[y][x] = c + tmp
-					v[2].buffer[y][x] = f
+					v[0].buffer.Set(y, x, f+b)
+					v[1].buffer.Set(y, x, c+tmp)
+					v[2].buffer.Set(y, x, f)
 					return nil
 				}
 				break
@@ -533,11 +535,11 @@ func (ms *ModularStream) applyTransforms() error {
 				ch := ms.channels[first+c]
 				for y := uint32(0); y < firstChannel.size.Height; y++ {
 					for x := uint32(0); x < firstChannel.size.Width; x++ {
-						index := ch.buffer[y][x]
+						index := ch.buffer.Get(int32(y), int32(x))
 						isDelta := index < int32(ms.transforms[i].nbDeltas)
 						var value int32
 						if index >= 0 && index < int32(ms.transforms[i].nbColours) {
-							value = c0.buffer[c][index]
+							value = c0.buffer.Get(int32(c), index)
 						} else if index >= int32(ms.transforms[i].nbColours) {
 							index -= int32(ms.transforms[i].nbColours)
 							if index < 64 {
@@ -562,13 +564,13 @@ func (ms *ModularStream) applyTransforms() error {
 						} else {
 							value = 0
 						}
-						ch.buffer[y][x] = value
+						ch.buffer.Set(int32(y), int32(x), value)
 						if isDelta {
 							pred, err := ch.prediction(int32(y), int32(x), int32(ms.transforms[i].dPred))
 							if err != nil {
 								return err
 							}
-							ch.buffer[y][x] += pred
+							ch.buffer.IncrementBy(int32(y), int32(x), pred)
 						}
 					}
 				}
@@ -599,32 +601,32 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 
 	channel.allocate()
 
-	for y := uint32(0); y < channel.size.Height; y++ {
-		for x := uint32(0); x < res.size.Width; x++ {
-			avg := orig.buffer[y][x]
-			residu := res.buffer[y][x]
+	for y := int32(0); y < int32(channel.size.Height); y++ {
+		for x := int32(0); x < int32(res.size.Width); x++ {
+			avg := orig.buffer.Get(y, x)
+			residu := res.buffer.Get(y, x)
 			var nextAvg int32
-			if x+1 < uint32(orig.size.Width) {
-				nextAvg = orig.buffer[y][x+1]
+			if x+1 < int32(orig.size.Width) {
+				nextAvg = orig.buffer.Get(y, x+1)
 			} else {
 				nextAvg = avg
 			}
 			var left int32
 			if x > 0 {
-				left = channel.buffer[y][2*x-1]
+				left = channel.buffer.Get(y, 2*x-1)
 			} else {
 				nextAvg = avg
 			}
 			diff := residu + tendancy(left, avg, nextAvg)
 			first := avg + diff/2
-			channel.buffer[y][2*x] = first
-			channel.buffer[y][2*x+1] = first - diff
+			channel.buffer.Set(y, 2*x, first)
+			channel.buffer.Set(y, 2*x+1, first-diff)
 		}
 	}
 	if orig.size.Width > res.size.Width {
-		xs := 2 * res.size.Width
-		for y := uint32(0); y < channel.size.Height; y++ {
-			channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
+		xs := int32(2 * res.size.Width)
+		for y := int32(0); y < int32(channel.size.Height); y++ {
+			channel.buffer.Set(y, xs, orig.buffer.Get(y, int32(res.size.Width)))
 		}
 	}
 
@@ -641,38 +643,32 @@ func inverseVerticalSqueeze(channel *ModularChannel, orig *ModularChannel, res *
 
 	channel.allocate()
 
-	for y := uint32(0); y < res.size.Height; y++ {
-		for x := uint32(0); x < channel.size.Width; x++ {
-			avg := orig.buffer[y][x]
-			residu := res.buffer[y][x]
+	for y := int32(0); y < int32(res.size.Height); y++ {
+		for x := int32(0); x < int32(channel.size.Width); x++ {
+			avg := orig.buffer.Get(y, x)
+			residu := res.buffer.Get(y, x)
 			var nextAvg int32
-			if y+1 < orig.size.Height {
-				nextAvg = orig.buffer[y+1][x]
+			if y+1 < int32(orig.size.Height) {
+				nextAvg = orig.buffer.Get(y+1, x)
 			} else {
 				nextAvg = avg
 			}
 			var top int32
 			if y > 0 {
-				top = channel.buffer[2*y-1][x]
+				top = channel.buffer.Get(2*y-1, x)
 			} else {
 				nextAvg = avg
 			}
 			diff := residu + tendancy(top, avg, nextAvg)
 			first := avg + diff/2
-			channel.buffer[2*y][x] = first
-			channel.buffer[2*y+1][x] = first - diff
+			channel.buffer.Set(2*y, x, first)
+			channel.buffer.Set(2*y+1, x, first-diff)
 		}
 	}
 	if orig.size.Height > res.size.Height {
-		//xs := 2 * res.size.Width
-		//for y := uint32(0); y < channel.size.Height; y++ {
-		//	channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
-		//}
-		//copy(channel.buffer[2*res.size.Height], orig.buffer[res.size.Height])
-
-		xs := 2 * res.size.Width
-		for y := uint32(0); y < channel.size.Height; y++ {
-			channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
+		xs := int32(2 * res.size.Width)
+		for y := int32(0); y < int32(channel.size.Height); y++ {
+			channel.buffer.Set(y, xs, orig.buffer.Get(y, int32(res.size.Width)))
 		}
 
 	}
@@ -713,7 +709,7 @@ func tendancy(a int32, b int32, c int32) int32 {
 func (ms *ModularStream) getDecodedBuffer() [][][]int32 {
 	bands := make([][][]int32, len(ms.channels))
 	for i := 0; i < len(bands); i++ {
-		bands[i] = ms.channels[i].buffer
+		bands[i] = ms.channels[i].buffer.GetAs2DSlice()
 	}
 	return bands
 }

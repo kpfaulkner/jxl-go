@@ -20,9 +20,9 @@ type ModularChannel struct {
 	forceWP bool
 	size    util.Dimension
 
-	buffer  [][]int32
+	buffer  *util.Matrix[int32]
 	decoded bool
-	err     [][][]int32
+	err     []*util.Matrix[int32]
 	pred    [][]int32
 	subpred []int32
 	weight  []int32
@@ -39,8 +39,9 @@ func NewModularChannelFromChannel(ch ModularChannel) *ModularChannel {
 	mc.decoded = ch.decoded
 	if ch.buffer != nil {
 		mc.allocate()
-		for y := uint32(0); y < mc.size.Height; y++ {
-			copy(mc.buffer[y], ch.buffer[y])
+		for y := int32(0); y < int32(mc.size.Height); y++ {
+			//copy(mc.buffer[y], ch.buffer[y])
+			mc.buffer.SetRow(y, ch.buffer.GetRow(y))
 		}
 	}
 	return mc
@@ -61,14 +62,15 @@ func NewModularChannelWithAllParams(height int32, width int32, vshift int32, hsh
 }
 
 func (mc *ModularChannel) allocate() {
-	if mc.buffer != nil && len(mc.buffer) != 0 {
+	if mc.buffer != nil && mc.buffer.Height != 0 {
 		return
 	}
 
 	if mc.size.Height == 0 || mc.size.Width == 0 {
-		mc.buffer = util.MakeMatrix2D[int32](0, 0)
+		//mc.buffer = util.MakeMatrix2D[int32](0, 0)
+		mc.buffer = util.New2DMatrix[int32](0, 0)
 	} else {
-		mc.buffer = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
+		mc.buffer = util.New2DMatrix[int32](int32(mc.size.Height), int32(mc.size.Width))
 	}
 }
 
@@ -184,20 +186,20 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 // Could try and use IfThenElse but that gets messy quickly. Prefer some simple 'if' statements.
 func (mc *ModularChannel) west(x int32, y int32) int32 {
 	if x > 0 {
-		return mc.buffer[y][x-1]
+		return mc.buffer.Get(y, x-1)
 	}
 	if y > 0 {
-		return mc.buffer[y-1][x]
+		return mc.buffer.Get(y-1, x)
 	}
 	return 0
 }
 
 func (mc *ModularChannel) north(x int32, y int32) int32 {
 	if y > 0 {
-		return mc.buffer[y-1][x]
+		return mc.buffer.Get(y-1, x)
 	}
 	if x > 0 {
-		return mc.buffer[y][x-1]
+		return mc.buffer.Get(y, x-1)
 	}
 	return 0
 }
@@ -207,16 +209,16 @@ func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 	buf := mc.buffer
 	if x <= 0 {
 		if y > 0 {
-			return buf[y-1][x]
+			return buf.Get(y-1, x)
 		} else {
 			return 0
 		}
 
 	} else {
 		if y > 0 {
-			return buf[y-1][x-1]
+			return buf.Get(y-1, x-1)
 		} else {
-			return buf[y][x-1]
+			return buf.Get(y, x-1)
 		}
 	}
 }
@@ -226,13 +228,13 @@ func (mc *ModularChannel) northWestOrig(x int32, y int32) int32 {
 	buf := mc.buffer
 	if x > 0 {
 		if y > 0 {
-			return buf[y-1][x-1]
+			return buf.Get(y-1, x-1)
 		} else {
-			return buf[y][x-1]
+			return buf.Get(y, x-1)
 		}
 	} else {
 		if y > 0 {
-			return buf[y-1][x]
+			return buf.Get(y-1, x)
 		} else {
 			return 0
 		}
@@ -241,28 +243,28 @@ func (mc *ModularChannel) northWestOrig(x int32, y int32) int32 {
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
 	if x+1 < int32(mc.size.Width) && y > 0 {
-		return mc.buffer[y-1][x+1]
+		return mc.buffer.Get(y-1, x+1)
 	}
 	return mc.north(x, y)
 }
 
 func (mc *ModularChannel) northNorth(x int32, y int32) int32 {
 	if y > 1 {
-		return mc.buffer[y-2][x]
+		return mc.buffer.Get(y-2, x)
 	}
 	return mc.north(x, y)
 }
 
 func (mc *ModularChannel) northEastEast(x int32, y int32) int32 {
 	if x+2 < int32(mc.size.Width) && y > 0 {
-		return mc.buffer[y-1][x+2]
+		return mc.buffer.Get(y-1, x+2)
 	}
 	return mc.northEast(x, y)
 }
 
 func (mc *ModularChannel) westWest(x int32, y int32) int32 {
 	if x > 1 {
-		return mc.buffer[y][x-2]
+		return mc.buffer.Get(y, x-2)
 	}
 	return mc.west(x, y)
 }
@@ -271,22 +273,15 @@ func (mc *ModularChannel) errorNorth(x int32, y int32, e int32) int32 {
 	if y <= 0 {
 		return 0
 	}
-	return mc.err[e][y-1][x]
+	return mc.err[e].Get(y-1, x)
 
-}
-
-func (mc *ModularChannel) errorNorthOrig(x int32, y int32, e int32) int32 {
-	if y > 0 {
-		return mc.err[e][y-1][x]
-	}
-	return 0
 }
 
 func (mc *ModularChannel) errorWest(x int32, y int32, e int32) int32 {
 	if x <= 0 {
 		return 0
 	}
-	return mc.err[e][y][x-1]
+	return mc.err[e].Get(y, x-1)
 }
 
 func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
@@ -295,26 +290,12 @@ func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
 		return 0
 	}
 
-	return mc.err[e][y][x-2]
-}
-
-func (mc *ModularChannel) errorWestWestOrig(x int32, y int32, e int32) int32 {
-	if x > 1 {
-		return mc.err[e][y][x-2]
-	}
-	return 0
-}
-
-func (mc *ModularChannel) errorNorthWestOrig(x int32, y int32, e int32) int32 {
-	if x > 0 && y > 0 {
-		return mc.err[e][y-1][x-1]
-	}
-	return mc.errorNorth(x, y, e)
+	return mc.err[e].Get(y, x-2)
 }
 
 func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 	if x > 0 && y > 0 {
-		return mc.err[e][y-1][x-1]
+		return mc.err[e].Get(y-1, x-1)
 	}
 	return mc.errorNorth(x, y, e)
 }
@@ -322,7 +303,7 @@ func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
 	if x+1 < int32(mc.size.Width) && y > 0 {
 
-		return mc.err[e][y-1][x+1]
+		return mc.err[e].Get(y-1, x+1)
 	}
 
 	return mc.errorNorth(x, y, e)
@@ -331,7 +312,7 @@ func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
 func (mc *ModularChannel) errorNorthEastOrig(x int32, y int32, e int32) int32 {
 	if x+1 < int32(mc.size.Width) && y > 0 {
 
-		return mc.err[e][y-1][x+1]
+		return mc.err[e].Get(y-1, x+1)
 	}
 
 	return mc.errorNorth(x, y, e)
@@ -395,7 +376,7 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 					k2 += 4
 					continue
 				}
-				rC := channel.buffer[y][x]
+				rC := channel.buffer.Get(y, x)
 				if k2 == k {
 
 					k2++
@@ -412,18 +393,18 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 				var rNW int32
 				var rG int32
 				if x > 0 {
-					rW = channel.buffer[y][x-1]
+					rW = channel.buffer.Get(y, x-1)
 				} else {
 					rW = 0
 				}
 
 				if y > 0 {
-					rN = channel.buffer[y-1][x]
+					rN = channel.buffer.Get(y-1, x)
 				} else {
 					rN = rW
 				}
 				if x > 0 && y > 0 {
-					rNW = channel.buffer[y-1][x-1]
+					rNW = channel.buffer.Get(y-1, x-1)
 				} else {
 					rNW = rW
 				}
@@ -468,7 +449,11 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 	tree = tree.compactify(channelIndex, streamIndex)
 	useWP := mc.forceWP || tree.useWeightedPredictor()
 	if useWP {
-		mc.err = util.MakeMatrix3D[int32](5, int(mc.size.Height), int(mc.size.Width))
+		//mc.err = util.MakeMatrix3D[int32](5, int(mc.size.Height), int(mc.size.Width))
+		mc.err = make([]*util.Matrix[int32], 5)
+		for i := 0; i < 5; i++ {
+			mc.err[i] = util.New2DMatrix[int32](int32(mc.size.Height), int32(mc.size.Width))
+		}
 		mc.pred = util.MakeMatrix2D[int32](int(mc.size.Height), int(mc.size.Width))
 		mc.subpred = make([]int32, 4)
 		mc.weight = make([]int32, 4)
@@ -508,12 +493,12 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 				return err
 			}
 			trueValue := diff + p
-			mc.buffer[y][x] = trueValue
+			mc.buffer.Set(y, x, trueValue)
 			if useWP {
 				for e := 0; e < 4; e++ {
-					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
+					mc.err[e].Set(y, x, int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3)>>3)
 				}
-				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
+				mc.err[4].Set(y, x, mc.pred[y][x]-(trueValue<<3))
 			}
 		}
 	}
