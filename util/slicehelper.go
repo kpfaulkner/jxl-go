@@ -20,6 +20,14 @@ func New2DMatrix[T constraints.Ordered](height int32, width int32) *Matrix[T] {
 	return &Matrix[T]{Width: width, Height: height, Data: matrix}
 }
 
+func New2DMatrixWithContents[T constraints.Ordered](height int32, width int32, initialData [][]T) *Matrix[T] {
+	matrix := New2DMatrix[T](width, height)
+	for h := int32(0); h < height; h++ {
+		copy(matrix.Data[h*width:(h+1)*width], initialData[h])
+	}
+	return matrix
+}
+
 // Note y is first param...  just for compatibility
 func (s *Matrix[T]) Get(y int32, x int32) T {
 	return s.Data[y*s.Width+x]

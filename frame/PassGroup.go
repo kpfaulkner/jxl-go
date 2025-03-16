@@ -379,7 +379,7 @@ func (g *PassGroup) invertAFV(coeffs *util.Matrix[float32], buffer *util.Matrix[
 			startX = 1
 		}
 		for ix := startX; ix < 8; ix++ {
-			scratchBlock[0][iy][ix] = coeffs[ppg.Y+1+iy*2][ppg.X+ix]
+			scratchBlock[0].Set(iy, ix, coeffs.Get(ppg.Y+1+iy*2, ppg.X+ix))
 		}
 	}
 

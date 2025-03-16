@@ -27,7 +27,7 @@ func (cxy *CIEXY) Matches(b *CIEXY) bool {
 	return math.Abs(float64(cxy.X-b.X))+math.Abs(float64(cxy.Y-b.Y)) < 0.0001
 }
 
-func AdaptWhitePoint(targetWP *CIEXY, currentWP *CIEXY) ([][]float32, error) {
+func AdaptWhitePoint(targetWP *CIEXY, currentWP *CIEXY) (*util.Matrix[float32], error) {
 	if targetWP == nil {
 		targetWP = CM_WP_D50
 	}

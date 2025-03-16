@@ -197,43 +197,42 @@ func Abs[T signedInts](a T) T {
 	return a
 }
 
-func MatrixIdentity(i int) [][]float32 {
-	matrix := make([][]float32, i)
-	for j := 0; j < i; j++ {
-		matrix[j] = make([]float32, i)
-		matrix[j][j] = 1
+func MatrixIdentity(i int) *Matrix[float32] {
+	matrix := New2DMatrix[float32](int32(i), int32(i))
+	for j := int32(0); j < int32(i); j++ {
+		matrix.Set(j, j, 1)
 	}
 	return matrix
 }
 
-func MatrixVectorMultiply(matrix [][]float32, columnVector []float32) ([]float32, error) {
+func MatrixVectorMultiply(matrix *Matrix[float32], columnVector []float32) ([]float32, error) {
 
-	if len(matrix) == 0 {
+	if matrix.Height == 0 {
 		return columnVector, nil
 	}
 
-	if len(matrix[0]) > len(columnVector) || len(columnVector) == 0 {
+	if matrix.Height > int32(len(columnVector)) || len(columnVector) == 0 {
 		return nil, errors.New("Invalid argument")
 	}
-	extra := len(columnVector) - len(matrix[0])
-	total := make([]float32, len(matrix)+extra)
+	extra := int32(len(columnVector)) - matrix.Width
+	total := make([]float32, matrix.Height+extra)
 
-	for y := 0; y < len(matrix); y++ {
-		row := matrix[y]
+	for y := int32(0); y < matrix.Height; y++ {
+		row := matrix.GetRow(y)
 
 		for x := 0; x < len(row); x++ {
 			total[y] += row[x] * columnVector[x]
 		}
 	}
 	if extra != 0 {
-		copy(total[len(matrix):], columnVector[len(matrix[0]):])
+		copy(total[matrix.Height:], columnVector[matrix.Width:])
 	}
 
 	return total, nil
 }
 
 // multiply any number of matrices
-func MatrixMultiply(matrix ...[][]float32) ([][]float32, error) {
+func MatrixMultiply(matrix ...*Matrix[float32]) (*Matrix[float32], error) {
 
 	var err error
 	left := matrix[0]
@@ -247,7 +246,7 @@ func MatrixMultiply(matrix ...[][]float32) ([][]float32, error) {
 	return left, nil
 }
 
-func MatrixMatrixMultiply(left [][]float32, right [][]float32) ([][]float32, error) {
+func MatrixMatrixMultiply(left *Matrix[float32], right *Matrix[float32]) (*Matrix[float32], error) {
 
 	if left == nil {
 		return right, nil
@@ -256,36 +255,46 @@ func MatrixMatrixMultiply(left [][]float32, right [][]float32) ([][]float32, err
 		return left, nil
 	}
 
-	if len(left[0]) != len(right) {
+	if left.Width != right.Height {
 		return nil, errors.New("Invalid argument")
 	}
 
-	result := make([][]float32, len(left))
-	for i := 0; i < len(left); i++ {
-		result[i] = make([]float32, len(right[0]))
-	}
+	result := New2DMatrix[float32](left.Height, right.Width)
 
-	for i := 0; i < len(left); i++ {
-		for j := 0; j < len(right[0]); j++ {
-			for k := 0; k < len(right); k++ {
-				result[i][j] += left[i][k] * right[k][j]
+	for i := int32(0); i < left.Height; i++ {
+		for j := int32(0); j < right.Width; j++ {
+			for k := int32(0); k < right.Height; k++ {
+				result.IncrementBy(i, j, left.Get(i, k)*right.Get(k, j))
 			}
 		}
 	}
 	return result, nil
 }
 
-func InvertMatrix3x3(matrix [][]float32) [][]float32 {
-	det := matrix[0][0]*matrix[1][1]*matrix[2][2] + matrix[0][1]*matrix[1][2]*matrix[2][0] + matrix[0][2]*matrix[1][0]*matrix[2][1] - matrix[0][2]*matrix[1][1]*matrix[2][0] - matrix[0][1]*matrix[1][0]*matrix[2][2] - matrix[0][0]*matrix[1][2]*matrix[2][1]
+func InvertMatrix3x3(matrix *Matrix[float32]) *Matrix[float32] {
+	det := matrix.Get(0, 0)*matrix.Get(1, 1)*matrix.Get(2, 2) +
+		matrix.Get(0, 1)*matrix.Get(1, 2)*matrix.Get(2, 0) +
+		matrix.Get(0, 2)*matrix.Get(1, 0)*matrix.Get(2, 1) -
+		matrix.Get(0, 2)*matrix.Get(1, 1)*matrix.Get(2, 0) -
+		matrix.Get(0, 1)*matrix.Get(1, 0)*matrix.Get(2, 2) -
+		matrix.Get(0, 0)*matrix.Get(1, 2)*matrix.Get(2, 1)
 	if det == 0 {
 		return nil
 	}
 	invDet := 1.0 / det
-	return [][]float32{
-		{(matrix[1][1]*matrix[2][2] - matrix[1][2]*matrix[2][1]) * invDet, (matrix[0][2]*matrix[2][1] - matrix[0][1]*matrix[2][2]) * invDet, (matrix[0][1]*matrix[1][2] - matrix[0][2]*matrix[1][1]) * invDet},
-		{(matrix[1][2]*matrix[2][0] - matrix[1][0]*matrix[2][2]) * invDet, (matrix[0][0]*matrix[2][2] - matrix[0][2]*matrix[2][0]) * invDet, (matrix[0][2]*matrix[1][0] - matrix[0][0]*matrix[1][2]) * invDet},
-		{(matrix[1][0]*matrix[2][1] - matrix[1][1]*matrix[2][0]) * invDet, (matrix[0][1]*matrix[2][0] - matrix[0][0]*matrix[2][1]) * invDet, (matrix[0][0]*matrix[1][1] - matrix[0][1]*matrix[1][0]) * invDet},
-	}
+	newMatrix := New2DMatrixWithContents[float32](3, 3,
+		[][]float32{
+			{(matrix.Get(1, 1)*matrix.Get(2, 2) - matrix.Get(1, 2)*matrix.Get(2, 1)) * invDet,
+				(matrix.Get(0, 2)*matrix.Get(2, 1) - matrix.Get(0, 1)*matrix.Get(2, 2)) * invDet,
+				(matrix.Get(0, 1)*matrix.Get(1, 2) - matrix.Get(0, 2)*matrix.Get(1, 1)) * invDet},
+			{(matrix.Get(1, 2)*matrix.Get(2, 0) - matrix.Get(1, 0)*matrix.Get(2, 2)) * invDet,
+				(matrix.Get(0, 0)*matrix.Get(2, 2) - matrix.Get(0, 2)*matrix.Get(2, 0)) * invDet,
+				(matrix.Get(0, 2)*matrix.Get(1, 0) - matrix.Get(0, 0)*matrix.Get(1, 2)) * invDet},
+			{(matrix.Get(1, 0)*matrix.Get(2, 1) - matrix.Get(1, 1)*matrix.Get(2, 0)) * invDet,
+				(matrix.Get(0, 1)*matrix.Get(2, 0) - matrix.Get(0, 0)*matrix.Get(2, 1)) * invDet,
+				(matrix.Get(0, 0)*matrix.Get(1, 1) - matrix.Get(0, 1)*matrix.Get(1, 0)) * invDet}})
+
+	return newMatrix
 }
 
 func CeilDiv(numerator uint32, denominator uint32) uint32 {

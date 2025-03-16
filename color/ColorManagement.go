@@ -14,11 +14,12 @@ var (
 	CM_WP_D65 = GetWhitePoint(WP_D65)
 	CM_WP_D50 = GetWhitePoint(WP_D50)
 
-	BRADFORD = [][]float32{
-		{0.8951, 0.2664, -0.1614},
-		{-0.7502, 1.7135, 0.0367},
-		{0.0389, -0.0685, 1.0296},
-	}
+	BRADFORD = util.New2DMatrixWithContents[float32](3, 3,
+		[][]float32{
+			{0.8951, 0.2664, -0.1614},
+			{-0.7502, 1.7135, 0.0367},
+			{0.0389, -0.0685, 1.0296},
+		})
 
 	BRADFORD_INVERSE = util.InvertMatrix3x3(BRADFORD)
 )
@@ -28,12 +29,12 @@ type TransferFunction interface {
 	FromLinear(input float64) float64
 }
 
-func GetConversionMatrix(targetPrim CIEPrimaries, targetWP CIEXY, currentPrim CIEPrimaries, currentWP CIEXY) ([][]float32, error) {
+func GetConversionMatrix(targetPrim CIEPrimaries, targetWP CIEXY, currentPrim CIEPrimaries, currentWP CIEXY) (*util.Matrix[float32], error) {
 	if targetPrim.Matches(&currentPrim) && targetWP.Matches(&currentWP) {
 		return util.MatrixIdentity(3), nil
 	}
 
-	var whitePointConv [][]float32
+	var whitePointConv *util.Matrix[float32]
 	var err error
 	if !targetWP.Matches(&currentWP) {
 		whitePointConv, err = AdaptWhitePoint(&targetWP, &currentWP)
@@ -58,7 +59,7 @@ func GetConversionMatrix(targetPrim CIEPrimaries, targetWP CIEXY, currentPrim CI
 	return res, nil
 }
 
-func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) ([][]float32, error) {
+func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) (*util.Matrix[float32], error) {
 	if primaries == nil {
 		return nil, nil
 	}
@@ -75,7 +76,12 @@ func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) ([][]float32, error) {
 	if errR != nil || errG != nil || errB != nil {
 		return nil, errors.New("invalid argument")
 	}
-	primariesTr := [][]float32{r, g, b}
+	//primariesTr := [][]float32{r, g, b}
+	primariesTr := util.New2DMatrix[float32](3, 3)
+	primariesTr.SetRow(0, r)
+	primariesTr.SetRow(1, g)
+	primariesTr.SetRow(2, b)
+
 	primariesMatrix := util.TransposeMatrix(primariesTr, *util.NewPoint(3, 3))
 	inversePrimaries := util.InvertMatrix3x3(primariesMatrix)
 	w, err := GetXYZ(*wp)
@@ -86,7 +92,11 @@ func primariesToXYZ(primaries *CIEPrimaries, wp *CIEXY) ([][]float32, error) {
 	if err != nil {
 		return nil, err
 	}
-	a := [][]float32{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}}
+	// a := [][]float32{{xyz[0], 0, 0}, {0, xyz[1], 0}, {0, 0, xyz[2]}}
+	a := util.New2DMatrix[float32](3, 3)
+	a.SetRow(0, []float32{xyz[0], 0, 0})
+	a.SetRow(1, []float32{0, xyz[1], 0})
+	a.SetRow(2, []float32{0, 0, xyz[2]})
 	res, err := util.MatrixMatrixMultiply(primariesMatrix, a)
 	if err != nil {
 		return nil, err
