@@ -327,41 +327,41 @@ func (hfg *HFGlobal) setupDCTParam(reader *jxlio.Bitreader, frame *Frame, index 
 		hfg.params[index] = defaultParams[index]
 		break
 	case MODE_HORNUSS:
-		m := util.MakeMatrix2D[float32](3, 3)
+		m := util.New2DMatrix[float32](3, 3)
 		for y := int32(0); y < 3; y++ {
 			for x := int32(0); x < 3; x++ {
 				mm, err := reader.ReadF16()
 				if err != nil {
 					return err
 				}
-				m[y][x] = 64.0 * mm
+				m.Set(y, x, 64.0*mm)
 			}
 		}
 		hfg.params[index] = DCTParam{dctParam: nil, param: m, mode: MODE_HORNUSS, denominator: 1, params4x4: nil}
 		break
 	case MODE_DCT2:
-		m := util.MakeMatrix2D[float32](3, 6)
+		m := util.New2DMatrix[float32](3, 6)
 		for y := int32(0); y < 3; y++ {
 			for x := int32(0); x < 6; x++ {
 				mm, err := reader.ReadF16()
 				if err != nil {
 					return err
 				}
-				m[y][x] = 64.0 * mm
+				m.Set(y, x, 64.0*mm)
 			}
 		}
 		hfg.params[index] = DCTParam{dctParam: nil, param: m, mode: MODE_DCT2, denominator: 1, params4x4: nil}
 		break
 
 	case MODE_DCT4:
-		m := util.MakeMatrix2D[float32](3, 2)
+		m := util.New2DMatrix[float32](3, 2)
 		for y := int32(0); y < 3; y++ {
 			for x := int32(0); x < 2; x++ {
 				mm, err := reader.ReadF16()
 				if err != nil {
 					return err
 				}
-				m[y][x] = 64.0 * mm
+				m.Set(y, x, 64.0*mm)
 			}
 		}
 		dctParam, err := hfg.readDCTParams(reader)
@@ -400,36 +400,37 @@ func (hfg *HFGlobal) setupDCTParam(reader *jxlio.Bitreader, frame *Frame, index 
 		if err = stream.decodeChannels(reader, false); err != nil {
 			return err
 		}
-		m := util.MakeMatrix2D[float32](3, tt.matrixWidth*tt.matrixHeight)
+		m := util.New2DMatrix[float32](3, tt.matrixWidth*tt.matrixHeight)
 		b := stream.getDecodedBuffer()
-		for c := 0; c < 3; c++ {
-			for y := 0; y < len(b[c]); y++ {
-				for x := 0; x < len(b[c][y]); x++ {
-					m[c][y*int(tt.matrixWidth)+x] = float32(b[c][y][x])
+		for c := int32(0); c < 3; c++ {
+			for y := int32(0); y < int32(len(b[c])); y++ {
+				for x := int32(0); x < int32(len(b[c][y])); x++ {
+					m.Set(c, y*tt.matrixWidth+x, float32(b[c][y][x]))
 				}
 			}
 		}
 		hfg.params[index] = DCTParam{dctParam: nil, param: m, mode: MODE_RAW, denominator: den, params4x4: nil}
 		break
 	case MODE_AFV:
-		m := util.MakeMatrix2D[float32](3, 9)
+		m := util.New2DMatrix[float32](3, 9)
 		for y := int32(0); y < 3; y++ {
 			for x := int32(0); x < 9; x++ {
 				mm, err := reader.ReadF16()
 				if err != nil {
 					return err
 				}
-				m[y][x] = mm
+				m.Set(y, x, mm)
 				if x < 6 {
-					m[y][x] *= 64.0
+					mm := m.Get(y, x) * 64
+					m.Set(y, x, mm)
 				}
 			}
 		}
-		var d [][]float64
+		var d *util.Matrix[float64]
 		if d, err = hfg.readDCTParams(reader); err != nil {
 			return err
 		}
-		var f [][]float64
+		var f *util.Matrix[float64]
 		if f, err = hfg.readDCTParams(reader); err != nil {
 			return err
 		}
@@ -441,7 +442,7 @@ func (hfg *HFGlobal) setupDCTParam(reader *jxlio.Bitreader, frame *Frame, index 
 	return nil
 }
 
-func (hfg *HFGlobal) readDCTParams(reader *jxlio.Bitreader) ([][]float64, error) {
+func (hfg *HFGlobal) readDCTParams(reader *jxlio.Bitreader) (*util.Matrix[float64], error) {
 
 	var numParams uint64
 	var err error
@@ -449,17 +450,18 @@ func (hfg *HFGlobal) readDCTParams(reader *jxlio.Bitreader) ([][]float64, error)
 		return nil, err
 	}
 	numParams++
-	vals := util.MakeMatrix2D[float64](3, numParams)
+	vals := util.New2DMatrix[float64](3, int32(numParams))
 
-	for c := 0; c < 3; c++ {
-		for i := 0; i < int(numParams); i++ {
+	for c := int32(0); c < 3; c++ {
+		for i := int32(0); i < int32(numParams); i++ {
 			var v float32
 			if v, err = reader.ReadF16(); err != nil {
 				return nil, err
 			}
-			vals[c][i] = float64(v)
+			vals.Set(c, i, float64(v))
 		}
-		vals[c][0] *= 64
+		mm := vals.Get(c, 0)
+		vals.Set(c, 0, mm)
 	}
 	return vals, nil
 }
