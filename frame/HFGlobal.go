@@ -474,42 +474,42 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 		return err
 	}
 
-	for c := 0; c < 3; c++ {
+	for c := int32(0); c < 3; c++ {
 		var w [][]float32
 		switch hfg.params[index].mode {
 		case MODE_DCT:
-			hfg.weights[index][c] = hfg.getDCTQuantWeights(tt.matrixHeight, tt.matrixWidth, hfg.params[index].dctParam[c])
+			hfg.weights[index][c] = hfg.getDCTQuantWeights(tt.matrixHeight, tt.matrixWidth, hfg.params[index].dctParam.GetRow(c))
 			break
 		case MODE_DCT4:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
-			w = hfg.getDCTQuantWeights(4, 4, hfg.params[index].dctParam[c])
+			w = hfg.getDCTQuantWeights(4, 4, hfg.params[index].dctParam.GetRow(c))
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
 					hfg.weights[index][c][y][x] = w[y/2][x/2]
 				}
 			}
-			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
-			hfg.weights[index][c][0][1] /= hfg.params[index].param[c][0]
-			hfg.weights[index][c][1][1] /= hfg.params[index].param[c][1]
+			hfg.weights[index][c][1][0] /= hfg.params[index].param.Get(c, 0)
+			hfg.weights[index][c][0][1] /= hfg.params[index].param.Get(c, 0)
+			hfg.weights[index][c][1][1] /= hfg.params[index].param.Get(c, 1)
 			break
 		case MODE_DCT2:
 			w = util.MakeMatrix2D[float32](8, 8)
 			w[0][0] = 1
-			w[0][1] = hfg.params[index].param[c][0]
-			w[1][0] = hfg.params[index].param[c][0]
-			w[1][1] = hfg.params[index].param[c][1]
+			w[0][1] = hfg.params[index].param.Get(c, 0)
+			w[1][0] = hfg.params[index].param.Get(c, 0)
+			w[1][1] = hfg.params[index].param.Get(c, 1)
 			for y := 0; y < 2; y++ {
 				for x := 0; x < 2; x++ {
-					w[y][x+2] = hfg.params[index].param[c][2]
-					w[x+2][y] = hfg.params[index].param[c][2]
-					w[y+2][x+2] = hfg.params[index].param[c][3]
+					w[y][x+2] = hfg.params[index].param.Get(c, 2)
+					w[x+2][y] = hfg.params[index].param.Get(c, 2)
+					w[y+2][x+2] = hfg.params[index].param.Get(c, 3)
 				}
 			}
 			for y := 0; y < 4; y++ {
 				for x := 0; x < 4; x++ {
-					w[y][x+4] = hfg.params[index].param[c][4]
-					w[x+4][y] = hfg.params[index].param[c][4]
-					w[y+4][x+4] = hfg.params[index].param[c][5]
+					w[y][x+4] = hfg.params[index].param.Get(c, 4)
+					w[x+4][y] = hfg.params[index].param.Get(c, 4)
+					w[y+4][x+4] = hfg.params[index].param.Get(c, 5)
 				}
 			}
 			hfg.weights[index][c] = w
@@ -518,27 +518,27 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			w = util.MakeMatrix2D[float32](8, 8)
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
-					w[y][x] = hfg.params[index].param[c][0]
+					w[y][x] = hfg.params[index].param.Get(c, 0)
 				}
 			}
-			w[1][1] = hfg.params[index].param[c][2]
-			w[0][1] = hfg.params[index].param[c][1]
-			w[1][0] = hfg.params[index].param[c][1]
+			w[1][1] = hfg.params[index].param.Get(c, 2)
+			w[0][1] = hfg.params[index].param.Get(c, 1)
+			w[1][0] = hfg.params[index].param.Get(c, 1)
 			w[0][0] = 1.0
 			hfg.weights[index][c] = w
 			break
 		case MODE_DCT4_8:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
-			w = hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
+			w = hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam.GetRow(c))
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
 					hfg.weights[index][c][y][x] = w[y/2][x]
 				}
 			}
-			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
+			hfg.weights[index][c][1][0] /= hfg.params[index].param.Get(c, 0)
 			break
 		case MODE_AFV:
-			afv, err := hfg.getAFVTransformWeights(index, c)
+			afv, err := hfg.getAFVTransformWeights(index, int(c))
 			if err != nil {
 				return err
 			}
@@ -548,7 +548,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](tt.matrixHeight, tt.matrixWidth)
 			for y := int32(0); y < tt.matrixHeight; y++ {
 				for x := int32(0); x < tt.matrixWidth; x++ {
-					hfg.weights[index][c][y][x] = hfg.params[index].param[c][y*tt.matrixWidth+x] * hfg.params[index].denominator
+					hfg.weights[index][c][y][x] = hfg.params[index].param.Get(c, y*tt.matrixWidth+x) * hfg.params[index].denominator
 				}
 			}
 			break
@@ -620,32 +620,32 @@ func interpolate(scaledPos float32, bands []float32) float32 {
 	return float32(a) * float32(math.Pow(first, second))
 }
 
-func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, error) {
+func (hfg *HFGlobal) getAFVTransformWeights(index int, c int32) ([][]float32, error) {
 
-	weights4x8 := hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
-	weights4x4 := hfg.getDCTQuantWeights(4, 4, hfg.params[index].params4x4[c])
+	weights4x8 := hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam.GetRow(c))
+	weights4x4 := hfg.getDCTQuantWeights(4, 4, hfg.params[index].params4x4.GetRow(c))
 
 	low := 0.8517778890324296
 	high := 12.97166202570235
 
 	bands := make([]float32, 4)
-	bands[0] = hfg.params[index].param[c][5]
+	bands[0] = hfg.params[index].param.Get(c, 5)
 	if bands[0] < 0 {
 		return nil, errors.New("Invalid band")
 	}
-	for i := 1; i < 4; i++ {
-		bands[i] = bands[i-1] * quantMult(hfg.params[index].param[c][i+5])
+	for i := int32(1); i < 4; i++ {
+		bands[i] = bands[i-1] * quantMult(hfg.params[index].param.Get(c, i+5))
 		if bands[i] < 0 {
 			return nil, errors.New("Negative band value")
 		}
 	}
 	weight := util.MakeMatrix2D[float32](8, 8)
 	weight[0][0] = 1
-	weight[1][0] = hfg.params[index].param[c][0]
-	weight[0][1] = hfg.params[index].param[c][1]
-	weight[2][0] = hfg.params[index].param[c][2]
-	weight[0][2] = hfg.params[index].param[c][3]
-	weight[2][2] = hfg.params[index].param[c][4]
+	weight[1][0] = hfg.params[index].param.Get(c, 0)
+	weight[0][1] = hfg.params[index].param.Get(c, 1)
+	weight[2][0] = hfg.params[index].param.Get(c, 2)
+	weight[0][2] = hfg.params[index].param.Get(c, 3)
+	weight[2][2] = hfg.params[index].param.Get(c, 4)
 
 	for y := 0; y < 4; y++ {
 		for x := 0; x < 4; x++ {
