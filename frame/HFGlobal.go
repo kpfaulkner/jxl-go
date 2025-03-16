@@ -538,7 +538,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			hfg.weights[index][c][1][0] /= hfg.params[index].param.Get(c, 0)
 			break
 		case MODE_AFV:
-			afv, err := hfg.getAFVTransformWeights(index, int(c))
+			afv, err := hfg.getAFVTransformWeights(index, c)
 			if err != nil {
 				return err
 			}

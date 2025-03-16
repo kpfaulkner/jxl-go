@@ -48,7 +48,7 @@ func WritePFM(jxlImage *JXLImage, output io.Writer) error {
 	for y := int32(height - 1); y >= 0; y-- {
 		for x := int32(0); x < int32(width); x++ {
 			for c := 0; c < cCount; c++ {
-				err := binary.Write(&buf, binary.BigEndian, nb[c].FloatBuffer[y][x])
+				err := binary.Write(&buf, binary.BigEndian, nb[c].FloatBuffer.Get(y, x))
 				if err != nil {
 					fmt.Println("binary.Write failed:", err)
 					return err
