@@ -17,16 +17,17 @@ type signedInts interface {
 	int8 | int16 | int32 | int64
 }
 
-func generateCosineLUT() [][][]float32 {
+func generateCosineLUT() []*Matrix[float32] {
 
-	tempCosineLUT := MakeMatrix3D[float32](9, 0, 0)
+	//tempCosineLUT := MakeMatrix3D[float32](9, 0, 0)
+	tempCosineLUT := make([]*Matrix[float32], 9)
 	root2 := math.Sqrt(2.0)
 	for l := 0; l < len(tempCosineLUT); l++ {
 		s := 1 << l
-		tempCosineLUT[l] = MakeMatrix2D[float32](s-1, s)
-		for n := 0; n < len(tempCosineLUT[l]); n++ {
-			for k := 0; k < len(tempCosineLUT[l][n]); k++ {
-				tempCosineLUT[l][n][k] = float32(root2 * math.Cos(float64(math.Pi*(float32(n)+1.0)*(float32(k)+0.5)/float32(s))))
+		tempCosineLUT[l] = New2DMatrix[float32](int32(s-1), int32(s))
+		for n := int32(0); n < tempCosineLUT[l].Height; n++ {
+			for k := int32(0); k < tempCosineLUT[l].Width; k++ {
+				tempCosineLUT[l].Set(n, k, float32(root2*math.Cos(float64(math.Pi*(float32(n)+1.0)*(float32(k)+0.5)/float32(s)))))
 			}
 		}
 	}
@@ -291,20 +292,20 @@ func CeilDiv(numerator uint32, denominator uint32) uint32 {
 	return ((numerator - 1) / denominator) + 1
 }
 
-func TransposeMatrix(matrix [][]float32, inSize Point) [][]float32 {
+func TransposeMatrix(matrix *Matrix[float32], inSize Point) *Matrix[float32] {
 	if inSize.X == 0 || inSize.Y == 0 {
 		return nil
 	}
-	dest := MakeMatrix2D[float32](inSize.X, inSize.Y)
+	dest := New2DMatrix[float32](inSize.X, inSize.Y)
 	TransposeMatrixInto(matrix, dest, ZERO, ZERO, inSize)
 	return dest
 }
 
-func TransposeMatrixInto(src [][]float32, dest [][]float32, srcStart Point, destStart Point, srcSize Point) {
+func TransposeMatrixInto(src *Matrix[float32], dest *Matrix[float32], srcStart Point, destStart Point, srcSize Point) {
 	for y := int32(0); y < srcSize.Y; y++ {
-		srcY := src[y+srcStart.Y]
+		srcY := src.GetRow(y + srcStart.Y)
 		for x := int32(0); x < srcSize.X; x++ {
-			dest[destStart.Y+x][destStart.X+y] = srcY[srcStart.X+x]
+			dest.Set(destStart.Y+x, destStart.X+y, srcY[srcStart.X+x])
 		}
 	}
 }
@@ -349,33 +350,33 @@ func DeepCopy3[T comparable](a [][][]T) [][][]T {
 	return matrixCopy
 }
 
-func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, size Dimension, scratchSpace0 [][]float32, scratchSpace1 [][]float32, transposed bool) error {
+func InverseDCT2D(src *Matrix[float32], dest *Matrix[float32], startIn Point, startOut Point, size Dimension, scratchSpace0 *Matrix[float32], scratchSpace1 *Matrix[float32], transposed bool) error {
 
 	logHeight := CeilLog2(size.Height)
 	logWidth := CeilLog2(size.Width)
 	if transposed {
 		for y := int32(0); y < int32(size.Height); y++ {
-			if err := inverseDCTHorizontal(src[startIn.Y+y], scratchSpace1[y], startIn.X, 0, logWidth, int32(size.Width)); err != nil {
+			if err := inverseDCTHorizontal(src.GetRow(startIn.Y+y), scratchSpace1.GetRow(y), startIn.X, 0, logWidth, int32(size.Width)); err != nil {
 				return err
 			}
 		}
 		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Width), Y: int32(size.Height)})
 		for y := int32(0); y < int32(size.Width); y++ {
-			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y], 0, startOut.X, logHeight, int32(size.Height)); err != nil {
+			if err := inverseDCTHorizontal(scratchSpace0.GetRow(y), dest.GetRow(startOut.Y+y), 0, startOut.X, logHeight, int32(size.Height)); err != nil {
 				return err
 			}
 		}
 	} else {
 		TransposeMatrixInto(src, scratchSpace0, startIn, ZERO, Point{X: int32(size.Width), Y: int32(size.Height)})
 		for y := int32(0); y < int32(size.Width); y++ {
-			if err := inverseDCTHorizontal(scratchSpace0[y], scratchSpace1[y],
+			if err := inverseDCTHorizontal(scratchSpace0.GetRow(y), scratchSpace1.GetRow(y),
 				0, 0, logHeight, int32(size.Height)); err != nil {
 				return err
 			}
 		}
 		TransposeMatrixInto(scratchSpace1, scratchSpace0, ZERO, ZERO, Point{X: int32(size.Height), Y: int32(size.Width)})
 		for y := int32(0); y < int32(size.Height); y++ {
-			if err := inverseDCTHorizontal(scratchSpace0[y], dest[startOut.Y+y],
+			if err := inverseDCTHorizontal(scratchSpace0.GetRow(y), dest.GetRow(startOut.Y+y),
 				0, startOut.X, logWidth, int32(size.Width)); err != nil {
 				return err
 			}
@@ -394,7 +395,7 @@ func inverseDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartO
 
 	lutX := cosineLUT[xLogLength]
 	for n := int32(1); n < xLength; n++ {
-		lut := lutX[n-1]
+		lut := lutX.GetRow(n - 1)
 		s2 := src[xStartIn+n]
 		for k := int32(0); k < xLength; k++ {
 			dest[xStartOut+k] += s2 * lut[k]
@@ -404,19 +405,19 @@ func inverseDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartO
 	return nil
 }
 
-func ForwardDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, length Dimension,
-	scratchSpace0 [][]float32, scratchSpace1 [][]float32, b bool) error {
+func ForwardDCT2D(src *Matrix[float32], dest *Matrix[float32], startIn Point, startOut Point, length Dimension,
+	scratchSpace0 *Matrix[float32], scratchSpace1 *Matrix[float32], b bool) error {
 
 	yLogLength := CeilLog2(length.Height)
 	xLogLength := CeilLog2(length.Width)
 	for y := int32(0); y < int32(length.Height); y++ {
-		if err := forwardDCTHorizontal(src[y+startIn.Y], scratchSpace0[y], startIn.X, 0, xLogLength, int32(length.Width)); err != nil {
+		if err := forwardDCTHorizontal(src.GetRow(y+startIn.Y), scratchSpace0.GetRow(y), startIn.X, 0, xLogLength, int32(length.Width)); err != nil {
 			return err
 		}
 	}
 	TransposeMatrixInto(scratchSpace0, scratchSpace1, ZERO, ZERO, Point{X: int32(length.Width), Y: int32(length.Height)})
 	for x := int32(0); x < int32(length.Width); x++ {
-		if err := forwardDCTHorizontal(scratchSpace1[x], scratchSpace0[x], 0, 0, yLogLength, int32(length.Height)); err != nil {
+		if err := forwardDCTHorizontal(scratchSpace1.GetRow(x), scratchSpace0.GetRow(x), 0, 0, yLogLength, int32(length.Height)); err != nil {
 			return err
 		}
 	}
@@ -434,7 +435,7 @@ func forwardDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartO
 	}
 	dest[xStartOut] = d2 * invLength
 	for k := int32(1); k < xLength; k++ {
-		lut := cosineLUT[xLogLength][k-1]
+		lut := cosineLUT[xLogLength].GetRow(k - 1)
 		d2 = src[xStartIn] * lut[0]
 		for n := int32(1); n < xLength; n++ {
 			d2 += src[xStartIn+n] * lut[n]

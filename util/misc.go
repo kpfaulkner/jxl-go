@@ -42,18 +42,18 @@ func MakeMatrix4D[T any](a int, b int, c int, d int) [][][][]T {
 	return matrix
 }
 
-func CompareMatrix2D[T any](a [][]T, b [][]T, compare func(T, T) bool) bool {
+func CompareMatrix2D[T constraints.Ordered](a *Matrix[T], b *Matrix[T], compare func(T, T) bool) bool {
 
-	if len(a) != len(b) {
+	if a.Height != b.Height {
 		return false
 	}
 
-	for i := 0; i < len(a); i++ {
-		if len(a[i]) != len(b[i]) {
+	for i := int32(0); i < a.Height; i++ {
+		if a.Width != b.Width {
 			return false
 		}
-		for j := 0; j < len(a[i]); j++ {
-			if !compare(a[i][j], b[i][j]) {
+		for j := int32(0); j < a.Width; j++ {
+			if !compare(a.Get(i, j), b.Get(i, j)) {
 				return false
 			}
 		}

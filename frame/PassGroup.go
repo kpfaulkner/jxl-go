@@ -120,7 +120,10 @@ func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *Pass
 	groupLocation.X <<= 8
 
 	coeffs := g.hfCoefficients.dequantHFCoeff
-	scratchBlock := util.MakeMatrix3D[float32](5, 256, 256)
+	scratchBlock := make([]*util.Matrix[float32], 5)
+	for i := 0; i < 5; i++ {
+		scratchBlock[i] = util.New2DMatrix[float32](256, 256)
+	}
 	for i := 0; i < len(g.hfCoefficients.blocks); i++ {
 		posInLFG := g.hfCoefficients.blocks[i]
 		if posInLFG == nil {
@@ -155,19 +158,19 @@ func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *Pass
 				}
 				break
 			case METHOD_DCT8_4:
-				coeff0 = coeffs[c][ppg.Y][ppg.X]
-				coeff1 = coeffs[c][ppg.Y+1][ppg.X]
+				coeff0 = coeffs[c].Get(ppg.Y, ppg.X)
+				coeff1 = coeffs[c].Get(ppg.Y+1, ppg.X)
 				lfs[0] = coeff0 + coeff1
 				lfs[1] = coeff0 - coeff1
 				for x := int32(0); x < 2; x++ {
-					scratchBlock[0][0][0] = lfs[x]
+					scratchBlock[0].Set(0, 0, lfs[x])
 					for iy := int32(0); iy < 4; iy++ {
 						startX := int32(0)
 						if iy == 0 {
 							startX = 1
 						}
 						for ix := startX; ix < 8; ix++ {
-							scratchBlock[0][iy][ix] = coeffs[c][ppg.Y+x+iy*2][ppg.X+ix]
+							scratchBlock[0].Set(iy, ix, coeffs[c].Get(ppg.Y+x+iy*2, ppg.X+ix))
 						}
 					}
 					ppf2 := util.Point{
@@ -183,19 +186,19 @@ func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *Pass
 				break
 
 			case METHOD_DCT4_8:
-				coeff0 = coeffs[c][ppg.Y][ppg.X]
-				coeff1 = coeffs[c][ppg.Y+1][ppg.X]
+				coeff0 = coeffs[c].Get(ppg.Y, ppg.X)
+				coeff1 = coeffs[c].Get(ppg.Y+1, ppg.X)
 				lfs[0] = coeff0 + coeff1
 				lfs[1] = coeff0 - coeff1
 				for y := int32(0); y < 2; y++ {
-					scratchBlock[0][0][0] = lfs[y]
+					scratchBlock[0].Set(0, 0, lfs[y])
 					for iy := int32(0); iy < 4; iy++ {
 						startX := int32(0)
 						if iy == 0 {
 							startX = 1
 						}
 						for ix := startX; ix < 8; ix++ {
-							scratchBlock[0][iy][ix] = coeffs[c][ppg.Y+y+iy*2][ppg.X+ix]
+							scratchBlock[0].Set(iy, ix, coeffs[c].Get(ppg.Y+y+iy*2, ppg.X+ix))
 						}
 					}
 					ppf2 := util.Point{
@@ -228,7 +231,7 @@ func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *Pass
 				g.auxDCT2(coeffs[c], scratchBlock[1], ppg, util.ZERO, 2)
 				for y := int32(0); y < 2; y++ {
 					for x := int32(0); x < 2; x++ {
-						blockLF := scratchBlock[1][y][x]
+						blockLF := scratchBlock[1].Get(y, x)
 						residual := float32(0.0)
 						for iy := int32(0); iy < 4; iy++ {
 							ixTemp := int32(0)
@@ -236,19 +239,19 @@ func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *Pass
 								ixTemp = 1
 							}
 							for ix := ixTemp; ix < 4; ix++ {
-								residual += coeffs[c][ppg.Y+y+iy*2][ppg.X+x+ix*2]
+								residual += coeffs[c].Get(ppg.Y+y+iy*2, ppg.X+x+ix*2)
 							}
 						}
-						scratchBlock[0][4*y+1][4*x+1] = blockLF - residual*0.0625
+						scratchBlock[0].Set(4*y+1, 4*x+1, blockLF-residual*0.0625)
 						for iy := int32(0); iy < 4; iy++ {
 							for ix := int32(0); ix < 4; ix++ {
 								if ix == 1 && iy == 1 {
 									continue
 								}
-								scratchBlock[0][4*y+iy][x*4+ix] = coeffs[c][ppg.Y+y+iy*2][ppg.X+x+ix*2] + scratchBlock[0][4*y+1][4*x+1]
+								scratchBlock[0].Set(4*y+iy, x*4+ix, coeffs[c].Get(ppg.Y+y+iy*2, ppg.X+x+ix*2)+scratchBlock[0].Get(4*y+1, 4*x+1))
 							}
 						}
-						scratchBlock[0][4*y][4*x] = coeffs[c][ppg.Y+y+2][ppg.X+x+2] + scratchBlock[0][4*y+1][4*x+1]
+						scratchBlock[0].Set(4*y, 4*x, coeffs[c].Get(ppg.Y+y+2, ppg.X+x+2)+scratchBlock[0].Get(4*y+1, 4*x+1))
 					}
 				}
 				layBlock(scratchBlock[0], frameBuffer[c], util.ZERO, ppf, tt.getPixelSize())
@@ -262,27 +265,32 @@ func (g *PassGroup) invertVarDCT(frameBuffer []*util.Matrix[float32], prev *Pass
 	return nil
 }
 
-func layBlock(block [][]float32, buffer [][]float32, inPos util.Point, outPos util.Point, inSize util.Dimension) {
+func layBlock(block *util.Matrix[float32], buffer *util.Matrix[float32], inPos util.Point, outPos util.Point, inSize util.Dimension) {
 	for y := int32(0); y < int32(inSize.Height); y++ {
-		copy(buffer[y+outPos.Y][inPos.X:], block[y+inPos.Y][outPos.X:])
+
+		dest := buffer.GetRow(y + outPos.Y)
+		src := block.GetRow(y + inPos.Y)
+		//copy(buffer[y+outPos.Y][inPos.X:], block[y+inPos.Y][outPos.X:])
+		copy(dest[inPos.X:], src[outPos.X:])
+
 	}
 }
 
-func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *TransformType, ppg util.Point, ppf util.Point, scratchBlock [][][]float32) error {
+func (g *PassGroup) invertAFV(coeffs *util.Matrix[float32], buffer *util.Matrix[float32], tt *TransformType, ppg util.Point, ppf util.Point, scratchBlock []*util.Matrix[float32]) error {
 
 	// some debugging logic here... there's a bug in here somewhere :/
 	if false {
 		fmt.Printf("invertAFV coeffs:\n")
-		for y := 0; y < len(coeffs); y++ {
+		for y := int32(0); y < coeffs.Height; y++ {
 			total := float32(0.0)
-			for x := 0; x < len(coeffs[y]); x++ {
+			for x := int32(0); x < coeffs.Width; x++ {
 				//fmt.Printf("%0.10f ", coeffs[i][j])
-				total += coeffs[y][x]
+				total += coeffs.Get(y, x)
 			}
 			if total != 0.0 {
 				// super inefficient... but dont care.
 				fmt.Printf("coord y=%d non zero %0.10f\n", y, total)
-				for x := 0; x < len(coeffs[y]); x++ {
+				for x := int32(0); x < coeffs.Height; x++ {
 					//fmt.Printf("%0.10f ", coeffs[y][x])
 				}
 				//fmt.Printf("\n")
@@ -291,14 +299,14 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 		fmt.Printf("==========\n")
 	}
 
-	scratchBlock[0][0][0] = (coeffs[ppg.Y][ppg.X] + coeffs[ppg.Y+1][ppg.X] + coeffs[ppg.Y][ppg.X+1]) * 4.0
+	scratchBlock[0].Set(0, 0, (coeffs.Get(ppg.Y, ppg.X)+coeffs.Get(ppg.Y+1, ppg.X)+coeffs.Get(ppg.Y, ppg.X+1))*4.0)
 	for iy := int32(0); iy < 4; iy++ {
 		startX := int32(0)
 		if iy == 0 {
 			startX = 1
 		}
 		for ix := startX; ix < 4; ix++ {
-			scratchBlock[0][iy][ix] = coeffs[ppg.Y+iy*2][ppg.X+ix*2]
+			scratchBlock[0].Set(iy, ix, coeffs.Get(ppg.Y+iy*2, ppg.X+ix*2))
 		}
 	}
 
@@ -311,15 +319,15 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 		flipX = 1
 	}
 	totalSample := float32(0)
-	for iy := 0; iy < 4; iy++ {
-		for ix := 0; ix < 4; ix++ {
+	for iy := int32(0); iy < 4; iy++ {
+		for ix := int32(0); ix < 4; ix++ {
 			sample := float32(0.0)
-			for j := 0; j < 16; j++ {
+			for j := int32(0); j < 16; j++ {
 				jy := j >> 2
 				jx := j & 0b11
-				sample += scratchBlock[0][jy][jx] * AFV_BASIS[j][iy*4+ix]
+				sample += scratchBlock[0].Get(jy, jx) * AFV_BASIS[j][iy*4+ix]
 			}
-			scratchBlock[1][iy][ix] = sample
+			scratchBlock[1].Set(iy, ix, sample)
 			totalSample += sample
 		}
 	}
@@ -334,18 +342,18 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 			if flipX == 1 {
 				xpos = 3 - ix
 			}
-			buffer[ppf.Y+flipY*4+iy][ppf.X+flipX*4+ix] = scratchBlock[1][ypos][xpos]
+			buffer.Set(ppf.Y+flipY*4+iy, ppf.X+flipX*4+ix, scratchBlock[1].Get(ypos, xpos))
 		}
 	}
 
-	scratchBlock[0][0][0] = coeffs[ppg.Y][ppg.X] + coeffs[ppg.Y+1][ppg.X] - coeffs[ppg.Y][ppg.X+1]
+	scratchBlock[0].Set(0, 0, coeffs.Get(ppg.Y, ppg.X)+coeffs.Get(ppg.Y+1, ppg.X)-coeffs.Get(ppg.Y, ppg.X+1))
 	for iy := int32(0); iy < 4; iy++ {
 		startX := int32(0)
 		if iy == 0 {
 			startX = 1
 		}
 		for ix := startX; ix < 4; ix++ {
-			scratchBlock[0][iy][ix] = coeffs[ppg.Y+iy*2][ppg.X+ix*2+1]
+			scratchBlock[0].Set(iy, ix, coeffs.Get(ppg.Y+iy*2, ppg.X+ix*2+1))
 		}
 	}
 
@@ -360,11 +368,11 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 			if flipX == 1 {
 				xx = 0
 			}
-			buffer[ppf.Y+flipY*4+iy][ppf.X+xx+ix] = scratchBlock[1][ix][iy]
+			buffer.Set(ppf.Y+flipY*4+iy, ppf.X+xx+ix, scratchBlock[1].Get(ix, iy))
 		}
 	}
 
-	scratchBlock[0][0][0] = coeffs[ppg.Y][ppg.X] - coeffs[ppg.Y+1][ppg.X]
+	scratchBlock[0].Set(0, 0, coeffs.Get(ppg.Y, ppg.X)-coeffs.Get(ppg.Y+1, ppg.X))
 	for iy := int32(0); iy < 4; iy++ {
 		startX := int32(0)
 		if iy == 0 {
@@ -387,36 +395,39 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 			if flipY == 1 {
 				yy = 0
 			}
-			buffer[ppf.Y+yy+iy][ppf.X+ix] = scratchBlock[1][iy][ix]
+			buffer.Set(ppf.Y+yy+iy, ppf.X+ix, scratchBlock[1].Get(iy, ix))
 		}
 	}
 	return nil
 }
 
-func (g *PassGroup) auxDCT2(coeffs [][]float32, result [][]float32, p util.Point, ps util.Point, s int32) {
+func (g *PassGroup) auxDCT2(coeffs *util.Matrix[float32], result *util.Matrix[float32], p util.Point, ps util.Point, s int32) {
 	g.layBlock(coeffs, result, p, ps, util.Dimension{Height: 8, Width: 8})
 
 	num := s / 2
 	for iy := int32(0); iy < num; iy++ {
 		for ix := int32(0); ix < num; ix++ {
-			c00 := coeffs[p.Y+iy][p.X+ix]
-			c01 := coeffs[p.Y+iy][p.X+ix+num]
-			c10 := coeffs[p.Y+iy+num][p.X+ix]
-			c11 := coeffs[p.Y+iy+num][p.X+ix+num]
+			c00 := coeffs.Get(p.Y+iy, p.X+ix)
+			c01 := coeffs.Get(p.Y+iy, p.X+ix+num)
+			c10 := coeffs.Get(p.Y+iy+num, p.X+ix)
+			c11 := coeffs.Get(p.Y+iy+num, p.X+ix+num)
 			r00 := c00 + c01 + c10 + c11
 			r01 := c00 + c01 - c10 - c11
 			r10 := c00 - c01 + c10 - c11
 			r11 := c00 - c01 - c10 + c11
-			result[ps.Y+iy*2][ps.X+ix*2] = r00
-			result[ps.Y+iy*2][ps.X+ix*2+1] = r01
-			result[ps.Y+iy*2+1][ps.X+ix*2] = r10
-			result[ps.Y+iy*2+1][ps.X+ix*2+1] = r11
+			result.Set(ps.Y+iy*2, ps.X+ix*2, r00)
+			result.Set(ps.Y+iy*2, ps.X+ix*2+1, r01)
+			result.Set(ps.Y+iy*2+1, ps.X+ix*2, r10)
+			result.Set(ps.Y+iy*2+1, ps.X+ix*2+1, r11)
 		}
 	}
 }
 
-func (g *PassGroup) layBlock(block [][]float32, buffer [][]float32, inPos util.Point, outPos util.Point, inSize util.Dimension) {
+func (g *PassGroup) layBlock(block *util.Matrix[float32], buffer *util.Matrix[float32], inPos util.Point, outPos util.Point, inSize util.Dimension) {
 	for y := int32(0); y < int32(inSize.Height); y++ {
-		copy(buffer[y+outPos.Y][outPos.X:outPos.X+int32(inSize.Width)], block[y+inPos.Y][inPos.X:inPos.X+int32(inSize.Width)])
+		dest := buffer.GetRow(y + outPos.Y)
+		src := block.GetRow(y + inPos.Y)
+		//copy(buffer[y+outPos.Y][outPos.X:outPos.X+int32(inSize.Width)], block[y+inPos.Y][inPos.X:inPos.X+int32(inSize.Width)])
+		copy(dest[outPos.X:outPos.X+int32(inSize.Width)], src[inPos.X:inPos.X+int32(inSize.Width)])
 	}
 }

@@ -39,9 +39,9 @@ func NewImageBuffer(bufferType int, height int32, width int32) (*ImageBuffer, er
 	}
 
 	if bufferType == TYPE_INT {
-		ib.IntBuffer = util.MakeMatrix2D[int32](height, width)
+		ib.IntBuffer = util.New2DMatrix[int32](height, width)
 	} else {
-		ib.FloatBuffer = util.MakeMatrix2D[float32](height, width)
+		ib.FloatBuffer = util.New2DMatrix[float32](height, width)
 	}
 	return ib, nil
 }
@@ -114,11 +114,11 @@ func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
 		return errors.New("Invalid maxValue")
 	}
 	oldBuffer := ib.IntBuffer
-	newBuffer := util.MakeMatrix2D[float32](ib.Height, ib.Width)
+	newBuffer := util.New2DMatrix[float32](ib.Height, ib.Width)
 	scaleFactor := 1.0 / float32(maxValue)
-	for y := 0; y < int(ib.Height); y++ {
-		for x := 0; x < int(ib.Width); x++ {
-			newBuffer[y][x] = float32(oldBuffer[y][x]) * scaleFactor
+	for y := int32(0); y < ib.Height; y++ {
+		for x := int32(0); x < ib.Width; x++ {
+			newBuffer.Set(y, x, float32(oldBuffer.Get(y, x))*scaleFactor)
 		}
 	}
 	ib.BufferType = TYPE_FLOAT
@@ -146,11 +146,11 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 	}
 
 	oldBuffer := ib.FloatBuffer
-	newBuffer := util.MakeMatrix2D[int32](ib.Height, ib.Width)
+	newBuffer := util.New2DMatrix[int32](ib.Height, ib.Width)
 	scaleFactor := float32(maxValue)
-	for y := 0; y < int(ib.Height); y++ {
-		for x := 0; x < int(ib.Width); x++ {
-			v := int32(oldBuffer[y][x]*scaleFactor + 0.5)
+	for y := int32(0); y < ib.Height; y++ {
+		for x := int32(0); x < ib.Width; x++ {
+			v := int32(oldBuffer.Get(y, x)*scaleFactor + 0.5)
 			var vv int32
 			if v < 0 {
 				vv = 0
@@ -159,7 +159,7 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 			} else {
 				vv = v
 			}
-			newBuffer[y][x] = vv
+			newBuffer.Set(y, x, vv)
 		}
 	}
 	ib.IntBuffer = newBuffer
@@ -172,16 +172,16 @@ func (ib *ImageBuffer) Clamp(maxValue int32) error {
 		return errors.New("Clamp only supported for int buffers")
 	}
 
-	buf := util.MakeMatrix2D[int32](ib.Height, ib.Width)
-	for y := 0; y < int(ib.Height); y++ {
-		for x := 0; x < int(ib.Width); x++ {
-			v := ib.IntBuffer[y][x]
+	buf := util.New2DMatrix[int32](ib.Height, ib.Width)
+	for y := int32(0); y < ib.Height; y++ {
+		for x := int32(0); x < ib.Width; x++ {
+			v := ib.IntBuffer.Get(y, x)
 			if v < 0 {
-				buf[y][x] = 0
+				buf.Set(y, x, 0)
 			} else if v > maxValue {
-				buf[y][x] = maxValue
+				buf.Set(y, x, maxValue)
 			} else {
-				buf[y][x] = v
+				buf.Set(y, x, v)
 			}
 		}
 	}

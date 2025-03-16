@@ -33,7 +33,7 @@ type HFCoefficients struct {
 	lfg             *LFGroup
 	stream          *entropy.EntropyStream
 	quantizedCoeffs [][][]int32
-	dequantHFCoeff  [][][]float32
+	dequantHFCoeff  []*util.Matrix[float32]
 	groupPos        util.Point
 	blocks          []*util.Point
 }
