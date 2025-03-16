@@ -8,17 +8,18 @@ import (
 )
 
 var (
-	DEFAULT_MATRIX = [][]float32{
-		{11.031566901960783, -9.866943921568629, -0.16462299647058826},
-		{-3.254147380392157, 4.418770392156863, -0.16462299647058826},
-		{-3.6588512862745097, 2.7129230470588235, 1.9459282392156863}}
+	DEFAULT_MATRIX = util.New2DMatrixWithContents[float32](3, 3,
+		[][]float32{{11.031566901960783, -9.866943921568629, -0.16462299647058826},
+			{-3.254147380392157, 4.418770392156863, -0.16462299647058826},
+			{-3.6588512862745097, 2.7129230470588235, 1.9459282392156863}})
+
 	DEFAULT_OPSIN_BIAS              = []float32{-0.0037930732552754493, -0.0037930732552754493, -0.0037930732552754493}
 	DEFAULT_QUANT_BIAS              = []float32{1.0 - 0.05465007330715401, 1.0 - 0.07005449891748593, 1.0 - 0.049935103337343655}
 	DEFAULT_QBIAS_NUMERATOR float32 = 0.145
 )
 
 type OpsinInverseMatrix struct {
-	Matrix             [][]float32
+	Matrix             *util.Matrix[float32]
 	OpsinBias          []float32
 	QuantBias          []float32
 	CbrtOpsinBias      []float32
@@ -34,7 +35,7 @@ func NewOpsinInverseMatrix() *OpsinInverseMatrix {
 func NewOpsinInverseMatrixAllParams(
 	primaries CIEPrimaries,
 	whitePoint CIEXY,
-	matrix [][]float32,
+	matrix *util.Matrix[float32],
 	opsinBias []float32,
 	quantBias []float32,
 	quantBiasNumerator float32) *OpsinInverseMatrix {
@@ -63,12 +64,14 @@ func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) (*OpsinInverseMatr
 		oim.QuantBias = DEFAULT_QUANT_BIAS
 		oim.QuantBiasNumerator = DEFAULT_QBIAS_NUMERATOR
 	} else {
-		oim.Matrix = util.MakeMatrix2D[float32](3, 3)
-		for i := 0; i < 3; i++ {
-			for j := 0; j < 3; j++ {
-				if oim.Matrix[i][j], err = reader.ReadF16(); err != nil {
+		oim.Matrix = util.New2DMatrix[float32](3, 3)
+		for i := int32(0); i < 3; i++ {
+			for j := int32(0); j < 3; j++ {
+				d, err := reader.ReadF16()
+				if err != nil {
 					return nil, err
 				}
+				oim.Matrix.Set(i, j, d)
 			}
 		}
 		oim.OpsinBias = make([]float32, 3)
@@ -128,8 +131,9 @@ func (oim *OpsinInverseMatrix) InvertXYB(buffer []*util.Matrix[float32], intensi
 			mixL := gammaL*gammaL*gammaL + oim.OpsinBias[0]
 			mixM := gammaM*gammaM*gammaM + oim.OpsinBias[1]
 			mixS := gammaS*gammaS*gammaS + oim.OpsinBias[2]
-			for c := 0; c < 3; c++ {
-				buffer[c].Set(y, x, (mixL*oim.Matrix[c][0]+mixM*oim.Matrix[c][1]+mixS*oim.Matrix[c][2])*itScale)
+			for c := int32(0); c < 3; c++ {
+				buffer[c].Set(y, x, (mixL*oim.Matrix.Get(c, 0)+mixM*oim.Matrix.Get(c, 1)+
+					mixS*oim.Matrix.Get(c, 2))*itScale)
 			}
 		}
 	}

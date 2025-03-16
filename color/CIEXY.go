@@ -60,9 +60,9 @@ func AdaptWhitePoint(targetWP *CIEXY, currentWP *CIEXY) (*util.Matrix[float32], 
 	if isLMSValid(lmsTarget) {
 		return nil, errors.New("Invalid LMS")
 	}
-	a := util.MakeMatrix2D[float32](3, 3)
-	for i := 0; i < 3; i++ {
-		a[i][i] = lmsTarget[i] / lmsCurrent[i]
+	a := util.New2DMatrix[float32](3, 3)
+	for i := int32(0); i < 3; i++ {
+		a.Set(i, i, lmsTarget[i]/lmsCurrent[i])
 	}
 
 	return util.MatrixMultiply(BRADFORD_INVERSE, a, BRADFORD)
