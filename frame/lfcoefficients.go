@@ -10,7 +10,7 @@ import (
 )
 
 type LFCoefficients struct {
-	dequantLFCoeff [][][]float32
+	dequantLFCoeff []*util.Matrix[float32]
 	lfIndex        [][]int32
 	frame          *Frame
 }

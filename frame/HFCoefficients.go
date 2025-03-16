@@ -32,7 +32,7 @@ type HFCoefficients struct {
 	hfctx           *HFBlockContext
 	lfg             *LFGroup
 	stream          *entropy.EntropyStream
-	quantizedCoeffs [][][]int32
+	quantizedCoeffs []*util.Matrix[int32]
 	dequantHFCoeff  []*util.Matrix[float32]
 	groupPos        util.Point
 	blocks          []*util.Point
@@ -60,14 +60,16 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 	}
 	nonZeros := util.MakeMatrix3D[int32](3, 32, 32)
 	hf.stream = entropy.NewEntropyStreamWithStream(hfPass.contextStream)
-	hf.quantizedCoeffs = util.MakeMatrix3D[int32](3, 0, 0)
-	hf.dequantHFCoeff = util.MakeMatrix3D[float32](3, 0, 0)
+	//hf.quantizedCoeffs = util.MakeMatrix3D[int32](3, 0, 0)
+	hf.quantizedCoeffs = make([]*util.Matrix[int32], 3)
+	//hf.dequantHFCoeff = util.MakeMatrix3D[float32](3, 0, 0)
+	hf.dequantHFCoeff = make([]*util.Matrix[float32], 3)
 
 	for c := 0; c < 3; c++ {
-		sY := size.Height >> header.jpegUpsamplingY[c]
-		sX := size.Width >> header.jpegUpsamplingX[c]
-		hf.quantizedCoeffs[c] = util.MakeMatrix2D[int32](sY, sX)
-		hf.dequantHFCoeff[c] = util.MakeMatrix2D[float32](sY, sX)
+		sY := int32(size.Height >> header.jpegUpsamplingY[c])
+		sX := int32(size.Width >> header.jpegUpsamplingX[c])
+		hf.quantizedCoeffs[c] = util.New2DMatrix[int32](sY, sX)
+		hf.dequantHFCoeff[c] = util.New2DMatrix[float32](sY, sX)
 	}
 
 	hf.groupPos = hf.frame.groupPosInLFGroup(hf.lfg.lfGroupID, hf.groupID)
@@ -149,7 +151,7 @@ func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uin
 					posX += order.X
 				}
 
-				hf.quantizedCoeffs[c][posY][posX] = jxlio.UnpackSigned(uint32(ucoeff[k])) << shift
+				hf.quantizedCoeffs[c].Set(posY, posX, jxlio.UnpackSigned(uint32(ucoeff[k]))<<shift)
 				if ucoeff[k] != 0 {
 					nonZero--
 					if nonZero == 0 {
@@ -180,11 +182,11 @@ func (hf *HFCoefficients) displayQuantizedCoeffs() {
 	grandTotal := int32(0)
 	for c := 0; c < 3; c++ {
 		fmt.Printf("Channel %d\n", c)
-		for y := 0; y < len(hf.quantizedCoeffs[c]); y++ {
+		for y := int32(0); y < hf.quantizedCoeffs[c].Height; y++ {
 			total := int32(0)
-			for x := 0; x < len(hf.quantizedCoeffs[c][y]); x++ {
+			for x := int32(0); x < hf.quantizedCoeffs[c].Width; x++ {
 				//fmt.Printf("%d ", hf.quantizedCoeffs[c][y][x])
-				total += hf.quantizedCoeffs[c][y][x]
+				total += hf.quantizedCoeffs[c].Get(y, x)
 			}
 			grandTotal += total
 			//fmt.Printf("\n")
@@ -199,11 +201,11 @@ func (hf *HFCoefficients) displayDequantHFCoeff() {
 	grandTotal := float32(0)
 	for c := 0; c < 3; c++ {
 		fmt.Printf("Channel %d\n", c)
-		for y := 0; y < len(hf.dequantHFCoeff[c]); y++ {
+		for y := int32(0); y < hf.dequantHFCoeff[c].Height; y++ {
 			total := float32(0)
-			for x := 0; x < len(hf.dequantHFCoeff[c][y]); x++ {
-				fmt.Printf("%f ", hf.dequantHFCoeff[c][y][x])
-				total += hf.dequantHFCoeff[c][y][x]
+			for x := int32(0); x < hf.dequantHFCoeff[c].Width; x++ {
+				fmt.Printf("%f ", hf.dequantHFCoeff[c].Get(y, x))
+				total += hf.dequantHFCoeff[c].Get(y, x)
 			}
 			//fmt.Printf("\n")
 			fmt.Printf("Total for c %d y %d : %f\n", c, y, total)
@@ -312,7 +314,7 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 					}
 					pY := pixelGroupY + y
 					pX := pixelGroupX + x
-					coeff := hf.quantizedCoeffs[c][pY][pX]
+					coeff := hf.quantizedCoeffs[c].Get(pY, pX)
 					var quant float32
 					if coeff > -2 && coeff < 2 {
 						quant = qbc[coeff+1]
@@ -326,7 +328,7 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 						wy = y
 					}
 					wx := x ^ y ^ wy
-					hf.dequantHFCoeff[c][pY][pX] = quant * sfc * w3[wy][wx]
+					hf.dequantHFCoeff[c].Set(pY, pX, quant*sfc*w3[wy][wx])
 				}
 			}
 		}
@@ -379,9 +381,9 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 					kX = xF[fx]
 					kB = bF[fx]
 				}
-				dequantY := hf.dequantHFCoeff[1][y&0xFF][x&0xFF]
-				hf.dequantHFCoeff[0][y&0xFF][x&0xFF] += kX * dequantY
-				hf.dequantHFCoeff[2][y&0xFF][x&0xFF] += kB * dequantY
+				dequantY := hf.dequantHFCoeff[1].Get(y&0xFF, x&0xFF)
+				hf.dequantHFCoeff[0].IncrementBy(y&0xFF, x&0xFF, kX*dequantY)
+				hf.dequantHFCoeff[2].IncrementBy(y&0xFF, x&0xFF, kB*dequantY)
 			}
 		}
 	}
@@ -391,7 +393,11 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 
 func (hf *HFCoefficients) finalizeLLF() error {
 
-	scratchBlock := util.MakeMatrix3D[float32](2, 32, 32)
+	//scratchBlock := util.MakeMatrix3D[float32](2, 32, 32)
+	scratchBlock := make([]*util.Matrix[float32], 2)
+	scratchBlock[0] = util.New2DMatrix[float32](32, 32)
+	scratchBlock[1] = util.New2DMatrix[float32](32, 32)
+
 	header := hf.frame.Header
 	for i := 0; i < len(hf.blocks); i++ {
 		posInLfg := hf.blocks[i]
@@ -421,7 +427,7 @@ func (hf *HFCoefficients) finalizeLLF() error {
 			}
 
 			for y := int32(0); y < tt.dctSelectHeight; y++ {
-				dqy := dq[y+pixelGroupY]
+				dqy := dq.GetRow(y + pixelGroupY)
 
 				llfy := tt.llfScale[y]
 				for x := int32(0); x < tt.dctSelectWidth; x++ {

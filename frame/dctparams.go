@@ -3,11 +3,11 @@ package frame
 import "github.com/kpfaulkner/jxl-go/util"
 
 type DCTParam struct {
-	dctParam    [][]float64
-	param       [][]float32
+	dctParam    *util.Matrix[float64]
+	param       *util.Matrix[float32]
 	mode        int32
 	denominator float32
-	params4x4   [][]float64
+	params4x4   *util.Matrix[float64]
 }
 
 // Equals compares 2 DCTParams structs. Slightly concerned about having to
@@ -22,10 +22,10 @@ func (dct DCTParam) Equals(other DCTParam) bool {
 	if dct.denominator != other.denominator {
 		return false
 	}
-	if len(dct.dctParam) != len(other.dctParam) {
+	if dct.dctParam.Height != other.dctParam.Height {
 		return false
 	}
-	if len(dct.param) != len(other.param) {
+	if dct.param.Height != other.param.Height {
 		return false
 	}
 
@@ -52,9 +52,9 @@ func (dct DCTParam) Equals(other DCTParam) bool {
 
 func NewDCTParam() *DCTParam {
 	return &DCTParam{
-		dctParam:    [][]float64{},
-		param:       [][]float32{},
-		params4x4:   [][]float64{},
+		dctParam:    util.New2DMatrix[float64](0, 0),
+		param:       util.New2DMatrix[float32](0, 0),
+		params4x4:   util.New2DMatrix[float64](0, 0),
 		mode:        0,
 		denominator: 0,
 	}
