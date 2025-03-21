@@ -10,7 +10,6 @@ import (
 	"time"
 	//"github.com/pkg/profile"
 	"github.com/kpfaulkner/jxl-go/core"
-	"github.com/pkg/profile"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,7 +22,7 @@ func main() {
 	//file := `../testdata/alpha-triangles.jxl`
 	//file := `../testdata/unittest.jxl`
 	file := `../testdata/lenna.jxl`
-	defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
+	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	//defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.ProfilePath(".")).Stop()
 

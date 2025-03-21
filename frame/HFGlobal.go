@@ -73,7 +73,7 @@ func setupDefaultParams() {
 	}
 	defaultParams[2] = DCTParam{
 		dctParam: nil,
-		param: util.New2DMatrixWithContents[float32](3, 3,
+		param: util.New2DMatrixWithContents[float32](3, 6,
 			[][]float32{
 				{3840.0, 2560.0, 1280.0, 640.0, 480.0, 300.0},
 				{960.0, 640.0, 320.0, 180.0, 140.0, 120.0},
@@ -84,7 +84,7 @@ func setupDefaultParams() {
 	}
 	defaultParams[3] = DCTParam{
 		dctParam: dct4x4params,
-		param: util.New2DMatrixWithContents[float32](3, 3,
+		param: util.New2DMatrixWithContents[float32](3, 2,
 			[][]float32{
 				{1.0, 1.0},
 				{1.0, 1.0},
@@ -105,7 +105,7 @@ func setupDefaultParams() {
 		params4x4:   nil,
 	}
 	defaultParams[5] = DCTParam{
-		dctParam: util.New2DMatrixWithContents[float64](3, 7,
+		dctParam: util.New2DMatrixWithContents[float64](3, 8,
 			[][]float64{
 				{15718.40830982518931456, -1.025, -0.98, -0.9012, -0.4, -0.48819395464, -0.421064, -0.27},
 				{7305.7636810695983104, -0.8041958212306401, -0.7633036457487539, -0.55660379990111464, -0.49785304658857626, -0.43699592683512467, -0.40180866526242109, -0.27321683125358037},
@@ -127,7 +127,7 @@ func setupDefaultParams() {
 		params4x4:   nil,
 	}
 	defaultParams[7] = DCTParam{
-		dctParam: util.New2DMatrixWithContents[float64](3, 7,
+		dctParam: util.New2DMatrixWithContents[float64](3, 8,
 			[][]float64{
 				{16283.2494710648897, -1.7812845336559429, -1.6309059012653515, -1.0382179034313539, -0.85, -0.7, -0.9, -1.2360638576849587},
 				{5089.15750884921511936, -0.320049391452786891, -0.35362849922161446, -0.30340000000000003, -0.61, -0.5, -0.5, -0.6},
@@ -138,7 +138,7 @@ func setupDefaultParams() {
 		params4x4:   nil,
 	}
 	defaultParams[8] = DCTParam{
-		dctParam: util.New2DMatrixWithContents[float64](3, 7,
+		dctParam: util.New2DMatrixWithContents[float64](3, 8,
 			[][]float64{
 				{13844.97076442300573, -0.97113799999999995, -0.658, -0.42026, -0.22712, -0.2206, -0.226, -0.6},
 				{4798.964084220744293, -0.61125308982767057, -0.83770786552491361, -0.79014862079498627, -0.2692727459704829, -0.38272769465388551, -0.22924222653091453, -0.20719098826199578},
@@ -168,7 +168,7 @@ func setupDefaultParams() {
 		params4x4:   dct4x4params,
 	}
 	defaultParams[11] = DCTParam{
-		dctParam: util.New2DMatrixWithContents[float64](3, 7,
+		dctParam: util.New2DMatrixWithContents[float64](3, 8,
 			[][]float64{
 				append([]float64{23966.1665298448605}, seqA[:]...),
 				append([]float64{8380.19148390090414}, seqB[:]...),
@@ -180,7 +180,7 @@ func setupDefaultParams() {
 		params4x4:   nil,
 	}
 	defaultParams[12] = DCTParam{
-		dctParam: util.New2DMatrixWithContents[float64](3, 7,
+		dctParam: util.New2DMatrixWithContents[float64](3, 8,
 			[][]float64{
 				append([]float64{15358.89804933239925}, seqA[:]...),
 				append([]float64{5597.360516150652990}, seqB[:]...),
@@ -192,7 +192,7 @@ func setupDefaultParams() {
 		params4x4:   nil,
 	}
 	defaultParams[13] = DCTParam{
-		dctParam: util.New2DMatrixWithContents[float64](3, 7,
+		dctParam: util.New2DMatrixWithContents[float64](3, 8,
 			[][]float64{
 				append([]float64{47932.3330596897210}, seqA[:]...),
 				append([]float64{16760.38296780180828}, seqB[:]...),

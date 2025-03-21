@@ -21,7 +21,7 @@ func New2DMatrix[T constraints.Ordered](height int32, width int32) *Matrix[T] {
 }
 
 func New2DMatrixWithContents[T constraints.Ordered](height int32, width int32, initialData [][]T) *Matrix[T] {
-	matrix := New2DMatrix[T](width, height)
+	matrix := New2DMatrix[T](height, width)
 	for h := int32(0); h < height; h++ {
 		copy(matrix.Data[h*width:(h+1)*width], initialData[h])
 	}
