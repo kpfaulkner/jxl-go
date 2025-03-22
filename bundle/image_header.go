@@ -1,9 +1,11 @@
 package bundle
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -77,6 +79,15 @@ var (
 		-0.00819975, -0.02964169, -0.04499287, -0.02745350, -0.00612408,
 		0.02727416, 0.19446600, 0.00159832, -0.02232473, 0.74982506,
 		0.11452620, -0.03348048, -0.01605681, -0.02070339, -0.00458223}
+
+	iccTags = []string{
+		"cprt", "wtpt", "bkpt", "rXYZ", "gXYZ", "bXYZ",
+		"kXYZ", "rTRC", "gTRC", "bTRC", "kTRC", "chad",
+		"desc", "chrm", "dmnd", "dmdd", "lumi",
+	}
+
+	MNTRGB = []byte{'m', 'n', 't', 'r', 'R', 'G', 'B', ' ', 'X', 'Y', 'Z', ' '}
+	ACSP   = []byte{'a', 'c', 's', 'p'}
 )
 
 type ImageHeader struct {
@@ -87,6 +98,7 @@ type ImageHeader struct {
 	UpWeights        [][][][][]float32
 	ExtraChannelInfo []ExtraChannelInfo
 	EncodedICC       []byte
+	DecodedICC       []byte
 
 	AnimationHeader    *AnimationHeader
 	PreviewSize        *util.Dimension
@@ -379,13 +391,287 @@ func (h *ImageHeader) GetTotalChannelCount() int {
 	return len(h.ExtraChannelInfo) + h.GetColourChannelCount()
 }
 
-func (h *ImageHeader) GetDecodedICC() []byte {
+func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
+
+	if h.DecodedICC != nil && len(h.DecodedICC) > 0 {
+		return h.DecodedICC, nil
+	}
 
 	if h.EncodedICC == nil {
-		return nil
+		return nil, nil
 	}
-	panic("not implemented")
-	return nil
+
+	commandReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC))
+	outputSize, err := commandReader.ReadICCVarint()
+	if err != nil {
+		return nil, err
+	}
+	commandSize, err := commandReader.ReadICCVarint()
+	if err != nil {
+		return nil, err
+	}
+
+	commandStart := int32(commandReader.GetBitsCount() >> 3)
+	dataStart := commandStart + commandSize
+	dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart : int32(len(h.EncodedICC))-dataStart]))
+	headerSize := util.Min(128, outputSize)
+	h.DecodedICC = make([]byte, outputSize)
+	resultPos := int32(0)
+
+	for i := int32(0); i < headerSize; i++ {
+		e, err := dataReader.ReadBits(8)
+		if err != nil {
+			return nil, err
+		}
+		p := h.GetICCPrediction(h.DecodedICC, i)
+		h.DecodedICC[resultPos] = byte(int32(e)+p) & 0xFF
+		resultPos++
+	}
+	if resultPos == outputSize {
+		return h.DecodedICC, nil
+	}
+
+	tagCount, err := commandReader.ReadICCVarint()
+	if err != nil {
+		return nil, err
+	}
+	tagCount--
+
+	if tagCount >= 0 {
+		for i := 24; i >= 0; i -= 8 {
+			h.DecodedICC[resultPos] = byte(tagCount>>i) & 0xFF
+			resultPos++
+		}
+		prevTagStart := 128 + tagCount*12
+		prevTagSize := int32(0)
+		for !commandReader.AtEnd() && (commandReader.GetBitsCount()>>3) < uint64(dataStart) {
+			command, err := commandReader.ReadBits(8)
+			if err != nil {
+				return nil, err
+			}
+			tagCode := command & 0x3F
+			if tagCode == 0 {
+				break
+			}
+			var tag string
+			var tcr []byte
+			if tagCode == 1 {
+				tcr = make([]byte, 4)
+				for i := 0; i < 4; i++ {
+					dat, err := dataReader.ReadBits(8)
+					if err != nil {
+						return nil, err
+					}
+					tcr[i] = byte(dat)
+				}
+				tag = string(tcr)
+			} else if tagCode == 2 {
+				tag = "rTRC"
+			} else if tagCode == 3 {
+				tag = "rXYZ"
+			} else if tagCode >= 4 && tagCode <= 21 {
+				tag = iccTags[tagCode-4]
+			} else {
+				return nil, errors.New("illegal ICC tag code")
+			}
+
+			var tagStart int32
+			var tagSize int32
+			if command&0x40 > 0 {
+				dat, err := commandReader.ReadICCVarint()
+				if err != nil {
+					return nil, err
+				}
+				tagStart = dat
+			} else {
+				tagStart = prevTagStart + prevTagSize
+			}
+			if command&0x80 > 0 {
+				dat, err := commandReader.ReadICCVarint()
+				if err != nil {
+					return nil, err
+				}
+				tagSize = dat
+			} else {
+				if slices.Contains([]string{"rXYZ", "gXYZ", "bXYZ", "kXYZ", "wtpt", "bkpt", "lumi"}, tag) {
+					tagSize = 20
+				} else {
+					tagSize = prevTagSize
+				}
+			}
+			prevTagSize = tagSize
+			prevTagStart = tagStart
+
+			var tags []string
+			if tagCode == 2 {
+				tags = []string{"rTRC", "gTRC", "bTRC"}
+			} else if tagCode == 3 {
+				tags = []string{"rXYZ", "gXYZ", "bXYZ"}
+			} else {
+				tags = []string{tag}
+			}
+			for _, wTag := range tags {
+				tcr = []byte(wTag)
+				for i := 0; i < 4; i++ {
+					h.DecodedICC[resultPos] = tcr[i] & 0xFF
+					resultPos++
+				}
+				for i := 024; i >= 0; i -= 8 {
+					h.DecodedICC[resultPos] = byte(tagStart>>i) & 0xFF
+					resultPos++
+				}
+				for i := 24; i >= 0; i -= 8 {
+					h.DecodedICC[resultPos] = byte(tagSize>>i) & 0xFF
+					resultPos++
+				}
+			}
+		}
+
+		for !commandReader.AtEnd() && (commandReader.GetBitsCount()>>3) < uint64(dataStart) {
+			command, err := commandReader.ReadBits(8)
+			if err != nil {
+				return nil, err
+			}
+			if command == 1 {
+				num, err := commandReader.ReadICCVarint()
+				if err != nil {
+					return nil, err
+				}
+				for i := 0; i < int(num); i++ {
+					dat, err := dataReader.ReadBits(8)
+					if err != nil {
+						return nil, err
+					}
+					h.DecodedICC[resultPos] = byte(dat)
+					resultPos++
+				}
+			} else if command == 2 || command == 3 {
+				num, err := commandReader.ReadICCVarint()
+				if err != nil {
+					return nil, err
+				}
+				b := make([]byte, num)
+				for p := 0; p < int(num); p++ {
+					dat, err := dataReader.ReadBits(8)
+					if err != nil {
+						return nil, err
+					}
+					b[p] = byte(dat)
+				}
+				var width int32
+				if command == 2 {
+					width = 2
+				} else {
+					width = 4
+				}
+				b = shuffle(b, width)
+				copy(h.DecodedICC[resultPos:], b)
+				resultPos += int32(len(b))
+			} else if command == 4 {
+				flags, err := commandReader.ReadBits(8)
+				if err != nil {
+					return nil, err
+				}
+				width := int32((flags & 3) + 1)
+				if width == 3 {
+					return nil, errors.New("illegal width is 3")
+				}
+				order := int32(flags&12) >> 2
+				if order == 3 {
+					return nil, errors.New("illegal order is 3")
+				}
+				var stride int32
+				if flags&0x10 > 0 {
+					dat, err := commandReader.ReadICCVarint()
+					if err != nil {
+						return nil, err
+					}
+					stride = dat
+				} else {
+					stride = int32(width)
+				}
+				if stride*4 >= resultPos {
+					return nil, errors.New("stride too large")
+				}
+				if stride < int32(width) {
+					return nil, errors.New("stride too small")
+				}
+				num, err := commandReader.ReadICCVarint()
+				if err != nil {
+					return nil, err
+				}
+				b := make([]byte, num)
+				for p := 0; p < int(num); p++ {
+					dat, err := dataReader.ReadBits(8)
+					if err != nil {
+						return nil, err
+					}
+					b[p] = byte(dat)
+				}
+				if width == 2 || width == 4 {
+					b = shuffle(b, int32(width))
+				}
+				for i := int32(0); i < num; i += width {
+					n := order + 1
+					prev := make([]int32, n)
+					for j := int32(0); j < n; j++ {
+						for k := int32(0); k < width; k++ {
+							prev[j] = prev[j] << 8
+							prev[j] = prev[j] | int32(h.DecodedICC[resultPos-stride*(j-1)+k]&0xFF)
+						}
+					}
+					var p int32
+					if order == 0 {
+						p = prev[0]
+					} else if order == 1 {
+						p = 2*prev[0] - prev[1]
+					} else {
+						p = 3*prev[0] - 3*prev[1] + prev[2]
+					}
+
+					for j := int32(0); j < width && i+j < num; j++ {
+						h.DecodedICC[resultPos] = ((b[i+j] + byte(p>>(8*(width-1-j)))) & 0xFF)
+						resultPos++
+					}
+				}
+			} else if command == 10 {
+				h.DecodedICC[resultPos] = 'X'
+				resultPos++
+				h.DecodedICC[resultPos] = 'Y'
+				resultPos++
+				h.DecodedICC[resultPos] = 'Z'
+				resultPos++
+				h.DecodedICC[resultPos] = ' '
+				resultPos += 4
+				for i := 0; i < 12; i++ {
+					dat, err := dataReader.ReadBits(8)
+					if err != nil {
+						return nil, err
+					}
+					h.DecodedICC[resultPos] = byte(dat)
+					resultPos++
+				}
+			} else if command >= 16 && command < 24 {
+				s := []string{"XYZ ", "desc", "text", "mluc", "para", "curv", "sf32", "gbd "}
+				trc := s[command-16]
+				for i := 0; i < 4; i++ {
+					h.DecodedICC[resultPos] = trc[i]
+					resultPos++
+				}
+				resultPos += 4
+
+			} else {
+				return nil, errors.New("illegal data command")
+			}
+		}
+	}
+
+	return h.DecodedICC, nil
+}
+
+func shuffle(b []byte, width int32) []byte {
+	panic("boom")
+	return b
 }
 
 func GetICCContext(buffer []byte, index int) int {
@@ -619,4 +905,78 @@ func (h *ImageHeader) GetUpWeights() ([][][][][]float32, error) {
 		}
 	}
 	return h.UpWeights, nil
+}
+
+func (h *ImageHeader) GetICCPrediction(buffer []byte, i int32) int32 {
+	if i <= 3 {
+		return int32(len(buffer)) >> (8 * (3 - i))
+	}
+
+	if i == 8 {
+		return 4
+	}
+
+	if i >= 12 && i <= 23 {
+		return int32(MNTRGB[i-12])
+	}
+
+	if i >= 36 && i <= 39 {
+		return int32(ACSP[i-36])
+	}
+	if buffer[40] == 'A' {
+		if i == 41 || i == 42 {
+			return 'P'
+		}
+
+		if i == 43 {
+			return 'L'
+		}
+	} else if buffer[40] == 'M' {
+		if i == 41 {
+			return 'S'
+		}
+		if i == 42 {
+			return 'F'
+		}
+		if i == 43 {
+			return 'T'
+		}
+	} else if buffer[40] == 'S' {
+		if buffer[41] == 'G' {
+			if i == 42 {
+				return 'I'
+			}
+			if i == 43 {
+				return 32
+			}
+		} else if buffer[41] == 'U' {
+			if i == 42 {
+				return 'N'
+			}
+			if i == 43 {
+				return 'W'
+			}
+		}
+	}
+	if i == 70 {
+		return 246
+	}
+	if i == 71 {
+		return 214
+	}
+	if i == 73 {
+		return 1
+	}
+
+	if i == 78 {
+		return 211
+	}
+	if i == 79 {
+		return 45
+	}
+	if i >= 80 && i < 84 {
+		return int32(buffer[i-76])
+	}
+
+	return 0
 }

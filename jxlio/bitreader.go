@@ -182,14 +182,14 @@ func (br *Bitreader) ReadF16() (float32, error) {
 	return math.Float32frombits(total), nil
 }
 
-func (br *Bitreader) ReadICCVarint() (int, error) {
-	value := 0
+func (br *Bitreader) ReadICCVarint() (int32, error) {
+	value := int32(0)
 	for shift := 0; shift < 63; shift += 7 {
 		b, err := br.ReadBits(8)
 		if err != nil {
 			return 0, err
 		}
-		value |= int(b) & 127 << shift
+		value |= int32(b) & 127 << shift
 		if b <= 127 {
 			break
 		}
@@ -307,6 +307,10 @@ func (br *Bitreader) ReadU8() (int, error) {
 		return 0, err
 	}
 	return int(nn + 1<<n), nil
+}
+
+func (br *Bitreader) GetBitsCount() uint64 {
+	return br.bitsRead
 }
 
 func (br *Bitreader) ShowBits(bits int) (uint64, error) {

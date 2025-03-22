@@ -56,13 +56,16 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	jxl.whitePoint = bundle.WhitePoint
 	jxl.primariesXY = bundle.Prim
 	jxl.whiteXY = bundle.White
+	var err error
 	if jxl.imageHeader.XybEncoded {
 		jxl.transfer = colour.TF_LINEAR
 		jxl.iccProfile = nil
 	} else {
 		jxl.transfer = bundle.Tf
-		jxl.iccProfile = header.GetDecodedICC()
-
+		jxl.iccProfile, err = header.GetDecodedICC()
+		if err != nil {
+			return nil, err
+		}
 	}
 	jxl.taggedTransfer = bundle.Tf
 	jxl.alphaIsPremultiplied = jxl.imageHeader.HasAlpha() && jxl.imageHeader.ExtraChannelInfo[jxl.alphaIndex].AlphaAssociated
