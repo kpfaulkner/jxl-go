@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -99,25 +99,25 @@ func TestGetImageHeader(t *testing.T) {
 				Modular16BitBuffers: true,
 				ExtraChannelInfo:    nil,
 				XybEncoded:          false,
-				ColourEncoding: &color.ColourEncodingBundle{
+				ColourEncoding: &colour.ColourEncodingBundle{
 					UseIccProfile:  false,
 					ColourEncoding: 0,
 					WhitePoint:     1,
-					White: &color.CIEXY{
+					White: &colour.CIEXY{
 						X: 0.3127,
 						Y: 0.329,
 					},
 					Primaries: 1,
-					Prim: &color.CIEPrimaries{
-						Red: &color.CIEXY{
+					Prim: &colour.CIEPrimaries{
+						Red: &colour.CIEXY{
 							X: 0.6399987,
 							Y: 0.33001015,
 						},
-						Green: &color.CIEXY{
+						Green: &colour.CIEXY{
 							X: 0.3000038,
 							Y: 0.60000336,
 						},
-						Blue: &color.CIEXY{
+						Blue: &colour.CIEXY{
 							X: 0.15000205,
 							Y: 0.059997205,
 						},
@@ -126,7 +126,7 @@ func TestGetImageHeader(t *testing.T) {
 					RenderingIntent: 0,
 				},
 				AlphaIndices: nil,
-				ToneMapping: &color.ToneMapping{
+				ToneMapping: &colour.ToneMapping{
 					IntensityTarget:      255,
 					MinNits:              0,
 					RelativeToMaxDisplay: false,

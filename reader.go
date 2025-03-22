@@ -6,7 +6,7 @@ import (
 	color2 "image/color"
 	"io"
 
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/core"
 )
 
@@ -57,11 +57,11 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 	var colourModel color2.Model
 
 	switch header.GetColourModel() {
-	case color.CE_RGB:
+	case colour.CE_RGB:
 		colourModel = color2.RGBAModel
-	case color.CE_XYB:
+	case colour.CE_XYB:
 		colourModel = color2.GrayModel // unsure how to deal with XYB
-	case color.CE_GRAY:
+	case colour.CE_GRAY:
 		colourModel = color2.GrayModel
 	default:
 		colourModel = color2.RGBAModel

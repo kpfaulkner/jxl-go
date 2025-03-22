@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/testcommon"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -49,18 +49,18 @@ func TestParseImageHeader(t *testing.T) {
 				Modular16BitBuffers: true,
 				ExtraChannelInfo:    []ExtraChannelInfo{},
 				XybEncoded:          false,
-				ColourEncoding: &color.ColourEncodingBundle{
+				ColourEncoding: &colour.ColourEncodingBundle{
 					UseIccProfile:   false,
 					ColourEncoding:  0,
 					WhitePoint:      1,
-					White:           &color.CIEXY{X: 0.3127, Y: 0.329},
+					White:           &colour.CIEXY{X: 0.3127, Y: 0.329},
 					Primaries:       1,
-					Prim:            &color.CIEPrimaries{Red: &color.CIEXY{X: 0.6399987, Y: 0.33001015}, Green: &color.CIEXY{X: 0.3000038, Y: 0.60000336}, Blue: &color.CIEXY{X: 0.15000205, Y: 0.059997205}},
+					Prim:            &colour.CIEPrimaries{Red: &colour.CIEXY{X: 0.6399987, Y: 0.33001015}, Green: &colour.CIEXY{X: 0.3000038, Y: 0.60000336}, Blue: &colour.CIEXY{X: 0.15000205, Y: 0.059997205}},
 					Tf:              16777229,
 					RenderingIntent: 0,
 				},
 				AlphaIndices: nil,
-				ToneMapping: &color.ToneMapping{
+				ToneMapping: &colour.ToneMapping{
 					IntensityTarget:      255,
 					MinNits:              0,
 					RelativeToMaxDisplay: false,
@@ -70,17 +70,17 @@ func TestParseImageHeader(t *testing.T) {
 					ExtensionsKey: 0,
 					Payloads:      [64][]byte{},
 				},
-				OpsinInverseMatrix: &color.OpsinInverseMatrix{
+				OpsinInverseMatrix: &colour.OpsinInverseMatrix{
 					Matrix:             [][]float32{[]float32{11.031567, -9.866944, -0.16462299}, []float32{-3.2541473, 4.4187703, -0.16462299}, []float32{-3.6588514, 2.712923, 1.9459282}},
 					OpsinBias:          []float32{-0.0037930734, -0.0037930734, -0.0037930734},
 					QuantBias:          []float32{0.94534993, 0.9299455, 0.9500649},
 					QuantBiasNumerator: 0.145,
-					Primaries: color.CIEPrimaries{
-						Red:   &color.CIEXY{X: 0.6399987, Y: 0.33001015},
-						Green: &color.CIEXY{X: 0.3000038, Y: 0.60000336},
-						Blue:  &color.CIEXY{X: 0.15000205, Y: 0.059997205},
+					Primaries: colour.CIEPrimaries{
+						Red:   &colour.CIEXY{X: 0.6399987, Y: 0.33001015},
+						Green: &colour.CIEXY{X: 0.3000038, Y: 0.60000336},
+						Blue:  &colour.CIEXY{X: 0.15000205, Y: 0.059997205},
 					},
-					WhitePoint:    color.CIEXY{X: 0.3127, Y: 0.329},
+					WhitePoint:    colour.CIEXY{X: 0.3127, Y: 0.329},
 					CbrtOpsinBias: []float32{-0.1559542, -0.1559542, -0.1559542},
 				},
 				Up2Weights: []float32{-0.017162, -0.03452303, -0.04022174, -0.02921014, -0.00624645, 0.14111091, 0.28896755, 0.00278718, -0.01610267, 0.5666155, 0.03777607, -0.01986694, -0.03144731, -0.01185068, -0.00213539},
@@ -193,18 +193,18 @@ func TestGetUpWeights(t *testing.T) {
 				Modular16BitBuffers: true,
 				ExtraChannelInfo:    []ExtraChannelInfo{},
 				XybEncoded:          false,
-				ColourEncoding: &color.ColourEncodingBundle{
+				ColourEncoding: &colour.ColourEncodingBundle{
 					UseIccProfile:   false,
 					ColourEncoding:  0,
 					WhitePoint:      1,
-					White:           &color.CIEXY{X: 0.3127, Y: 0.329},
+					White:           &colour.CIEXY{X: 0.3127, Y: 0.329},
 					Primaries:       1,
-					Prim:            &color.CIEPrimaries{Red: &color.CIEXY{X: 0.6399987, Y: 0.33001015}, Green: &color.CIEXY{X: 0.3000038, Y: 0.60000336}, Blue: &color.CIEXY{X: 0.15000205, Y: 0.059997205}},
+					Prim:            &colour.CIEPrimaries{Red: &colour.CIEXY{X: 0.6399987, Y: 0.33001015}, Green: &colour.CIEXY{X: 0.3000038, Y: 0.60000336}, Blue: &colour.CIEXY{X: 0.15000205, Y: 0.059997205}},
 					Tf:              16777229,
 					RenderingIntent: 0,
 				},
 				AlphaIndices: nil,
-				ToneMapping: &color.ToneMapping{
+				ToneMapping: &colour.ToneMapping{
 					IntensityTarget:      255,
 					MinNits:              0,
 					RelativeToMaxDisplay: false,
@@ -214,17 +214,17 @@ func TestGetUpWeights(t *testing.T) {
 					ExtensionsKey: 0,
 					Payloads:      [64][]byte{},
 				},
-				OpsinInverseMatrix: &color.OpsinInverseMatrix{
+				OpsinInverseMatrix: &colour.OpsinInverseMatrix{
 					Matrix:             [][]float32{[]float32{11.031567, -9.866944, -0.16462299}, []float32{-3.2541473, 4.4187703, -0.16462299}, []float32{-3.6588514, 2.712923, 1.9459282}},
 					OpsinBias:          []float32{-0.0037930734, -0.0037930734, -0.0037930734},
 					QuantBias:          []float32{0.94534993, 0.9299455, 0.9500649},
 					QuantBiasNumerator: 0.145,
-					Primaries: color.CIEPrimaries{
-						Red:   &color.CIEXY{X: 0.6399987, Y: 0.33001015},
-						Green: &color.CIEXY{X: 0.3000038, Y: 0.60000336},
-						Blue:  &color.CIEXY{X: 0.15000205, Y: 0.059997205},
+					Primaries: colour.CIEPrimaries{
+						Red:   &colour.CIEXY{X: 0.6399987, Y: 0.33001015},
+						Green: &colour.CIEXY{X: 0.3000038, Y: 0.60000336},
+						Blue:  &colour.CIEXY{X: 0.15000205, Y: 0.059997205},
 					},
-					WhitePoint:    color.CIEXY{X: 0.3127, Y: 0.329},
+					WhitePoint:    colour.CIEXY{X: 0.3127, Y: 0.329},
 					CbrtOpsinBias: []float32{-0.1559542, -0.1559542, -0.1559542},
 				},
 				Up2Weights: []float32{-0.017162, -0.03452303, -0.04022174, -0.02921014, -0.00624645, 0.14111091, 0.28896755, 0.00278718, -0.01610267, 0.5666155, 0.03777607, -0.01986694, -0.03144731, -0.01185068, -0.00213539},
