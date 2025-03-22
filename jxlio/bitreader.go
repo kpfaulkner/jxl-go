@@ -9,7 +9,7 @@ import (
 )
 
 type Bitreader struct {
-	buffer []byte
+	//buffer []byte
 	// stream/reader we're using most of the time
 	stream      io.ReadSeeker
 	bitsRead    uint64
@@ -22,14 +22,14 @@ func NewBitreaderWithIndex(in io.ReadSeeker, index int) *Bitreader {
 
 	br := NewBitreader(in)
 	br.tempIndex = index
-	br.buffer = make([]byte, 1)
+	//br.buffer = make([]byte, 1)
 	return br
 }
 
 func NewBitreader(in io.ReadSeeker) *Bitreader {
 
 	br := &Bitreader{}
-	br.buffer = make([]byte, 1)
+	//br.buffer = make([]byte, 1)
 	br.stream = in
 	return br
 }
@@ -85,15 +85,14 @@ func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
 }
 
 // read single bit and will cache the current byte we're working on.
-// Need to look more at how JXLatte does it..
 func (br *Bitreader) readBit() (uint8, error) {
 	if br.index == 0 {
-		//buffer := make([]byte, 1)
-		_, err := br.stream.Read(br.buffer)
+		buffer := make([]byte, 1)
+		_, err := br.stream.Read(buffer)
 		if err != nil {
 			return 0, err
 		}
-		br.currentByte = br.buffer[0]
+		br.currentByte = buffer[0]
 	}
 
 	v := (br.currentByte & (1 << br.index)) != 0
@@ -337,6 +336,7 @@ func (br *Bitreader) ShowBits(bits int) (uint64, error) {
 }
 
 func (br *Bitreader) SkipBits(bits uint32) error {
+
 	numBytes := bits / 8
 	if numBytes > 0 {
 		buffer := make([]byte, numBytes)

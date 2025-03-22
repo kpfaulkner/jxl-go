@@ -16,12 +16,12 @@ import (
 func main() {
 
 	// church image exercises different code pathways compared to lenna.jxl
-	file := `c:/temp/ken-0-4.jxl`
+	//file := `c:/temp/ken-0-4.jxl`
 	//file := `c:/temp/dont_ask_why_i_have_this.jxl`
 	//file := `../testdata/patches.jxl`
 	//file := `../testdata/alpha-triangles.jxl`
 	//file := `../testdata/unittest.jxl`
-
+	file := `../testdata/lenna.jxl`
 	//defer profile.Start(profile.CPUProfile, profile.ProfilePath(".")).Stop()
 	//defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop()
 	//defer profile.Start(profile.MemProfileAllocs, profile.ProfilePath(".")).Stop()
@@ -34,7 +34,7 @@ func main() {
 
 	start := time.Now()
 	var img image.Image
-	for count := 0; count < 100; count++ {
+	for count := 0; count < 1; count++ {
 		r := bytes.NewReader(f)
 		jxl := core.NewJXLDecoder(r, nil)
 		start := time.Now()

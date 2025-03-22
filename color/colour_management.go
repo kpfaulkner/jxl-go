@@ -29,6 +29,7 @@ type TransferFunction interface {
 }
 
 func GetConversionMatrix(targetPrim CIEPrimaries, targetWP CIEXY, currentPrim CIEPrimaries, currentWP CIEXY) ([][]float32, error) {
+
 	if targetPrim.Matches(&currentPrim) && targetWP.Matches(&currentWP) {
 		return util.MatrixIdentity(3), nil
 	}
