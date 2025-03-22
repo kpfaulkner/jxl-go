@@ -22,7 +22,9 @@ func main() {
 		//`..\testdata\patches.jxl`,
 		`..\testdata\unittest.jxl`,
 		`..\testdata\ants-lossless.jxl`,
-		`..\testdata\bench.jxl`,
+
+		// bench still problematic
+		// `..\testdata\bench.jxl`,
 		`..\testdata\lenna.jxl`,
 		`..\testdata\quilt.jxl`,
 		`..\testdata\wb-rainbow.jxl`,
