@@ -99,10 +99,10 @@ func TestGetImageHeader(t *testing.T) {
 				Modular16BitBuffers: true,
 				ExtraChannelInfo:    nil,
 				XybEncoded:          false,
-				ColorEncoding: &color.ColorEncodingBundle{
-					UseIccProfile: false,
-					ColorEncoding: 0,
-					WhitePoint:    1,
+				ColourEncoding: &color.ColourEncodingBundle{
+					UseIccProfile:  false,
+					ColourEncoding: 0,
+					WhitePoint:     1,
 					White: &color.CIEXY{
 						X: 0.3127,
 						Y: 0.329,
@@ -181,11 +181,11 @@ func TestGetImageHeader(t *testing.T) {
 			if header.BitDepth.ExpBits != tc.expectedHeader.BitDepth.ExpBits {
 				t.Errorf("expected exp bits %d but got %d", tc.expectedHeader.BitDepth.ExpBits, header.BitDepth.ExpBits)
 			}
-			if header.ColorEncoding.UseIccProfile != tc.expectedHeader.ColorEncoding.UseIccProfile {
-				t.Errorf("expected use icc profile %t but got %t", tc.expectedHeader.ColorEncoding.UseIccProfile, header.ColorEncoding.UseIccProfile)
+			if header.ColourEncoding.UseIccProfile != tc.expectedHeader.ColourEncoding.UseIccProfile {
+				t.Errorf("expected use icc profile %t but got %t", tc.expectedHeader.ColourEncoding.UseIccProfile, header.ColourEncoding.UseIccProfile)
 			}
 
-			if !header.ColorEncoding.Prim.Matches(tc.expectedHeader.ColorEncoding.Prim) {
+			if !header.ColourEncoding.Prim.Matches(tc.expectedHeader.ColourEncoding.Prim) {
 				t.Errorf("expected primaries to match but they did not")
 			}
 		})

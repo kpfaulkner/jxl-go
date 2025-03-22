@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	image2 "github.com/kpfaulkner/jxl-go/image"
 )
 
 func WritePFM(jxlImage *JXLImage, output io.Writer) error {
 
-	gray := jxlImage.ColorEncoding == color.CE_GRAY
+	gray := jxlImage.ColorEncoding == colour.CE_GRAY
 	width := jxlImage.Width
 	height := jxlImage.Height
 

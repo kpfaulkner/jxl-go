@@ -1,4 +1,4 @@
-package color
+package colour
 
 import (
 	"github.com/kpfaulkner/jxl-go/jxlio"

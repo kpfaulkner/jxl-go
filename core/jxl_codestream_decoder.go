@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/frame"
 	image2 "github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -127,9 +127,9 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		return nil, errors.New("not implemented preview yet")
 	}
 
-	var matrix *color.OpsinInverseMatrix
+	var matrix *colour.OpsinInverseMatrix
 	if imageHeader.XybEncoded {
-		bundle := imageHeader.ColorEncoding
+		bundle := imageHeader.ColourEncoding
 		matrix, err = imageHeader.OpsinInverseMatrix.GetMatrix(bundle.Prim, bundle.White)
 		if err != nil {
 			return nil, err
@@ -693,7 +693,7 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *color.OpsinInverseMatrix, frame *frame.Frame) error {
+func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *colour.OpsinInverseMatrix, frame *frame.Frame) error {
 
 	if matrix == nil && !frame.Header.DoYCbCr {
 		return nil
@@ -755,7 +755,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 	frameHeight := util.Min(lowerCorner.Y, int32(imageSize.Height)-frameStartY)
 	frameWidth := util.Min(lowerCorner.X, int32(imageSize.Width)-frameStartX)
 
-	frameColours := imgFrame.GetColorChannelCount()
+	frameColours := imgFrame.GetColourChannelCount()
 	imageColours := jxl.imageHeader.GetColourChannelCount()
 	hasAlpha := jxl.imageHeader.HasAlpha()
 	frameBuffers := imgFrame.Buffer

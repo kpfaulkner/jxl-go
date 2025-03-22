@@ -1,4 +1,4 @@
-package color
+package colour
 
 const (
 	PRI_SRGB   int32 = 1
@@ -31,8 +31,8 @@ const (
 	TF_HLG     int32 = 18 + (1 << 24)
 )
 
-func ValidateColorEncoding(colorEncoding int32) bool {
-	return colorEncoding >= 0 && colorEncoding <= 3
+func ValidateColourEncoding(colourEncoding int32) bool {
+	return colourEncoding >= 0 && colourEncoding <= 3
 }
 
 func ValidateWhitePoint(whitePoint int32) bool {

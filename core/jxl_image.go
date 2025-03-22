@@ -5,7 +5,7 @@ import (
 	"image"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	image2 "github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -23,8 +23,8 @@ type JXLImage struct {
 	Buffer               []image2.ImageBuffer
 	iccProfile           []byte
 	bitDepths            []uint32
-	primariesXY          *color.CIEPrimaries
-	whiteXY              *color.CIEXY
+	primariesXY          *colour.CIEPrimaries
+	whiteXY              *colour.CIEXY
 	imageHeader          bundle.ImageHeader
 	Width                uint32
 	Height               uint32
@@ -45,8 +45,8 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	jxl.Width = header.OrientedWidth
 	jxl.Height = header.OrientedHeight
 	jxl.Buffer = buffer
-	bundle := header.ColorEncoding
-	jxl.ColorEncoding = bundle.ColorEncoding
+	bundle := header.ColourEncoding
+	jxl.ColorEncoding = bundle.ColourEncoding
 	if header.HasAlpha() {
 		jxl.alphaIndex = header.AlphaIndices[0]
 	} else {
@@ -57,7 +57,7 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	jxl.primariesXY = bundle.Prim
 	jxl.whiteXY = bundle.White
 	if jxl.imageHeader.XybEncoded {
-		jxl.transfer = color.TF_LINEAR
+		jxl.transfer = colour.TF_LINEAR
 		jxl.iccProfile = nil
 	} else {
 		jxl.transfer = bundle.Tf
@@ -67,7 +67,7 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	jxl.taggedTransfer = bundle.Tf
 	jxl.alphaIsPremultiplied = jxl.imageHeader.HasAlpha() && jxl.imageHeader.ExtraChannelInfo[jxl.alphaIndex].AlphaAssociated
 	jxl.bitDepths = make([]uint32, len(buffer))
-	colours := util.IfThenElse(jxl.ColorEncoding == color.CE_GRAY, 1, 3)
+	colours := util.IfThenElse(jxl.ColorEncoding == colour.CE_GRAY, 1, 3)
 	for c := 0; c < len(jxl.bitDepths); c++ {
 		if c < colours {
 			jxl.bitDepths[c] = header.BitDepth.BitsPerSample
@@ -188,14 +188,14 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 		bitDepth = 8
 	}
 
-	//gray := jxlImage.ColorEncoding == color.CE_GRAY
-	primaries := color.CM_PRI_SRGB
-	tf := color.TF_SRGB
+	//gray := jxlImage.ColourEncoding == color.CE_GRAY
+	primaries := colour.CM_PRI_SRGB
+	tf := colour.TF_SRGB
 	if jxl.isHDR() {
-		primaries = color.CM_PRI_BT2100
-		tf = color.TF_PQ
+		primaries = colour.CM_PRI_BT2100
+		tf = colour.TF_PQ
 	}
-	whitePoint := color.CM_WP_D65
+	whitePoint := colour.CM_WP_D65
 	iccProfile := jxl.iccProfile
 	var err error
 	if iccProfile == nil {
@@ -334,16 +334,16 @@ func (jxl *JXLImage) create24BitImage(buffer []image2.ImageBuffer) image.Image {
 }
 
 func (jxl *JXLImage) isHDR() bool {
-	if jxl.taggedTransfer == color.TF_PQ || jxl.taggedTransfer == color.TF_HLG ||
-		jxl.taggedTransfer == color.TF_LINEAR {
+	if jxl.taggedTransfer == colour.TF_PQ || jxl.taggedTransfer == colour.TF_HLG ||
+		jxl.taggedTransfer == colour.TF_LINEAR {
 		return true
 	}
-	colour := jxl.imageHeader.ColorEncoding
-	return !colour.Prim.Matches(color.CM_PRI_SRGB) &&
-		!colour.Prim.Matches(color.CM_PRI_P3)
+	col := jxl.imageHeader.ColourEncoding
+	return !col.Prim.Matches(colour.CM_PRI_SRGB) &&
+		!col.Prim.Matches(colour.CM_PRI_P3)
 }
 
-func (jxl *JXLImage) transform(primaries *color.CIEPrimaries, whitePoint *color.CIEXY, transfer int32, peakDetect int32) error {
+func (jxl *JXLImage) transform(primaries *colour.CIEPrimaries, whitePoint *colour.CIEXY, transfer int32, peakDetect int32) error {
 
 	if primaries.Matches(jxl.primariesXY) && whitePoint.Matches(jxl.whiteXY) {
 		return jxl.transferImage(transfer, peakDetect)
@@ -403,12 +403,12 @@ func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) error {
 	if err := jxl.linearize(); err != nil {
 		return err
 	}
-	if jxl.taggedTransfer == color.TF_PQ &&
+	if jxl.taggedTransfer == colour.TF_PQ &&
 		(peakDetect == PEAK_DETECT_AUTO || peakDetect == PEAK_DETECT_ON) {
 		panic("not implemented")
 	}
 
-	transferFunction, err := color.GetTransferFunction(transfer)
+	transferFunction, err := colour.GetTransferFunction(transfer)
 	if err != nil {
 		return err
 	}
@@ -421,7 +421,7 @@ func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) error {
 
 func (jxl *JXLImage) linearize() error {
 
-	if jxl.transfer == color.TF_LINEAR {
+	if jxl.transfer == colour.TF_LINEAR {
 		return nil
 	}
 
@@ -434,7 +434,7 @@ func (jxl *JXLImage) toneMapLinear() error {
 
 func (jxl *JXLImage) transferInPlace(transferFunction func(float64) float64) error {
 	colours := 3
-	if jxl.ColorEncoding == color.CE_GRAY {
+	if jxl.ColorEncoding == colour.CE_GRAY {
 		colours = 1
 	}
 

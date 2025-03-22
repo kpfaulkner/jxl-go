@@ -49,9 +49,9 @@ func TestParseImageHeader(t *testing.T) {
 				Modular16BitBuffers: true,
 				ExtraChannelInfo:    []ExtraChannelInfo{},
 				XybEncoded:          false,
-				ColorEncoding: &color.ColorEncodingBundle{
+				ColourEncoding: &color.ColourEncodingBundle{
 					UseIccProfile:   false,
-					ColorEncoding:   0,
+					ColourEncoding:  0,
 					WhitePoint:      1,
 					White:           &color.CIEXY{X: 0.3127, Y: 0.329},
 					Primaries:       1,
@@ -149,8 +149,8 @@ func TestParseImageHeader(t *testing.T) {
 				t.Errorf("expected ToneMapping %+v, got %+v", tc.expectedHeader, header)
 			}
 
-			if !tc.expectErr && !reflect.DeepEqual(header.ColorEncoding, tc.expectedHeader.ColorEncoding) {
-				t.Errorf("expected ColorEncoding %+v, got %+v", tc.expectedHeader, header)
+			if !tc.expectErr && !reflect.DeepEqual(header.ColourEncoding, tc.expectedHeader.ColourEncoding) {
+				t.Errorf("expected ColourEncoding %+v, got %+v", tc.expectedHeader, header)
 			}
 		})
 	}
@@ -193,9 +193,9 @@ func TestGetUpWeights(t *testing.T) {
 				Modular16BitBuffers: true,
 				ExtraChannelInfo:    []ExtraChannelInfo{},
 				XybEncoded:          false,
-				ColorEncoding: &color.ColorEncodingBundle{
+				ColourEncoding: &color.ColourEncodingBundle{
 					UseIccProfile:   false,
-					ColorEncoding:   0,
+					ColourEncoding:  0,
 					WhitePoint:      1,
 					White:           &color.CIEXY{X: 0.3127, Y: 0.329},
 					Primaries:       1,
@@ -293,8 +293,8 @@ func TestGetUpWeights(t *testing.T) {
 				t.Errorf("expected ToneMapping %+v, got %+v", tc.expectedHeader, header)
 			}
 
-			if !tc.expectErr && !reflect.DeepEqual(header.ColorEncoding, tc.expectedHeader.ColorEncoding) {
-				t.Errorf("expected ColorEncoding %+v, got %+v", tc.expectedHeader, header)
+			if !tc.expectErr && !reflect.DeepEqual(header.ColourEncoding, tc.expectedHeader.ColourEncoding) {
+				t.Errorf("expected ColourEncoding %+v, got %+v", tc.expectedHeader, header)
 			}
 		})
 	}

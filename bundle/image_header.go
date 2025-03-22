@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -91,10 +91,10 @@ type ImageHeader struct {
 	AnimationHeader    *AnimationHeader
 	PreviewSize        *util.Dimension
 	BitDepth           *BitDepthHeader
-	ColorEncoding      *color.ColorEncodingBundle
-	ToneMapping        *color.ToneMapping
+	ColourEncoding     *colour.ColourEncodingBundle
+	ToneMapping        *colour.ToneMapping
 	Extensions         *Extensions
-	OpsinInverseMatrix *color.OpsinInverseMatrix
+	OpsinInverseMatrix *colour.OpsinInverseMatrix
 
 	Level          int32
 	Orientation    uint32
@@ -197,7 +197,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		header.Modular16BitBuffers = true
 		header.ExtraChannelInfo = []ExtraChannelInfo{}
 		header.XybEncoded = true
-		header.ColorEncoding, err = color.NewColorEncodingBundle()
+		header.ColourEncoding, err = colour.NewColourEncodingBundle()
 		if err != nil {
 			return nil, err
 		}
@@ -236,19 +236,19 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		if header.XybEncoded, err = reader.ReadBool(); err != nil {
 			return nil, err
 		}
-		header.ColorEncoding, err = color.NewColorEncodingBundleWithReader(reader)
+		header.ColourEncoding, err = colour.NewColourEncodingBundleWithReader(reader)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if extraFields {
-		header.ToneMapping, err = color.NewToneMappingWithReader(reader)
+		header.ToneMapping, err = colour.NewToneMappingWithReader(reader)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		header.ToneMapping = color.NewToneMapping()
+		header.ToneMapping = colour.NewToneMapping()
 	}
 
 	if allDefault {
@@ -265,11 +265,11 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		return nil, err
 	}
 	if !defaultMatrix && header.XybEncoded {
-		if header.OpsinInverseMatrix, err = color.NewOpsinInverseMatrixWithReader(reader); err != nil {
+		if header.OpsinInverseMatrix, err = colour.NewOpsinInverseMatrixWithReader(reader); err != nil {
 			return nil, err
 		}
 	} else {
-		header.OpsinInverseMatrix = color.NewOpsinInverseMatrix()
+		header.OpsinInverseMatrix = colour.NewOpsinInverseMatrix()
 	}
 
 	var cwMask int32
@@ -317,7 +317,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 		header.Up8Weights = DEFAULT_UP8
 	}
 
-	if header.ColorEncoding.UseIccProfile {
+	if header.ColourEncoding.UseIccProfile {
 		var encodedSize uint64
 		if encodedSize, err = reader.ReadU64(); err != nil {
 			return nil, err
@@ -348,7 +348,7 @@ func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error
 }
 
 func (h *ImageHeader) GetColourChannelCount() int {
-	if h.ColorEncoding.ColorEncoding == color.CE_GRAY {
+	if h.ColourEncoding.ColourEncoding == colour.CE_GRAY {
 		return 1
 	}
 
@@ -360,7 +360,7 @@ func (h *ImageHeader) GetSize() util.Dimension {
 }
 
 func (h *ImageHeader) GetColourModel() int32 {
-	return h.ColorEncoding.ColorEncoding
+	return h.ColourEncoding.ColourEncoding
 }
 
 func (h *ImageHeader) setLevel(level int32) error {

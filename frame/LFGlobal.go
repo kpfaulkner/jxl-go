@@ -3,7 +3,7 @@ package frame
 import (
 	"errors"
 
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -139,7 +139,7 @@ func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, e
 	ecStart := 0
 	if lf.frame.Header.Encoding == MODULAR {
 		if !lf.frame.Header.DoYCbCr && !lf.frame.globalMetadata.XybEncoded &&
-			lf.frame.globalMetadata.ColorEncoding.ColorEncoding == color.CE_GRAY {
+			lf.frame.globalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
 			ecStart = 1
 		} else {
 			ecStart = 3

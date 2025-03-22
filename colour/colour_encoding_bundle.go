@@ -1,4 +1,4 @@
-package color
+package colour
 
 import (
 	"errors"
@@ -6,10 +6,10 @@ import (
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
-type ColorEncodingBundle struct {
+type ColourEncodingBundle struct {
 	Prim            *CIEPrimaries
 	White           *CIEXY
-	ColorEncoding   int32
+	ColourEncoding  int32
 	WhitePoint      int32
 	Primaries       int32
 	Tf              int32
@@ -17,10 +17,10 @@ type ColorEncodingBundle struct {
 	UseIccProfile   bool
 }
 
-func NewColorEncodingBundle() (*ColorEncodingBundle, error) {
-	ceb := &ColorEncodingBundle{}
+func NewColourEncodingBundle() (*ColourEncodingBundle, error) {
+	ceb := &ColourEncodingBundle{}
 	ceb.UseIccProfile = false
-	ceb.ColorEncoding = CE_RGB
+	ceb.ColourEncoding = CE_RGB
 	ceb.WhitePoint = WP_D65
 	ceb.White = getWhitePoint(ceb.WhitePoint)
 	ceb.Primaries = PRI_SRGB
@@ -30,8 +30,8 @@ func NewColorEncodingBundle() (*ColorEncodingBundle, error) {
 	return ceb, nil
 }
 
-func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBundle, error) {
-	ceb := &ColorEncodingBundle{}
+func NewColourEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColourEncodingBundle, error) {
+	ceb := &ColourEncodingBundle{}
 	var allDefault bool
 	var err error
 	if allDefault, err = reader.ReadBool(); err != nil {
@@ -45,18 +45,18 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 	}
 
 	if !allDefault {
-		if ceb.ColorEncoding, err = reader.ReadEnum(); err != nil {
+		if ceb.ColourEncoding, err = reader.ReadEnum(); err != nil {
 			return nil, err
 		}
 	} else {
-		ceb.ColorEncoding = CE_RGB
+		ceb.ColourEncoding = CE_RGB
 	}
 
-	if !ValidateColorEncoding(ceb.ColorEncoding) {
+	if !ValidateColourEncoding(ceb.ColourEncoding) {
 		return nil, errors.New("Invalid ColorSpace enum")
 	}
 
-	if !allDefault && !ceb.UseIccProfile && ceb.ColorEncoding != CE_XYB {
+	if !allDefault && !ceb.UseIccProfile && ceb.ColourEncoding != CE_XYB {
 		if ceb.WhitePoint, err = reader.ReadEnum(); err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func NewColorEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColorEncodingBu
 		ceb.White = getWhitePoint(ceb.WhitePoint)
 	}
 
-	if !allDefault && !ceb.UseIccProfile && ceb.ColorEncoding != CE_XYB && ceb.ColorEncoding != CE_GRAY {
+	if !allDefault && !ceb.UseIccProfile && ceb.ColourEncoding != CE_XYB && ceb.ColourEncoding != CE_GRAY {
 		if ceb.Primaries, err = reader.ReadEnum(); err != nil {
 			return nil, err
 		}

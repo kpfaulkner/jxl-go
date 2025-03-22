@@ -278,7 +278,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
-	numColours := f.GetColorChannelCount()
+	numColours := f.GetColourChannelCount()
 	f.Buffer = make([]image.ImageBuffer, numColours+len(f.globalMetadata.ExtraChannelInfo))
 
 	for c := 0; c < len(f.Buffer); c++ {
@@ -286,12 +286,12 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 			Width:  paddedSize.Width,
 			Height: paddedSize.Height,
 		}
-		if c < 3 && c < f.GetColorChannelCount() {
+		if c < 3 && c < f.GetColourChannelCount() {
 			channelSize.Height >>= f.Header.jpegUpsamplingY[c]
 			channelSize.Width >>= f.Header.jpegUpsamplingX[c]
 		}
 		var isFloat bool
-		if c < f.GetColorChannelCount() {
+		if c < f.GetColourChannelCount() {
 			isFloat = f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT ||
 				f.globalMetadata.BitDepth.ExpBits != 0
 		} else {
@@ -346,7 +346,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	modularBuffer := f.LfGlobal.globalModular.getDecodedBuffer()
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
-		isModularColour := f.Header.Encoding == MODULAR && c < f.GetColorChannelCount()
+		isModularColour := f.Header.Encoding == MODULAR && c < f.GetColourChannelCount()
 		isModularXYB := f.globalMetadata.XybEncoded && isModularColour
 		var cOut int
 		if isModularXYB {
@@ -404,7 +404,7 @@ func (f *Frame) IsVisible() bool {
 	return f.Header.FrameType == REGULAR_FRAME || f.Header.FrameType == SKIP_PROGRESSIVE && (f.Header.Duration != 0 || f.Header.IsLast)
 }
 
-func (f *Frame) GetColorChannelCount() int {
+func (f *Frame) GetColourChannelCount() int {
 	if f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
 		return 3
 	}
@@ -1038,7 +1038,7 @@ func (f *Frame) Upsample() error {
 
 func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuffer, error) {
 
-	colour := f.GetColorChannelCount()
+	colour := f.GetColourChannelCount()
 	var k uint32
 	if c < colour {
 		k = f.Header.Upsampling

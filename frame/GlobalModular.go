@@ -1,7 +1,7 @@
 package frame
 
 import (
-	"github.com/kpfaulkner/jxl-go/color"
+	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
@@ -35,7 +35,7 @@ func NewGlobalModularWithReader(reader *jxlio.Bitreader, parent *Frame) (*Global
 	header := gm.frame.Header
 	ecStart := 0
 	if header.Encoding == MODULAR {
-		if !header.DoYCbCr && !gm.frame.globalMetadata.XybEncoded && gm.frame.globalMetadata.ColorEncoding.ColorEncoding == color.CE_GRAY {
+		if !header.DoYCbCr && !gm.frame.globalMetadata.XybEncoded && gm.frame.globalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
 			ecStart = 1
 		} else {
 			ecStart = 3
