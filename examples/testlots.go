@@ -16,11 +16,25 @@ import (
 func main() {
 
 	filePaths := []string{
-		`c:/temp/ken-0-4.jxl`,
-		`c:/temp/dont_ask_why_i_have_this.jxl`,
-		`../testdata/alpha-triangles.jxl`,
-		`../testdata/unittest.jxl`,
-		`../testdata/lenna.jxl`,
+		`..\testdata\alpha-triangles.jxl`,
+		`..\testdata\bbb.jxl`,
+		//`..\testdata\george-tiled.jxl`,
+		//`..\testdata\patches.jxl`,
+		`..\testdata\unittest.jxl`,
+		`..\testdata\ants-lossless.jxl`,
+		`..\testdata\bench.jxl`,
+		`..\testdata\lenna.jxl`,
+		`..\testdata\quilt.jxl`,
+		`..\testdata\wb-rainbow.jxl`,
+		`..\testdata\ants.jxl`,
+		`..\testdata\blendmodes_5.jxl`,
+		`..\testdata\lossless.jxl`,
+		`..\testdata\sollevante-hdr.jxl`,
+		`..\testdata\white.jxl`,
+		`..\testdata\art.jxl`,
+		`..\testdata\church.jxl`,
+		`..\testdata\patches-lossless.jxl`,
+		`..\testdata\tiny2.jxl`,
 	}
 
 	for _, file := range filePaths {
