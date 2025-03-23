@@ -95,8 +95,6 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		return nil, err
 	}
 
-	// first header is image header...   the rest are frame headers... I think
-	// TODO(kpfaulkner) check this
 	box := jxl.boxHeaders[0]
 	_, err = jxl.bitReader.Seek(box.Offset, io.SeekStart)
 	if err != nil {

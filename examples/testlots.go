@@ -19,11 +19,13 @@ func main() {
 		// bench still problematic
 		`..\testdata\bench.jxl`,
 
+		`..\testdata\unittest.jxl`,
+
 		`..\testdata\alpha-triangles.jxl`,
 		`..\testdata\bbb.jxl`,
 		//`..\testdata\george-tiled.jxl`,
 		//`..\testdata\patches.jxl`,
-		`..\testdata\unittest.jxl`,
+
 		`..\testdata\ants-lossless.jxl`,
 
 		`..\testdata\lenna.jxl`,

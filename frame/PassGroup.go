@@ -111,6 +111,7 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 		panic("not implemented")
 	}
 
+	// differs from jxlatte
 	if err := g.hfCoefficients.bakeDequantizedCoeffs(); err != nil {
 		return err
 	}

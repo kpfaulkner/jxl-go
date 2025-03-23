@@ -171,13 +171,20 @@ func (br *Bitreader) ReadF16() (float32, error) {
 	}
 
 	mantissa := bits16 & 0x3FF
-	biased_exp := uint32(bits16) >> 10 & 0x1F
+	biased_exp := (uint32(bits16) >> 10) & 0x1F
+	sign := (bits16 >> 15) & 1
 	if biased_exp == 31 {
 		return 0, errors.New("illegal infinite/NaN float16")
 	}
 
+	if biased_exp == 0 {
+		return (1.0 - 2.0*float32(sign)) * float32(mantissa) / 16777216.0, nil
+	}
+
 	biased_exp += 127 - 15
-	sign := bits16 & 0x8000 << 16
+	mantissa = mantissa << 13
+	sign = sign << 31
+
 	total := uint32(sign) | biased_exp<<23 | uint32(mantissa)
 	return math.Float32frombits(total), nil
 }

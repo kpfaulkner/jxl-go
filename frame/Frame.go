@@ -333,6 +333,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		return err
 	}
 
+	// bench.jxl, after this Buffer[x].FloatBuffer is NOT zeroed out.. but jxlatte is
 	err = f.decodePassGroupsConcurrent()
 	if err != nil {
 		return err
