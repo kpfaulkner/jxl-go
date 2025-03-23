@@ -16,6 +16,9 @@ import (
 func main() {
 
 	filePaths := []string{
+		// bench still problematic
+		`..\testdata\bench.jxl`,
+
 		`..\testdata\alpha-triangles.jxl`,
 		`..\testdata\bbb.jxl`,
 		//`..\testdata\george-tiled.jxl`,
@@ -23,8 +26,6 @@ func main() {
 		`..\testdata\unittest.jxl`,
 		`..\testdata\ants-lossless.jxl`,
 
-		// bench still problematic
-		// `..\testdata\bench.jxl`,
 		`..\testdata\lenna.jxl`,
 		`..\testdata\quilt.jxl`,
 		`..\testdata\wb-rainbow.jxl`,

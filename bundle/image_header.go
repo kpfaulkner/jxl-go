@@ -413,7 +413,8 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 
 	commandStart := int32(commandReader.GetBitsCount() >> 3)
 	dataStart := commandStart + commandSize
-	dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart : int32(len(h.EncodedICC))-dataStart]))
+	//dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart : int32(len(h.EncodedICC))-dataStart]))
+	dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart:]))
 	headerSize := util.Min(128, outputSize)
 	h.DecodedICC = make([]byte, outputSize)
 	resultPos := int32(0)
@@ -516,7 +517,7 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 					h.DecodedICC[resultPos] = tcr[i] & 0xFF
 					resultPos++
 				}
-				for i := 024; i >= 0; i -= 8 {
+				for i := 24; i >= 0; i -= 8 {
 					h.DecodedICC[resultPos] = byte(tagStart>>i) & 0xFF
 					resultPos++
 				}
@@ -653,7 +654,7 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 				}
 			} else if command >= 16 && command < 24 {
 				s := []string{"XYZ ", "desc", "text", "mluc", "para", "curv", "sf32", "gbd "}
-				trc := s[command-16]
+				trc := []byte(s[command-16])
 				for i := 0; i < 4; i++ {
 					h.DecodedICC[resultPos] = trc[i]
 					resultPos++
@@ -669,9 +670,14 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 	return h.DecodedICC, nil
 }
 
-func shuffle(b []byte, width int32) []byte {
-	panic("boom")
-	return b
+func shuffle(buffer []byte, width int32) []byte {
+
+	height := int32(util.CeilDiv(uint32(len(buffer)), uint32(width)))
+	result := make([]byte, len(buffer))
+	for i := int32(0); i < int32(len(buffer)); i++ {
+		result[(i%height)*width+(i/height)] = buffer[i]
+	}
+	return result
 }
 
 func GetICCContext(buffer []byte, index int) int {
