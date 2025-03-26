@@ -639,11 +639,11 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 				} else {
 					prev = nil
 				}
-				//displayBuffers("Before", buffers)
+				displayBuffers("Before", buffers)
 				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
 					return err
 				}
-				//displayBuffers("After", buffers)
+				displayBuffers("After", buffers)
 			}
 		}
 	}

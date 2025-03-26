@@ -3,10 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image"
-	"image/png"
+	//"image/png"
 	"os"
-	"path"
+	//"path"
 	"time"
 	//"github.com/pkg/profile"
 	"github.com/kpfaulkner/jxl-go/core"
@@ -51,7 +50,7 @@ func main() {
 		}
 
 		start := time.Now()
-		var img image.Image
+		//var img image.Image
 		for count := 0; count < 1; count++ {
 			r := bytes.NewReader(f)
 			jxl := core.NewJXLDecoder(r, nil)
@@ -69,25 +68,35 @@ func main() {
 				fmt.Printf("channel 3 type %d\n", ct)
 			}
 
-			// convert to regular Go image.Image
-			img, err = jxlImage.ToImage()
+			//// convert to regular Go image.Image
+			//img, err = jxlImage.ToImage()
+			//if err != nil {
+			//	fmt.Printf("error when making image %v\n", err)
+			//}
+			//ext := path.Ext(file)
+			//pngFileName := file[:len(file)-len(ext)] + ".png"
+			pngFileName := `c:\temp\kenbench.png`
+			f, err := os.Create(pngFileName)
 			if err != nil {
-				fmt.Printf("error when making image %v\n", err)
+				log.Fatalf("boomage %v", err)
 			}
+			core.WritePNG(jxlImage, f)
+			f.Close()
 
 		}
 
 		end := time.Now()
 		fmt.Printf("decoding total time %d ms\n", end.Sub(start).Milliseconds())
-		buf := new(bytes.Buffer)
-		if err := png.Encode(buf, img); err != nil {
-			log.Fatalf("boomage %v", err)
-		}
-		ext := path.Ext(file)
-		pngFileName := file[:len(file)-len(ext)] + ".png"
-		err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
-		if err != nil {
-			log.Fatalf("boomage %v", err)
-		}
+
+		//buf := new(bytes.Buffer)
+		//if err := png.Encode(buf, img); err != nil {
+		//	log.Fatalf("boomage %v", err)
+		//}
+		//ext := path.Ext(file)
+		//pngFileName := file[:len(file)-len(ext)] + ".png"
+		//err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+		//if err != nil {
+		//	log.Fatalf("boomage %v", err)
+		//}
 	}
 }

@@ -380,6 +380,8 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 					kB = bF[fx]
 				}
 				dequantY := hf.dequantHFCoeff[1][y&0xFF][x&0xFF]
+				//fmt.Printf("DEQUANT i %d, y %d, iy %d, kX %f, kB %f, dequantY %f\n", i, y, iy, kX, kB, dequantY)
+
 				hf.dequantHFCoeff[0][y&0xFF][x&0xFF] += kX * dequantY
 				hf.dequantHFCoeff[2][y&0xFF][x&0xFF] += kB * dequantY
 			}

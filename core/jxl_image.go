@@ -181,7 +181,7 @@ func (jxl *JXLImage) ChannelToImage(channelNo int) (image.Image, error) {
 	return img, nil
 }
 
-// ToImage converts to standard Go image.Image RGBA format for the R,G,B and alpha channels
+// ToImage converts to standard Go image.Image NRGBA format for the R,G,B and alpha channels
 func (jxl *JXLImage) ToImage() (image.Image, error) {
 
 	var bitDepth int32
@@ -285,7 +285,7 @@ func (jxl *JXLImage) createGrayScaleImage(buffer []image2.ImageBuffer) image.Ima
 }
 
 func (jxl *JXLImage) create24BitImage(buffer []image2.ImageBuffer) image.Image {
-	img := image.NewRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
+	img := image.NewNRGBA(image.Rect(0, 0, int(buffer[0].Width), int(buffer[0].Height)))
 	pix := img.Pix
 	dx := img.Bounds().Dx()
 	dy := img.Bounds().Dy()

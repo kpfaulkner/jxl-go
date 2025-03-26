@@ -1,8 +1,6 @@
 package frame
 
 import (
-	"fmt"
-
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -66,14 +64,7 @@ type FrameHeader struct {
 
 func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeader) (*FrameHeader, error) {
 	fh := &FrameHeader{}
-
-	shower, err := reader.ShowBits(32)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("XXX shower %0b\n", shower)
-	fmt.Printf("XXX shower %d\n", shower)
-	//var err error
+	var err error
 	var allDefault bool
 	if allDefault, err = reader.ReadBool(); err != nil {
 		return nil, err
