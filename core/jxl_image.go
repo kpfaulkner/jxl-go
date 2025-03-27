@@ -214,7 +214,7 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 	}
 	maxValue := int32(^(^0 << bitDepth))
 	coerce := jxl.alphaIsPremultiplied
-	buffer, err := jxl.getBuffer(true)
+	buffer, err := jxl.getBuffer(false)
 	if err != nil {
 		return nil, err
 	}

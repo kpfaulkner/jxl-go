@@ -18,16 +18,12 @@ import (
 func main() {
 
 	filePaths := []string{
-		// bench still problematic
-		`..\testdata\bench.jxl`,
-
 		`..\testdata\unittest.jxl`,
+		`..\testdata\bench.jxl`,
 
 		`..\testdata\alpha-triangles.jxl`,
 		`..\testdata\bbb.jxl`,
-
 		`..\testdata\ants-lossless.jxl`,
-
 		`..\testdata\lenna.jxl`,
 		`..\testdata\quilt.jxl`,
 		`..\testdata\wb-rainbow.jxl`,
@@ -56,11 +52,13 @@ func main() {
 			r := bytes.NewReader(f)
 			jxl := core.NewJXLDecoder(r, nil)
 			start := time.Now()
+			//p := profile.Start(profile.CPUProfile, profile.ProfilePath("."))
 			var jxlImage *core.JXLImage
 			if jxlImage, err = jxl.Decode(); err != nil {
 				fmt.Printf("Error decoding: %v\n", err)
 				return
 			}
+			//p.Stop()
 			fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
 			fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
 			fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
@@ -81,6 +79,7 @@ func main() {
 				defer f.Close()
 				core.WritePNG(jxlImage, f)
 			} else {
+
 				// convert to regular Go image.Image
 				img, err := jxlImage.ToImage()
 				if err != nil {

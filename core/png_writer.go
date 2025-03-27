@@ -115,7 +115,7 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 	buf.Write([]byte("IDAT"))
 
 	var compressedBytes bytes.Buffer
-	w, err := zlib.NewWriterLevel(&compressedBytes, 0)
+	w, err := zlib.NewWriterLevel(&compressedBytes, 1)
 	if err != nil {
 		return err
 	}

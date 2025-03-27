@@ -1,8 +1,5 @@
 # jxl-go
 
-### VERY MUCH A WORK IN PROGRESS
-
-
 ## Notes:
 
 JXL-Go is a Go library for reading of JPEG XL (JXL) images.
