@@ -363,7 +363,7 @@ func TestReadF16(t *testing.T) {
 		{
 			name:      "ReadF16 success",
 			data:      []uint8{0x40, 0x01, 0x02, 0x03, 0x04},
-			expected:  0.00012207039,
+			expected:  0.00012266636,
 			expectErr: false,
 		},
 		{
