@@ -525,6 +525,9 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 					h.DecodedICC[resultPos] = byte(tagSize>>i) & 0xFF
 					resultPos++
 				}
+				if tagCode == 3 {
+					tagStart += tagSize
+				}
 			}
 		}
 
@@ -618,7 +621,7 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 					for j := int32(0); j < n; j++ {
 						for k := int32(0); k < width; k++ {
 							prev[j] = prev[j] << 8
-							prev[j] = prev[j] | int32(h.DecodedICC[resultPos-stride*(j-1)+k]&0xFF)
+							prev[j] = prev[j] | int32(h.DecodedICC[resultPos-stride*(j+1)+k]&0xFF)
 						}
 					}
 					var p int32
@@ -643,6 +646,7 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 				h.DecodedICC[resultPos] = 'Z'
 				resultPos++
 				h.DecodedICC[resultPos] = ' '
+				resultPos++
 				resultPos += 4
 				for i := 0; i < 12; i++ {
 					dat, err := dataReader.ReadBits(8)

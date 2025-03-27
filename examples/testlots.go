@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"image/png"
 	//"image/png"
 	"os"
+	"path"
 	//"path"
 	"time"
+
 	//"github.com/pkg/profile"
 	"github.com/kpfaulkner/jxl-go/core"
 	log "github.com/sirupsen/logrus"
@@ -22,8 +25,6 @@ func main() {
 
 		`..\testdata\alpha-triangles.jxl`,
 		`..\testdata\bbb.jxl`,
-		//`..\testdata\george-tiled.jxl`,
-		//`..\testdata\patches.jxl`,
 
 		`..\testdata\ants-lossless.jxl`,
 
@@ -68,35 +69,38 @@ func main() {
 				fmt.Printf("channel 3 type %d\n", ct)
 			}
 
-			//// convert to regular Go image.Image
-			//img, err = jxlImage.ToImage()
-			//if err != nil {
-			//	fmt.Printf("error when making image %v\n", err)
-			//}
-			//ext := path.Ext(file)
-			//pngFileName := file[:len(file)-len(ext)] + ".png"
-			pngFileName := `c:\temp\kenbench.png`
-			f, err := os.Create(pngFileName)
-			if err != nil {
-				log.Fatalf("boomage %v", err)
+			ext := path.Ext(file)
+			pngFileName := file[:len(file)-len(ext)] + ".png"
+
+			// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
+			if jxlImage.HasICCProfile() {
+				f, err := os.Create(pngFileName)
+				if err != nil {
+					log.Fatalf("boomage %v", err)
+				}
+				defer f.Close()
+				core.WritePNG(jxlImage, f)
+			} else {
+				// convert to regular Go image.Image
+				img, err := jxlImage.ToImage()
+				if err != nil {
+					fmt.Printf("error when making image %v\n", err)
+				}
+
+				buf := new(bytes.Buffer)
+				if err := png.Encode(buf, img); err != nil {
+					log.Fatalf("boomage %v", err)
+				}
+
+				err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+				if err != nil {
+					log.Fatalf("boomage %v", err)
+				}
 			}
-			core.WritePNG(jxlImage, f)
-			f.Close()
 
 		}
 
 		end := time.Now()
 		fmt.Printf("decoding total time %d ms\n", end.Sub(start).Milliseconds())
-
-		//buf := new(bytes.Buffer)
-		//if err := png.Encode(buf, img); err != nil {
-		//	log.Fatalf("boomage %v", err)
-		//}
-		//ext := path.Ext(file)
-		//pngFileName := file[:len(file)-len(ext)] + ".png"
-		//err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
-		//if err != nil {
-		//	log.Fatalf("boomage %v", err)
-		//}
 	}
 }

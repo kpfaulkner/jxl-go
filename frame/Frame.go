@@ -652,22 +652,17 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 }
 
 func displayBuffers(text string, frameBuffer [][][]float32) {
-	fmt.Printf("DisplayBuffers %s\n", text)
 	total := 0.0
 	for c := 0; c < len(frameBuffer); c++ {
-		fmt.Printf("Channel %d\n", c)
-
 		for y := 0; y < len(frameBuffer[c]); y++ {
 			for x := 0; x < len(frameBuffer[c][y]); x++ {
 				total += float64(frameBuffer[c][y][x])
 			}
 		}
 	}
-	fmt.Printf("Total %f\n", total)
 }
 
 func displayBuffer(text string, frameBuffer [][]float32) {
-	fmt.Printf("DisplayBuffer %s\n", text)
 	total := 0.0
 
 	for y := 0; y < len(frameBuffer); y++ {
@@ -679,7 +674,6 @@ func displayBuffer(text string, frameBuffer [][]float32) {
 
 		}
 	}
-	fmt.Printf("Total %f\n", total)
 }
 
 func (f *Frame) invertSubsampling() error {

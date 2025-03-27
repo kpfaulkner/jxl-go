@@ -139,6 +139,9 @@ func (jxl *JXLImage) IsFloatBased() bool {
 func (jxl *JXLImage) HasAlpha() bool {
 	return jxl.imageHeader.HasAlpha()
 }
+func (jxl *JXLImage) HasICCProfile() bool {
+	return jxl.iccProfile != nil && len(jxl.iccProfile) > 0
+}
 
 func (jxl *JXLImage) NumExtraChannels() int {
 	return len(jxl.imageHeader.ExtraChannelInfo)

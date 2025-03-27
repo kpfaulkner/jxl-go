@@ -27,6 +27,9 @@ func WritePNG(jxlImage *JXLImage, output io.Writer) error {
 	if err := writeIDAT(jxlImage, output); err != nil {
 		return err
 	}
+	output.Write([]byte{0, 0, 0, 0})
+	output.Write([]byte{0x49, 0x45, 0x4E, 0x44})
+	output.Write([]byte{0xAE, 0x42, 0x60, 0x82})
 	return nil
 }
 
@@ -39,13 +42,13 @@ func writeICCP(image *JXLImage, output io.Writer) error {
 	buf.WriteByte(0x00)
 	buf.WriteByte(0x00)
 
-	// decompress icc?
-	//w := zlib.NewWriter(&buf)
-
-	//iccReader := bytes.NewReader(image.iccProfile)
+	var iccProfile []int8
+	for i := 0; i < len(image.iccProfile); i++ {
+		iccProfile = append(iccProfile, int8(i))
+	}
 
 	var compressedICC bytes.Buffer
-	w, err := zlib.NewWriterLevel(&compressedICC, 0)
+	w, err := zlib.NewWriterLevel(&compressedICC, 1)
 	if err != nil {
 		return err
 	}
@@ -53,18 +56,15 @@ func writeICCP(image *JXLImage, output io.Writer) error {
 	w.Flush()
 	w.Close()
 
-	//buf.Write(image.iccProfile)
 	b := compressedICC.Bytes()
 	buf.Write(b)
-	//w.Close()
 
 	rawBytes := buf.Bytes()
 	buf2 := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf2, uint32(len(rawBytes))-4)
 	output.Write(buf2)
-	// ICCP
-
 	output.Write(rawBytes)
+
 	checksum := crc32.ChecksumIEEE(rawBytes)
 	binary.BigEndian.PutUint32(buf2, checksum)
 	output.Write(buf2)
@@ -111,10 +111,6 @@ func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
 
 func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 
-	//if _, err := buf.Write([]byte("IDAT")); err != nil {
-	//	return err
-	//}
-
 	var buf bytes.Buffer
 	buf.Write([]byte("IDAT"))
 
@@ -124,16 +120,28 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 		return err
 	}
 
+	if err = jxlImage.Buffer[0].CastToIntIfFloat(255); err != nil {
+		return err
+	}
+
+	if err = jxlImage.Buffer[1].CastToIntIfFloat(255); err != nil {
+		return err
+	}
+	if err = jxlImage.Buffer[2].CastToIntIfFloat(255); err != nil {
+		return err
+	}
+
 	for y := uint32(0); y < jxlImage.Height; y++ {
 		w.Write([]byte{0})
 		for x := uint32(0); x < jxlImage.Width; x++ {
 
 			// FIXME(kpfaulkner) remove 3 assumption
 			for c := 0; c < 3; c++ {
-				w.Write([]byte{byte(jxlImage.Buffer[c].FloatBuffer[y][x] * 255)})
+				dat := byte(jxlImage.Buffer[c].IntBuffer[y][x])
+				w.Write([]byte{dat})
 			}
 			if jxlImage.HasAlpha() {
-				w.Write([]byte{byte(jxlImage.Buffer[3].FloatBuffer[y][x] * 255)})
+				w.Write([]byte{byte(jxlImage.Buffer[3].IntBuffer[y][x])})
 			}
 		}
 	}
