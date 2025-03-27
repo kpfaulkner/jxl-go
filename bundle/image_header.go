@@ -413,7 +413,6 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 
 	commandStart := int32(commandReader.GetBitsCount() >> 3)
 	dataStart := commandStart + commandSize
-	//dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart : int32(len(h.EncodedICC))-dataStart]))
 	dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart:]))
 	headerSize := util.Min(128, outputSize)
 	h.DecodedICC = make([]byte, outputSize)
