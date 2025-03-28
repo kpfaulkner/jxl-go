@@ -208,17 +208,14 @@ func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 	if x <= 0 {
 		if y > 0 {
 			return buf[y-1][x]
-		} else {
-			return 0
 		}
-
-	} else {
-		if y > 0 {
-			return buf[y-1][x-1]
-		} else {
-			return buf[y][x-1]
-		}
+		return 0
 	}
+
+	if y > 0 {
+		return buf[y-1][x-1]
+	}
+	return buf[y][x-1]
 }
 
 func (mc *ModularChannel) northWestOrig(x int32, y int32) int32 {
@@ -227,20 +224,18 @@ func (mc *ModularChannel) northWestOrig(x int32, y int32) int32 {
 	if x > 0 {
 		if y > 0 {
 			return buf[y-1][x-1]
-		} else {
-			return buf[y][x-1]
 		}
-	} else {
-		if y > 0 {
-			return buf[y-1][x]
-		} else {
-			return 0
-		}
+		return buf[y][x-1]
 	}
+
+	if y > 0 {
+		return buf[y-1][x]
+	}
+	return 0
 }
 
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
-	if x+1 < int32(mc.size.Width) && y > 0 {
+	if y > 0 && x+1 < int32(mc.size.Width) {
 		return mc.buffer[y-1][x+1]
 	}
 	return mc.north(x, y)
