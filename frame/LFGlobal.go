@@ -2,6 +2,7 @@ package frame
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/entropy"
@@ -31,6 +32,9 @@ func NewLFGlobal() *LFGlobal {
 }
 
 func NewLFGlobalWithReader(reader *jxlio.Bitreader, parent *Frame) (*LFGlobal, error) {
+
+	dat, _ := reader.ShowBits(32)
+	fmt.Printf("dat %d\n", dat)
 
 	lf := NewLFGlobal()
 	lf.frame = parent

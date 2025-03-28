@@ -64,6 +64,34 @@ func NewImageBufferFromFloats(buffer [][]float32) *ImageBuffer {
 	return ib
 }
 
+func NewImageBufferFromImageBuffer(imageBuffer *ImageBuffer) *ImageBuffer {
+	ib := &ImageBuffer{}
+	ib.IntBuffer = copyInt32Matrix2D(imageBuffer.IntBuffer)
+	ib.FloatBuffer = copyFloat32Matrix2D(imageBuffer.FloatBuffer)
+	ib.BufferType = imageBuffer.BufferType
+	ib.Height = imageBuffer.Height
+	ib.Width = imageBuffer.Width
+	return ib
+}
+
+func copyInt32Matrix2D(src [][]int32) [][]int32 {
+	duplicate := make([][]int32, len(src))
+	for i := range src {
+		duplicate[i] = make([]int32, len(src[i]))
+		copy(duplicate[i], src[i])
+	}
+	return duplicate
+}
+
+func copyFloat32Matrix2D(src [][]float32) [][]float32 {
+	duplicate := make([][]float32, len(src))
+	for i := range src {
+		duplicate[i] = make([]float32, len(src[i]))
+		copy(duplicate[i], src[i])
+	}
+	return duplicate
+}
+
 // Equals compares two ImageBuffers and returns true if they are equal.
 func (ib *ImageBuffer) Equals(other ImageBuffer) bool {
 

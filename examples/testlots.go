@@ -18,24 +18,26 @@ import (
 func main() {
 
 	filePaths := []string{
-		`..\testdata\unittest.jxl`,
-		`..\testdata\bench.jxl`,
-
-		`..\testdata\alpha-triangles.jxl`,
-		`..\testdata\bbb.jxl`,
-		`..\testdata\ants-lossless.jxl`,
-		`..\testdata\lenna.jxl`,
-		`..\testdata\quilt.jxl`,
-		`..\testdata\wb-rainbow.jxl`,
-		`..\testdata\ants.jxl`,
-		`..\testdata\blendmodes_5.jxl`,
-		`..\testdata\lossless.jxl`,
-		`..\testdata\sollevante-hdr.jxl`,
-		`..\testdata\white.jxl`,
-		`..\testdata\art.jxl`,
-		`..\testdata\church.jxl`,
-		`..\testdata\patches-lossless.jxl`,
-		`..\testdata\tiny2.jxl`,
+		`C:\Users\kenfa\projects\conformance\testcases\blendmodes\input.jxl`,
+		//`c:\temp\ken-0-4.jxl`,
+		//`..\testdata\unittest.jxl`,
+		//`..\testdata\bench.jxl`,
+		//
+		//`..\testdata\alpha-triangles.jxl`,
+		//`..\testdata\bbb.jxl`,
+		//`..\testdata\ants-lossless.jxl`,
+		//`..\testdata\lenna.jxl`,
+		//`..\testdata\quilt.jxl`,
+		//`..\testdata\wb-rainbow.jxl`,
+		//`..\testdata\ants.jxl`,
+		//`..\testdata\blendmodes_5.jxl`,
+		//`..\testdata\lossless.jxl`,
+		//`..\testdata\sollevante-hdr.jxl`,
+		//`..\testdata\white.jxl`,
+		//`..\testdata\art.jxl`,
+		//`..\testdata\church.jxl`,
+		//`..\testdata\patches-lossless.jxl`,
+		//`..\testdata\tiny2.jxl`,
 	}
 
 	for _, file := range filePaths {

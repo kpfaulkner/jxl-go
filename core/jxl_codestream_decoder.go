@@ -257,8 +257,15 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				}
 
 				if found {
-					// unsure if we really need a copy of the canvas?  TODO(kpfaulkner) check this!
-					panic("not implemented")
+					//FIXME(kpfaulkner)
+					// dumb copy of canvas?
+
+					canvas2 := make([]image2.ImageBuffer, len(jxl.canvas))
+					for _, ib := range jxl.canvas {
+						ib2 := image2.NewImageBufferFromImageBuffer(&ib)
+						canvas2 = append(canvas2, *ib2)
+					}
+
 				}
 				err = jxl.blendFrame(jxl.canvas, imgFrame)
 				if err != nil {
@@ -871,10 +878,49 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 
 		switch info.Mode {
 		case frame.BLEND_ADD:
-			panic("not implemented")
+			if frameBuffer.IsInt() {
+				ci := canvas[c].IntBuffer
+				ri := ref.IntBuffer
+				fi := frameBuffer.IntBuffer
+				for y := int32(0); y < frameHeight; y++ {
+					cy := y + frameStartY
+					fy := y + frameOffsetY
+					for x := int32(0); x < frameWidth; x++ {
+						cx := x + frameStartX
+						fx := x + frameOffsetX
+						ci[cy][cx] = ri[cy][cx] + fi[fy][fx]
+					}
+				}
+			} else {
+				for y := int32(0); y < frameHeight; y++ {
+					cy := y + frameStartY
+					fy := y + frameOffsetY
+					for x := int32(0); x < frameWidth; x++ {
+						cx := x + frameStartX
+						fx := x + frameOffsetX
+						cf[cy][cx] = rf[cy][cx] + ff[fy][fx]
+					}
+				}
+			}
 			break
 		case frame.BLEND_MULT:
-			panic("not implemented")
+			for y := int32(0); y < frameHeight; y++ {
+				cy := y + frameStartY
+				fy := y + frameOffsetY
+				for x := int32(0); x < frameWidth; x++ {
+					cx := x + frameStartX
+					fx := x + frameOffsetX
+					newSample := ff[fy][fx]
+					if info.Clamp {
+						if newSample < 0 {
+							newSample = 0
+						} else if newSample > 1 {
+							newSample = 1
+						}
+					}
+					cf[cy][cx] = newSample * rf[cy][cx]
+				}
+			}
 			break
 		case frame.BLEND_BLEND:
 			if hasAlpha {
@@ -991,6 +1037,7 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas *image2.ImageBuffer, start 
 			copy(canvas.FloatBuffer[y+uint32(start.Y)][start.X:], frameBuffer.FloatBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 		}
 	}
+	fmt.Printf("end copyOfCanvas\n")
 	return nil
 }
 

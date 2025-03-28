@@ -233,12 +233,14 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 			return nil, err
 		} else {
 			fh.Width = width
+			fh.Bounds.Size.Width = width
 		}
 
 		if height, err := reader.ReadU32(0, 8, 256, 11, 2304, 14, 18688, 30); err != nil {
 			return nil, err
 		} else {
 			fh.Height = height
+			fh.Bounds.Size.Height = height
 		}
 	} else {
 		fh.Bounds.Size = parent.Size
