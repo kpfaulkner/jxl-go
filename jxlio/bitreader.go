@@ -6,62 +6,60 @@ import (
 	"fmt"
 	"io"
 	"math"
+
+	"github.com/pektezol/bitreader"
 )
 
 type Bitreader struct {
-	//buffer []byte
-	// stream/reader we're using most of the time
-	stream      io.ReadSeeker
-	bitsRead    uint64
-	tempIndex   int
-	index       uint8
-	currentByte uint8
+	//stream      io.ReadSeeker
+
+	readerAtOrigin *bitreader.Reader
+	reader         *bitreader.Reader
+	bitsRead       uint64
+	tempIndex      int
+	index          uint8
+	currentByte    uint8
 }
 
 func NewBitreaderWithIndex(in io.ReadSeeker, index int) *Bitreader {
 
 	br := NewBitreader(in)
 	br.tempIndex = index
-	//br.buffer = make([]byte, 1)
 	return br
 }
 
 func NewBitreader(in io.ReadSeeker) *Bitreader {
 
 	br := &Bitreader{}
-	//br.buffer = make([]byte, 1)
-	br.stream = in
+	r := bitreader.NewReader(in, true)
+	br.reader = r
+	br.readerAtOrigin, _ = r.Fork()
 	return br
 }
 
 // utter hack to seek about the place. TODO(kpfaulkner) confirm this really works.
 func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
-	n, err := br.stream.Seek(offset, whence)
+
+	if whence != io.SeekStart {
+		panic("seek boomage")
+	}
+
+	newReaderAtOrigin, err := br.readerAtOrigin.Fork()
 	if err != nil {
 		return 0, err
 	}
-	return n, err
-}
+	newReaderAtOrigin.SkipBytes(uint64(offset))
 
-func (br *Bitreader) Reset() error {
-
-	_, err := br.stream.Seek(0, io.SeekStart)
-	if err != nil {
-		return err
-	}
-
-	// reset tracking
-	br.index = 0
-	br.currentByte = 0
-	return nil
+	br.reader = newReaderAtOrigin
+	return 0, nil
 }
 
 func (br *Bitreader) AtEnd() bool {
 
-	_, err := br.ShowBits(1)
-	if err != nil {
+	if _, err := br.reader.ReadRemainingBits(); err != nil {
 		return true
 	}
+
 	return false
 }
 
@@ -69,63 +67,32 @@ func (br *Bitreader) AtEnd() bool {
 // If part way through a byte then fail. Need to be aligned for this to work.
 func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
 
-	if br.index != 0 {
-		return errors.New("Bitreader cache not aligned")
-	}
-
-	n, err := br.stream.Read(buffer[:numBytes])
+	buffer, err := br.reader.ReadBytesToSlice(uint64(numBytes))
 	if err != nil {
 		return err
 	}
-
-	if n != int(numBytes) {
-		return errors.New("unable to read all bytes")
-	}
 	return nil
+
 }
 
 // read single bit and will cache the current byte we're working on.
 func (br *Bitreader) readBit() (uint8, error) {
-	if br.index == 0 {
-		buffer := make([]byte, 1)
-		_, err := br.stream.Read(buffer)
-		if err != nil {
-			return 0, err
-		}
-		br.currentByte = buffer[0]
-	}
 
-	v := (br.currentByte & (1 << br.index)) != 0
-	br.index = (br.index + 1) % 8
-
-	br.bitsRead++
-	if v {
-		return 1, nil
-	} else {
-		return 0, nil
+	b, err := br.reader.ReadBits(1)
+	if err != nil {
+		return 0, err
 	}
+	return uint8(b), nil
 }
 
 func (br *Bitreader) ReadBits(bits uint32) (uint64, error) {
-
-	if bits == 0 {
+	if bits > 64 {
+		fmt.Printf("snoop\n")
+	}
+	if bits <= 0 {
 		return 0, nil
 	}
-
-	if bits < 1 || bits > 64 {
-
-		return 0, errors.New("num bits must be between 1 and 64")
-	}
-	var v uint64
-	for i := uint32(0); i < bits; i++ {
-		bit, err := br.readBit()
-		if err != nil {
-			return 0, err
-		}
-		v |= uint64(bit) << i
-
-	}
-	return v, nil
+	return br.reader.ReadBits(uint64(bits))
 }
 
 func (br *Bitreader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error {
@@ -133,6 +100,7 @@ func (br *Bitreader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int6
 		return nil
 	}
 
+	// remove seek!
 	_, err := br.Seek(offset, io.SeekStart)
 	if err != nil {
 		return err
@@ -322,58 +290,28 @@ func (br *Bitreader) GetBitsCount() uint64 {
 
 func (br *Bitreader) ShowBits(bits int) (uint64, error) {
 
-	curPos, err := br.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return 0, err
-	}
-	oldCur := br.currentByte
-	oldIndex := br.index
-	oldBitsRead := br.bitsRead
-
-	b, err := br.ReadBits(uint32(bits))
+	tempReader, err := br.reader.Fork()
 	if err != nil {
 		return 0, err
 	}
 
-	_, err = br.Seek(curPos, io.SeekStart)
+	if bits > 64 {
+		fmt.Printf("snoop\n")
+	}
+
+	b, err := tempReader.ReadBits(uint64(bits))
 	if err != nil {
 		return 0, err
 	}
-	br.currentByte = oldCur
-	br.index = oldIndex
-	br.bitsRead = oldBitsRead
-
 	return b, nil
 }
 
 func (br *Bitreader) SkipBits(bits uint32) error {
-
-	numBytes := bits / 8
-	if numBytes > 0 {
-		buffer := make([]byte, numBytes)
-		_, err := br.stream.Read(buffer)
-		if err != nil {
-			return err
-		}
-		br.currentByte = buffer[numBytes-1]
-	}
-
-	// read bits so we can keep track of where we are.
-	for i := numBytes * 8; i < bits; i++ {
-		_, err := br.readBit()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return br.reader.SkipBits(uint64(bits))
 }
 
-func (br *Bitreader) Skip(bytes uint32) (int64, error) {
-	err := br.SkipBits(bytes << 3)
-	if err != nil {
-		return 0, err
-	}
-	return int64(bytes), nil
+func (br *Bitreader) Skip(bytes uint32) error {
+	return br.reader.SkipBytes(uint64(bytes))
 }
 
 func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {

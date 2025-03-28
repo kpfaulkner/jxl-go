@@ -135,7 +135,7 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 			}
 			boxHeaders = append(boxHeaders, bh)
 			// skip past this box.
-			_, err = br.SkipFully(int64(boxSize))
+			err = br.SkipFully(int64(boxSize))
 			if err != nil {
 				return nil, err
 			}
@@ -169,7 +169,7 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 			boxHeaders = append(boxHeaders, bh)
 
 			// skip past this box.
-			_, err = br.SkipFully(int64(boxSize))
+			err = br.SkipFully(int64(boxSize))
 			if err != nil {
 				return nil, err
 			}
@@ -177,13 +177,13 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 		default:
 			// skip over the bytes
 			if boxSize > 0 {
-				s, err := br.SkipFully(int64(boxSize))
+				err := br.SkipFully(int64(boxSize))
 				if err != nil {
 					return nil, err
 				}
-				if s != 0 {
-					return nil, errors.New("truncated extra box")
-				}
+				//if s != 0 {
+				//	return nil, errors.New("truncated extra box")
+				//}
 			} else {
 				panic("java read supplyExceptionally... unsure why?")
 			}
@@ -198,10 +198,8 @@ func (br *BoxReader) readBox() error {
 	return nil
 }
 
-// returns number of bytes that were NOT skipped.
-func (br *BoxReader) SkipFully(i int64) (int64, error) {
-	n, err := br.reader.Skip(uint32(i))
-	return i - n, err
+func (br *BoxReader) SkipFully(i int64) error {
+	return br.reader.Skip(uint32(i))
 }
 
 func makeTag(bytes []uint8, offset int, length int) uint64 {
