@@ -664,17 +664,11 @@ func inverseVerticalSqueeze(channel *ModularChannel, orig *ModularChannel, res *
 		}
 	}
 	if orig.size.Height > res.size.Height {
-		//xs := 2 * res.size.Width
-		//for y := uint32(0); y < channel.size.Height; y++ {
-		//	channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
-		//}
-		//copy(channel.buffer[2*res.size.Height], orig.buffer[res.size.Height])
 
-		xs := 2 * res.size.Width
-		for y := uint32(0); y < channel.size.Height; y++ {
-			channel.buffer[y][xs] = orig.buffer[y][res.size.Width]
+		// must be a quicker way surely?
+		for x := uint32(0); x < uint32(len(orig.buffer[res.size.Height])); x++ {
+			channel.buffer[2*res.size.Height][x] = orig.buffer[res.size.Height][x]
 		}
-
 	}
 
 	return channel, nil
