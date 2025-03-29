@@ -18,7 +18,11 @@ import (
 func main() {
 
 	filePaths := []string{
-		`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl`,
+
+		`C:\Users\kenfa\projects\conformance\testcases\opsin_inverse\input.jxl`,
+
+		// cafe decodes... but saturation is wrong.
+		// `C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl`,
 		//`c:\temp\ken-0-4.jxl`,
 		//`..\testdata\unittest.jxl`,
 		//`..\testdata\bench.jxl`,

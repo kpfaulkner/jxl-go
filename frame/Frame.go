@@ -737,8 +737,6 @@ func (f *Frame) invertSubsampling() error {
 					yy = len(oldChannel) - 1
 				}
 				oldRowNext := oldChannel[yy]
-				//firstNewRow := make([]float32, len(oldRow))
-				//secondNewRow := make([]float32, len(oldRow))
 				firstNewRow := newChannel[2*y]
 				secondNewRow := newChannel[2*y+1]
 				for x := 0; x < len(oldRow); x++ {
@@ -746,8 +744,6 @@ func (f *Frame) invertSubsampling() error {
 					firstNewRow[x] = b75 + 0.25*oldRowPrev[x]
 					secondNewRow[x] = b75 + 0.25*oldRowNext[x]
 				}
-				//newChannel[2*y] = firstNewRow
-				//newChannel[2*y+1] = secondNewRow
 			}
 			f.Buffer[c] = *newBuffer
 		}
@@ -1033,6 +1029,10 @@ func (f *Frame) Upsample() error {
 
 	f.bounds.Origin.Y *= int32(f.Header.Upsampling)
 	f.bounds.Origin.X *= int32(f.Header.Upsampling)
+	f.groupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim)
+	f.lfGroupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim<<3)
+	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim)
+	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim<<3)
 	return nil
 }
 
