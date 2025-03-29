@@ -633,17 +633,20 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		for pass := 0; pass < numPasses; pass++ {
 			for group := 0; group < numGroups; group++ {
 				passGroup := passGroups[pass][group]
+				if pass == 0 && group == 1 {
+					fmt.Printf("snoop\n")
+				}
 				var prev *PassGroup
 				if pass > 0 {
 					prev = &passGroups[pass-1][group]
 				} else {
 					prev = nil
 				}
-				displayBuffers("Before", buffers)
+				//displayBuffers("Before", buffers)
 				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
 					return err
 				}
-				displayBuffers("After", buffers)
+				//displayBuffers("After", buffers)
 			}
 		}
 	}
@@ -701,9 +704,9 @@ func (f *Frame) invertSubsampling() error {
 						xx = x - 1
 					}
 					newRow[2*x] = b75 + 0.25*oldRow[xx]
-					xx = len(oldRow) - 1
+					xx = x + 1
 					if x+1 == len(oldRow) {
-						xx = x + 1
+						xx = len(oldRow) - 1
 					}
 					newRow[2*x+1] = b75 + 0.25*oldRow[xx]
 				}
@@ -724,25 +727,27 @@ func (f *Frame) invertSubsampling() error {
 			newChannel := newBuffer.FloatBuffer
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
-				xx := 0
+				yy := y - 1
 				if y == 0 {
-					xx = y - 1
+					yy = 0
 				}
-				oldRowPrev := oldChannel[xx]
-				xx = len(oldChannel) - 1
+				oldRowPrev := oldChannel[yy]
+				yy = y + 1
 				if y+1 == len(oldChannel) {
-					xx = y + 1
+					yy = len(oldChannel) - 1
 				}
-				oldRowNext := oldChannel[xx]
-				firstNewRow := make([]float32, len(oldRow))
-				secondNewRow := make([]float32, len(oldRow))
+				oldRowNext := oldChannel[yy]
+				//firstNewRow := make([]float32, len(oldRow))
+				//secondNewRow := make([]float32, len(oldRow))
+				firstNewRow := newChannel[2*y]
+				secondNewRow := newChannel[2*y+1]
 				for x := 0; x < len(oldRow); x++ {
 					b75 := 0.075 * oldRow[x]
 					firstNewRow[x] = b75 + 0.25*oldRowPrev[x]
 					secondNewRow[x] = b75 + 0.25*oldRowNext[x]
 				}
-				newChannel[2*y] = firstNewRow
-				newChannel[2*y+1] = secondNewRow
+				//newChannel[2*y] = firstNewRow
+				//newChannel[2*y+1] = secondNewRow
 			}
 			f.Buffer[c] = *newBuffer
 		}

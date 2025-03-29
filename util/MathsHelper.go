@@ -3,6 +3,7 @@ package util
 import (
 	"cmp"
 	"errors"
+	"fmt"
 	"math"
 	"math/bits"
 
@@ -426,6 +427,10 @@ func ForwardDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Poi
 }
 
 func forwardDCTHorizontal(src []float32, dest []float32, xStartIn int32, xStartOut int32, xLogLength int, xLength int32) error {
+
+	if xStartIn == 80 {
+		fmt.Printf("snoop\n")
+	}
 
 	invLength := 1.0 / float32(xLength)
 	d2 := src[xStartIn]

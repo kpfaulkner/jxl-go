@@ -161,13 +161,8 @@ type ModularStream struct {
 	channelCount int
 	ecStart      int
 
-	// HACK HACK HACK... utterly hate this. Using it to convert between ModularChannelInfo and ModularChannel
-	// FIXME(kpfaulkner) refactor this to be cleaner.
 	channels []*ModularChannel
 
-	// This feels utterly dirty. But ModularChannelInfo is just a few primatives
-	// and doesn't really need an interface. I will probably change my mind on this...
-	//channels       []any
 	tree           *MATree
 	wpParams       *WPParams
 	transforms     []TransformInfo

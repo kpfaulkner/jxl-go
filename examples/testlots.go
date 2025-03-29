@@ -18,7 +18,7 @@ import (
 func main() {
 
 	filePaths := []string{
-		`C:\Users\kenfa\projects\conformance\testcases\blendmodes\input.jxl`,
+		`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl`,
 		//`c:\temp\ken-0-4.jxl`,
 		//`..\testdata\unittest.jxl`,
 		//`..\testdata\bench.jxl`,
