@@ -46,7 +46,7 @@ type Frame struct {
 	Buffer         []image.ImageBuffer
 	passes         []Pass
 	bitreaders     []*jxlio.Bitreader
-	bounds         util.Rectangle
+	//bounds         *util.Rectangle
 	globalMetadata *bundle.ImageHeader
 	options        *options.JXLOptions
 	reader         *jxlio.Bitreader
@@ -75,15 +75,15 @@ func (f *Frame) ReadFrameHeader() (FrameHeader, error) {
 		return FrameHeader{}, err
 	}
 
-	f.bounds = util.Rectangle{
+	f.Header.Bounds = &util.Rectangle{
 		Origin: f.Header.Bounds.Origin,
 		Size:   f.Header.Bounds.Size,
 	}
 
-	f.groupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim)
-	f.lfGroupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim<<3)
-	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim)
-	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim<<3)
+	f.groupRowStride = util.CeilDiv(f.Header.Bounds.Size.Width, f.Header.groupDim)
+	f.lfGroupRowStride = util.CeilDiv(f.Header.Bounds.Size.Width, f.Header.groupDim<<3)
+	f.numGroups = f.groupRowStride * util.CeilDiv(f.Header.Bounds.Size.Height, f.Header.groupDim)
+	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.Header.Bounds.Size.Height, f.Header.groupDim<<3)
 
 	return *f.Header, nil
 }
@@ -374,22 +374,22 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 
 		if isModularXYB && cIn == 2 {
 			outBuffer := f.Buffer[cOut].FloatBuffer
-			for y := uint32(0); y < f.bounds.Size.Height; y++ {
-				for x := uint32(0); x < f.bounds.Size.Width; x++ {
+			for y := uint32(0); y < f.Header.Bounds.Size.Height; y++ {
+				for x := uint32(0); x < f.Header.Bounds.Size.Width; x++ {
 					outBuffer[y][x] = scaleFactor * float32(modularBuffer[0][y][x]+modularBuffer[2][y][x])
 				}
 			}
 		} else if f.Buffer[cOut].IsFloat() {
 
 			outBuffer := f.Buffer[cOut].FloatBuffer
-			for y := uint32(0); y < f.bounds.Size.Height; y++ {
-				for x := uint32(0); x < f.bounds.Size.Width; x++ {
+			for y := uint32(0); y < f.Header.Bounds.Size.Height; y++ {
+				for x := uint32(0); x < f.Header.Bounds.Size.Width; x++ {
 					outBuffer[y][x] = scaleFactor * float32(modularBuffer[cIn][y][x])
 				}
 			}
 		} else {
 			outBuffer := f.Buffer[cOut].IntBuffer
-			for y := uint32(0); y < f.bounds.Size.Height; y++ {
+			for y := uint32(0); y < f.Header.Bounds.Size.Height; y++ {
 				copy(outBuffer[y], modularBuffer[cIn][y])
 			}
 		}
@@ -427,11 +427,11 @@ func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
 	var width uint32
 	var height uint32
 	if f.Header.Encoding == VARDCT {
-		height = (f.bounds.Size.Height + 7) >> 3
-		width = (f.bounds.Size.Width + 7) >> 3
+		height = (f.Header.Bounds.Size.Height + 7) >> 3
+		width = (f.Header.Bounds.Size.Width + 7) >> 3
 	} else {
-		width = f.bounds.Size.Width
-		height = f.bounds.Size.Height
+		width = f.Header.Bounds.Size.Width
+		height = f.Header.Bounds.Size.Height
 	}
 
 	height = util.CeilDiv(height, uint32(factorY))
@@ -1043,15 +1043,15 @@ func (f *Frame) Upsample() error {
 			f.Buffer[c] = *buf
 		}
 	}
-	f.bounds.Size.Height *= f.Header.Upsampling
-	f.bounds.Size.Width *= f.Header.Upsampling
+	f.Header.Bounds.Size.Height *= f.Header.Upsampling
+	f.Header.Bounds.Size.Width *= f.Header.Upsampling
 
-	f.bounds.Origin.Y *= int32(f.Header.Upsampling)
-	f.bounds.Origin.X *= int32(f.Header.Upsampling)
-	f.groupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim)
-	f.lfGroupRowStride = util.CeilDiv(f.bounds.Size.Width, f.Header.groupDim<<3)
-	f.numGroups = f.groupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim)
-	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.bounds.Size.Height, f.Header.groupDim<<3)
+	f.Header.Bounds.Origin.Y *= int32(f.Header.Upsampling)
+	f.Header.Bounds.Origin.X *= int32(f.Header.Upsampling)
+	f.groupRowStride = util.CeilDiv(f.Header.Bounds.Size.Width, f.Header.groupDim)
+	f.lfGroupRowStride = util.CeilDiv(f.Header.Bounds.Size.Width, f.Header.groupDim<<3)
+	f.numGroups = f.groupRowStride * util.CeilDiv(f.Header.Bounds.Size.Height, f.Header.groupDim)
+	f.numLFGroups = f.lfGroupRowStride * util.CeilDiv(f.Header.Bounds.Size.Height, f.Header.groupDim<<3)
 	return nil
 }
 

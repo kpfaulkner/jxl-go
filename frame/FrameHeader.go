@@ -34,7 +34,7 @@ type FrameHeader struct {
 	EcUpsampling      []uint32
 	EcBlendingInfo    []BlendingInfo
 	name              string
-	Bounds            util.Rectangle
+	Bounds            *util.Rectangle
 	restorationFilter *RestorationFilter
 	extensions        *bundle.Extensions
 	passes            *PassesInfo
@@ -224,6 +224,12 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 
 		x0Signed := jxlio.UnpackSigned(x0)
 		y0Signed := jxlio.UnpackSigned(y0)
+		if fh.Bounds == nil {
+			fh.Bounds = &util.Rectangle{
+				Origin: util.Point{},
+				Size:   util.Dimension{},
+			}
+		}
 		fh.Bounds.Origin.X = x0Signed
 		fh.Bounds.Origin.Y = y0Signed
 	}
@@ -243,6 +249,12 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 			fh.Bounds.Size.Height = height
 		}
 	} else {
+		if fh.Bounds == nil {
+			fh.Bounds = &util.Rectangle{
+				Origin: util.Point{X: 0, Y: 0},
+				Size:   util.Dimension{},
+			}
+		}
 		fh.Bounds.Size = parent.Size
 	}
 

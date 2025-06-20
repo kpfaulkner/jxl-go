@@ -217,7 +217,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 
 	if channelArray == nil || len(channelArray) == 0 {
 		for i := 0; i < channelCount; i++ {
-			size := frame.bounds.Size
+			size := frame.Header.Bounds.Size
 			var dimShift int32
 			if i < ecStart {
 				dimShift = 0
