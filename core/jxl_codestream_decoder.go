@@ -760,8 +760,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 	frameOffsetY := frameStartY - header.Bounds.Origin.Y
 	frameOffsetX := frameStartX - header.Bounds.Origin.X
 	lowerCorner := header.Bounds.ComputeLowerCorner()
-	frameHeight := util.Min(lowerCorner.Y, int32(imageSize.Height)-frameStartY)
-	frameWidth := util.Min(lowerCorner.X, int32(imageSize.Width)-frameStartX)
+	frameHeight := util.Min(lowerCorner.Y, int32(imageSize.Height)) - frameStartY
+	frameWidth := util.Min(lowerCorner.X, int32(imageSize.Width)) - frameStartX
 
 	frameColours := imgFrame.GetColourChannelCount()
 	imageColours := jxl.imageHeader.GetColourChannelCount()

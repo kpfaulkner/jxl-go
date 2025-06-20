@@ -19,7 +19,11 @@ func main() {
 
 	filePaths := []string{
 
-		`C:\Users\kenfa\projects\conformance\testcases\opsin_inverse\input.jxl`,
+		// spot still failing....  generates image but lots missing. But jxlatte also not fully working.
+		//`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl`,
+
+		// sunset logo generating 24 bit image where should be 32 bit (jxlatte generates 64 bit).
+		`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl`,
 
 		// cafe decodes... but saturation is wrong.
 		// `C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl`,
@@ -77,7 +81,7 @@ func main() {
 			pngFileName := file[:len(file)-len(ext)] + ".png"
 
 			// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
-			if jxlImage.HasICCProfile() {
+			if jxlImage.HasICCProfile() || true {
 				f, err := os.Create(pngFileName)
 				if err != nil {
 					log.Fatalf("boomage %v", err)

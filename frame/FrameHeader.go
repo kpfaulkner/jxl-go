@@ -197,7 +197,7 @@ func NewFrameHeaderWithReader(reader *jxlio.Bitreader, parent *bundle.ImageHeade
 		if lfLevel, err := reader.ReadBits(2); err != nil {
 			return nil, err
 		} else {
-			fh.LfLevel = uint32(lfLevel)
+			fh.LfLevel = uint32(lfLevel) + 1
 		}
 	} else {
 		fh.LfLevel = 0

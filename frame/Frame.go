@@ -150,6 +150,10 @@ func (f *Frame) ReadTOC() error {
 }
 
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
+
+	if index == 8 {
+		fmt.Printf("snoop\n")
+	}
 	length := f.tocLengths[index]
 	buffer := make([]uint8, length+4)
 	err := f.reader.ReadBytesToBuffer(buffer, length)
@@ -179,7 +183,11 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 
 	lehmer := make([]uint32, size)
 	for i := skip; i < uint32(end)+skip; i++ {
-		ii, err := stream.ReadSymbol(reader, ctxFunc(int64(util.IfThenElse(i > skip, lehmer[i-1], 0))))
+		ctxVal := uint32(0)
+		if i > skip {
+			ctxVal = lehmer[i-1]
+		}
+		ii, err := stream.ReadSymbol(reader, ctxFunc(int64(ctxVal)))
 		if err != nil {
 			return nil, err
 		}
@@ -534,6 +542,9 @@ func (f *Frame) startWorker(inputChan chan Inp, passGroups [][]PassGroup) {
 
 func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) error {
 
+	if iPass == 0 && iGroup == 2 {
+		fmt.Printf("snoop\n")
+	}
 	br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + iGroup)
 	if err != nil {
 		return err
@@ -602,6 +613,9 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
+			if i == 36 {
+				fmt.Printf("snoop\n")
+			}
 			if f.passes[pass].replacedChannels[i] == nil {
 				continue
 			}
@@ -610,6 +624,11 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			channel := f.LfGlobal.globalModular.channels[ii]
 			channel.allocate()
 			for group := 0; group < int(f.numGroups); group++ {
+				fmt.Printf("Pass %d Group %d Channel %d\n", pass, group, jj)
+				if pass == 0 && group == 2 && jj == 0 {
+					fmt.Printf("snoop\n")
+				}
+
 				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
