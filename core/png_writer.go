@@ -235,6 +235,18 @@ func writeIDAT2(jxlImage *JXLImage, output io.Writer) error {
 		}
 	}
 
+	for c := 0; c < len(jxlImage.Buffer); c++ {
+		if jxlImage.Buffer[c].IsInt() && jxlImage.bitDepths[c] == uint32(bitDepth) {
+			if err := jxlImage.Buffer[c].Clamp(maxValue); err != nil {
+				return err
+			}
+		} else {
+			if err := jxlImage.Buffer[c].CastToIntIfFloat(maxValue); err != nil {
+				return err
+			}
+		}
+	}
+
 	for y := uint32(0); y < jxlImage.Height; y++ {
 		w.Write([]byte{0})
 		for x := uint32(0); x < jxlImage.Width; x++ {

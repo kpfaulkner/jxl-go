@@ -513,8 +513,6 @@ func (ms *ModularStream) applyTransforms() error {
 				ms.channels[start+permutationLUT[permutation][j]] = v[j]
 			}
 		} else if ms.transforms[i].tr == PALETTE {
-
-			// HERE 20240927  need to implement this!!!
 			first := ms.transforms[i].beginC + 1
 			endC := ms.transforms[i].beginC + ms.transforms[i].numC - 1
 			last := endC + 1

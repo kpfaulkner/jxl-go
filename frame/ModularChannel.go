@@ -72,7 +72,7 @@ func (mc *ModularChannel) allocate() {
 	}
 }
 
-func (mc *ModularChannel) prediction(x int32, y int32, k int32) (int32, error) {
+func (mc *ModularChannel) prediction(y int32, x int32, k int32) (int32, error) {
 	var n, v, nw, w int32
 	switch k {
 	case 0:
@@ -498,7 +498,7 @@ func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.Entrop
 			}
 
 			diff = jxlio.UnpackSigned(uint32(diff))*leafNode.multiplier + leafNode.offset
-			p, err := mc.prediction(x, y, leafNode.predictor)
+			p, err := mc.prediction(y, x, leafNode.predictor)
 			if err != nil {
 				return err
 			}
