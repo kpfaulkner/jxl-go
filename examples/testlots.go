@@ -7,6 +7,7 @@ import (
 	//"image/png"
 	"os"
 	"path"
+	"strings"
 	//"path"
 	"time"
 
@@ -20,39 +21,38 @@ func main() {
 	filePaths := []string{
 
 		// not looking like ref.png but same as jxlatte output
-		//`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl`,
+		`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl|spot.png`,
 
-		//`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl`,
-
-		// sunset logo generating 24 bit image where should be 32 bit (jxlatte generates 64 bit).
-		//`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl`,
-
-		// cafe decodes... but saturation is wrong.
-		`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl`,
-		//`c:\temp\ken-0-4.jxl`,
-		//`..\testdata\unittest.jxl`,
-		//`..\testdata\bench.jxl`,
-		//
-		//`..\testdata\alpha-triangles.jxl`,
-		//`..\testdata\bbb.jxl`,
-		//`..\testdata\ants-lossless.jxl`,
-		//`..\testdata\lenna.jxl`,
-		//`..\testdata\quilt.jxl`,
-		//`..\testdata\wb-rainbow.jxl`,
-		//`..\testdata\ants.jxl`,
-		//`..\testdata\blendmodes_5.jxl`,
-		//`..\testdata\lossless.jxl`,
-		//`..\testdata\sollevante-hdr.jxl`,
-		//`..\testdata\white.jxl`,
-		//`..\testdata\art.jxl`,
-		//`..\testdata\church.jxl`,
-		//`..\testdata\patches-lossless.jxl`,
-		//`..\testdata\tiny2.jxl`,
+		`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl|upsampling.png`,
+		`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl|sunset_logo.png`,
+		`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl|cafe.png`,
+		`c:\temp\ken-0-4.jxl|ken-0-4.png`,
+		`..\testdata\unittest.jxl|unittest.png`,
+		`..\testdata\bench.jxl|bench.png`,
+		`..\testdata\alpha-triangles.jxl|alpha-triangles.png`,
+		`..\testdata\bbb.jxl|bbb.png`,
+		`..\testdata\ants-lossless.jxl|ants-lossless.png`,
+		`..\testdata\lenna.jxl|lenna.png`,
+		`..\testdata\quilt.jxl|quilt.png`,
+		`..\testdata\wb-rainbow.jxl|wb-rainbow.png`,
+		`..\testdata\ants.jxl|ants.png`,
+		`..\testdata\blendmodes_5.jxl|blendmodes_5.png`,
+		`..\testdata\lossless.jxl|lossless.png`,
+		`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
+		`..\testdata\white.jxl|white.png`,
+		`..\testdata\art.jxl|art.png`,
+		`..\testdata\church.jxl|church.png`,
+		`..\testdata\patches-lossless.jxl|patches-lossless.png`,
+		`..\testdata\tiny2.jxl|tiny2.png`,
 	}
 
+	destinationDir := `c:\temp\jxlresults\`
 	for _, file := range filePaths {
-		fmt.Printf("file %s\n", file)
-		f, err := os.ReadFile(file)
+		fileDetails := strings.Split(file, "|")
+		orig := fileDetails[0]
+		newFile := fileDetails[1]
+		fmt.Printf("file %s\n", orig)
+		f, err := os.ReadFile(orig)
 		if err != nil {
 			log.Errorf("Error opening file: %v\n", err)
 			return
@@ -79,8 +79,7 @@ func main() {
 				fmt.Printf("channel 3 type %d\n", ct)
 			}
 
-			ext := path.Ext(file)
-			pngFileName := file[:len(file)-len(ext)] + ".png"
+			pngFileName := path.Join(destinationDir, newFile)
 
 			// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
 			if jxlImage.HasICCProfile() || true {
