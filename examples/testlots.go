@@ -20,12 +20,12 @@ func main() {
 	filePaths := []string{
 
 		// not looking like ref.png but same as jxlatte output
-		`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl`,
+		//`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl`,
 
-		`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl`,
+		//`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl`,
 
 		// sunset logo generating 24 bit image where should be 32 bit (jxlatte generates 64 bit).
-		`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl`,
+		//`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl`,
 
 		// cafe decodes... but saturation is wrong.
 		`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl`,

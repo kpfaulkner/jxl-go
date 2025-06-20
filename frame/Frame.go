@@ -715,9 +715,10 @@ func (f *Frame) invertSubsampling() error {
 			newChannel := newBuffer.FloatBuffer
 			for y := 0; y < len(oldChannel); y++ {
 				oldRow := oldChannel[y]
-				newRow := make([]float32, len(oldRow)*2)
+				//newRow := make([]float32, len(oldRow)*2)
+				newRow := newChannel[y]
 				for x := 0; x < len(oldRow); x++ {
-					b75 := 0.075 * oldRow[x]
+					b75 := 0.75 * oldRow[x]
 					xx := 0
 					if x != 0 {
 						xx = x - 1
@@ -759,7 +760,7 @@ func (f *Frame) invertSubsampling() error {
 				firstNewRow := newChannel[2*y]
 				secondNewRow := newChannel[2*y+1]
 				for x := 0; x < len(oldRow); x++ {
-					b75 := 0.075 * oldRow[x]
+					b75 := 0.75 * oldRow[x]
 					firstNewRow[x] = b75 + 0.25*oldRowPrev[x]
 					secondNewRow[x] = b75 + 0.25*oldRowNext[x]
 				}
