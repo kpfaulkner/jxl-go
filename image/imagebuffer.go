@@ -2,6 +2,7 @@ package image
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -188,6 +189,9 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 				vv = v
 			}
 			newBuffer[y][x] = vv
+			if vv != 0 {
+				fmt.Printf("Casting to int: %f -> %d at (%d, %d)\n", oldBuffer[y][x], newBuffer[y][x], y, x)
+			}
 		}
 	}
 	ib.IntBuffer = newBuffer

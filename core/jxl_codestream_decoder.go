@@ -260,9 +260,6 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				}
 
 				if found {
-					//FIXME(kpfaulkner)
-					// dumb copy of canvas?
-
 					canvas2 := make([]image2.ImageBuffer, len(jxl.canvas))
 					for _, ib := range jxl.canvas {
 						ib2 := image2.NewImageBufferFromImageBuffer(&ib)

@@ -225,21 +225,21 @@ func writeIDAT2(jxlImage *JXLImage, output io.Writer) error {
 
 	maxValue := int32(^(^0 << bitDepth))
 
-	if err = jxlImage.Buffer[0].CastToIntIfFloat(maxValue); err != nil {
-		return err
-	}
-
-	if len(jxlImage.Buffer) > 1 {
-		if err = jxlImage.Buffer[1].CastToIntIfFloat(maxValue); err != nil {
-			return err
-		}
-	}
-
-	if len(jxlImage.Buffer) > 2 {
-		if err = jxlImage.Buffer[2].CastToIntIfFloat(maxValue); err != nil {
-			return err
-		}
-	}
+	//if err = jxlImage.Buffer[0].CastToIntIfFloat(maxValue); err != nil {
+	//	return err
+	//}
+	//
+	//if len(jxlImage.Buffer) > 1 {
+	//	if err = jxlImage.Buffer[1].CastToIntIfFloat(maxValue); err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//if len(jxlImage.Buffer) > 2 {
+	//	if err = jxlImage.Buffer[2].CastToIntIfFloat(maxValue); err != nil {
+	//		return err
+	//	}
+	//}
 
 	if jxlImage.HasAlpha() {
 		if err = jxlImage.Buffer[3].CastToIntIfFloat(maxValue); err != nil {
