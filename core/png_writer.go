@@ -100,15 +100,22 @@ func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
 
 	// colourmode is 6 if include alpha...  otherwise 2
 	colourMode := byte(2)
-	if jxlImage.HasAlpha() {
-		colourMode = 6
-	}
 
 	var bitDepth int32
 	if jxlImage.imageHeader.BitDepth.BitsPerSample > 8 {
 		bitDepth = 16
+		if jxlImage.HasAlpha() {
+			colourMode = 6
+		} else {
+			colourMode = 2
+		}
 	} else {
 		bitDepth = 8
+		if jxlImage.HasAlpha() {
+			colourMode = 4
+		} else {
+			colourMode = 0
+		}
 	}
 
 	ihdr := make([]byte, 17)
@@ -222,11 +229,16 @@ func writeIDAT2(jxlImage *JXLImage, output io.Writer) error {
 		return err
 	}
 
-	if err = jxlImage.Buffer[1].CastToIntIfFloat(maxValue); err != nil {
-		return err
+	if len(jxlImage.Buffer) > 1 {
+		if err = jxlImage.Buffer[1].CastToIntIfFloat(maxValue); err != nil {
+			return err
+		}
 	}
-	if err = jxlImage.Buffer[2].CastToIntIfFloat(maxValue); err != nil {
-		return err
+
+	if len(jxlImage.Buffer) > 2 {
+		if err = jxlImage.Buffer[2].CastToIntIfFloat(maxValue); err != nil {
+			return err
+		}
 	}
 
 	if jxlImage.HasAlpha() {
@@ -246,13 +258,12 @@ func writeIDAT2(jxlImage *JXLImage, output io.Writer) error {
 			}
 		}
 	}
-
 	for y := uint32(0); y < jxlImage.Height; y++ {
 		w.Write([]byte{0})
 		for x := uint32(0); x < jxlImage.Width; x++ {
 
 			// FIXME(kpfaulkner) remove 3 assumption
-			for c := 0; c < 3; c++ {
+			for c := 0; c < jxlImage.imageHeader.GetColourChannelCount(); c++ {
 				dat := jxlImage.Buffer[c].IntBuffer[y][x]
 				if jxlImage.bitDepths[c] == 8 {
 					w.Write([]byte{byte(dat)})

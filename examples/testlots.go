@@ -26,7 +26,13 @@ func main() {
 		//`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl|upsampling.png`,
 		//`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl|sunset_logo.png`,
 		//`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl|cafe.png`,
-		`C:\Users\kenfa\projects\conformance\testcases\delta_palette\input.jxl|delta_palette.png`,
+
+		// looking good.
+		//`C:\Users\kenfa\projects\conformance\testcases\delta_palette\input.jxl|delta_palette.png`,
+
+		`C:\Users\kenfa\projects\conformance\testcases\grayscale\input.jxl|grayscale.png`,
+
+
 		//`c:\temp\ken-0-4.jxl|ken-0-4.png`,
 		//`..\testdata\unittest.jxl|unittest.png`,
 		//`..\testdata\bench.jxl|bench.png`,
