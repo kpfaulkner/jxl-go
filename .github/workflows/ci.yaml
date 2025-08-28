@@ -26,7 +26,7 @@ jobs:
 
     - name: Test
       run: |
-        go test -covermode=count -coverprofile=coverage .\entropy\ 
+        go test -covermode=count -coverprofile=coverage ./entropy ./colour ./bundle ./jxlio ./util ./frame ./image ./colour
 
     - name: Update coverage report
       uses: ncruces/go-coverage-report@v0
