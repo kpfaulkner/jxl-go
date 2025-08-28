@@ -1,5 +1,11 @@
 # jxl-go
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/kpfaulkner/jxl-go.svg)](https://pkg.go.dev/github.com/kpfaulkner/jxl-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kpfaulkner/jxl-go)](https://goreportcard.com/report/github.com/kpfaulkner/jxl-go)
+[![Go Coverage](https://github.com/kpfaulkner/jxl-go/wiki/coverage.svg)](https://raw.githack.com/wiki/kpfaulkner/jxl-go/coverage.html)
+[![Go](https://github.com/kpfaulkner/jxl-go/actions/workflows/ci.yaml/badge.svg)](https://github.com/kpfaulkner/jxl-go/actions/workflows/ci.yaml)
+
+
 ## Notes:
 
 JXL-Go is a Go library for reading of JPEG XL (JXL) images.
