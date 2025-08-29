@@ -95,7 +95,7 @@ func TestExtraChannelInfo(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			var bitReader *jxlio.BitStreamReader
+			var bitReader jxlio.BitReader
 			if tc.readData {
 				bitReader = testcommon.GenerateTestBitReader(t, `../testdata/spot.jxl`)
 				// skip first 40 bytes due to box headers.

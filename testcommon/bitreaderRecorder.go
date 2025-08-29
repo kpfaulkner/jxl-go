@@ -23,7 +23,11 @@ type BitReaderRecorder struct {
 	ShowBitsData                         []uint64
 	SkipData                             []int64
 	ReadBytesUint64Data                  []uint64
-	realBitReader                        jxlio.BitReader
+	ReadBytesToBufferData                [][]uint8
+	SeekData                             []int64
+	AtEndData                            []bool
+
+	realBitReader jxlio.BitReader
 }
 
 func NewBitReaderRecorder(realBitReader jxlio.BitReader) *BitReaderRecorder {
@@ -35,8 +39,13 @@ func NewBitReaderRecorder(realBitReader jxlio.BitReader) *BitReaderRecorder {
 }
 
 func (fbr *BitReaderRecorder) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
-	//TODO implement me
-	panic("implement me")
+	err := fbr.realBitReader.ReadBytesToBuffer(buffer, numBytes)
+	if err != nil {
+		return err
+	}
+
+	fbr.ReadBytesToBufferData = append(fbr.ReadBytesToBufferData, buffer)
+	return nil
 }
 
 func (fbr *BitReaderRecorder) ReadBits(bits uint32) (uint64, error) {
@@ -50,8 +59,13 @@ func (fbr *BitReaderRecorder) ReadBits(bits uint32) (uint64, error) {
 }
 
 func (fbr *BitReaderRecorder) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error {
-	//TODO implement me
-	panic("implement me")
+	err := fbr.realBitReader.ReadByteArrayWithOffsetAndLength(buffer, offset, length)
+	if err != nil {
+		return err
+	}
+
+	fbr.ReadByteArrayWithOffsetAndLengthData = append(fbr.ReadByteArrayWithOffsetAndLengthData, buffer)
+	return nil
 }
 
 func (fbr *BitReaderRecorder) ReadByte() (uint8, error) {
@@ -105,7 +119,8 @@ func (fbr *BitReaderRecorder) GetBitsCount() uint64 {
 }
 
 func (fbr *BitReaderRecorder) ZeroPadToByte() error {
-	return nil
+	err := fbr.realBitReader.ZeroPadToByte()
+	return err
 }
 
 func (fbr *BitReaderRecorder) ReadBool() (bool, error) {
@@ -135,42 +150,30 @@ func (fbr *BitReaderRecorder) ReadF16() (float32, error) {
 	return res, nil
 }
 
-func (fbr *BitReaderRecorder) AlignToByte() error {
-	return nil
-}
-
 func (fbr *BitReaderRecorder) BitsRead() uint64 {
 	res := fbr.realBitReader.BitsRead()
 	fbr.ReadBitsData = append(fbr.ReadBitsData, res)
 	return res
 }
 
-func (fbr *BitReaderRecorder) SetBytePosition(pos uint64) error {
-	return nil
-}
-
-func (fbr *BitReaderRecorder) BytePosition() uint64 {
-	return 0
-}
-
-func (fbr *BitReaderRecorder) Close() error {
-	return nil
-}
-
 func (fbr *BitReaderRecorder) Seek(offset int64, whence int) (int64, error) {
-	return 0, nil
-}
-
-func (fbr *BitReaderRecorder) ReadBitsNoAdvance(bits uint32) (uint32, error) {
-	return 0, nil
+	res, err := fbr.realBitReader.Seek(offset, whence)
+	if err != nil {
+		return 0, err
+	}
+	fbr.SeekData = append(fbr.SeekData, res)
+	return res, nil
 }
 
 func (fbr *BitReaderRecorder) SkipBits(bits uint32) error {
-	return nil
+	return fbr.realBitReader.SkipBits(bits)
 }
 
 func (fbr *BitReaderRecorder) AtEnd() bool {
-	return false
+	res := fbr.realBitReader.AtEnd()
+
+	fbr.AtEndData = append(fbr.AtEndData, res)
+	return res
 }
 
 func (fbr *BitReaderRecorder) ShowBits(bits int) (uint64, error) {

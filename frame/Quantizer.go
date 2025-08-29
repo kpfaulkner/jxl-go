@@ -8,7 +8,7 @@ type Quantizer struct {
 	scaledDequant []float32
 }
 
-func NewQuantizerWithReader(reader *jxlio.BitStreamReader, lfDequant []float32) (*Quantizer, error) {
+func NewQuantizerWithReader(reader jxlio.BitReader, lfDequant []float32) (*Quantizer, error) {
 	q := &Quantizer{}
 	q.scaledDequant = make([]float32, 3)
 	var err error

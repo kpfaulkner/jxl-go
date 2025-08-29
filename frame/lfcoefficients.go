@@ -15,7 +15,7 @@ type LFCoefficients struct {
 	frame          *Frame
 }
 
-func NewLFCoefficientsWithReader(reader *jxlio.BitStreamReader, parent *LFGroup, frame *Frame, lfBuffer []image.ImageBuffer) (*LFCoefficients, error) {
+func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame *Frame, lfBuffer []image.ImageBuffer) (*LFCoefficients, error) {
 	lf := &LFCoefficients{}
 
 	lf.frame = frame

@@ -14,7 +14,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-func GenerateTestBitReader(t *testing.T) *jxlio.BitStreamReader {
+func GenerateTestBitReader(t *testing.T) jxlio.BitReader {
 	data, err := os.ReadFile(`../testdata/unittest.jxl`)
 	if err != nil {
 		t.Errorf("error reading test jxl file : %v", err)

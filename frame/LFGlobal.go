@@ -31,7 +31,7 @@ func NewLFGlobal() *LFGlobal {
 	return lf
 }
 
-func NewLFGlobalWithReader(reader *jxlio.BitStreamReader, parent *Frame) (*LFGlobal, error) {
+func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, error) {
 
 	dat, _ := reader.ShowBits(32)
 	fmt.Printf("dat %d\n", dat)

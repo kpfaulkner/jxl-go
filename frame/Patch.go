@@ -16,7 +16,7 @@ type Patch struct {
 	BlendingInfos [][]BlendingInfo
 }
 
-func NewPatchWithStreamAndReader(stream *entropy.EntropyStream, reader *jxlio.BitStreamReader, extraChannelCount int, alphaChannelCount int) (Patch, error) {
+func NewPatchWithStreamAndReader(stream *entropy.EntropyStream, reader jxlio.BitReader, extraChannelCount int, alphaChannelCount int) (Patch, error) {
 
 	return Patch{}, nil
 }

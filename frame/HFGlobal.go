@@ -218,7 +218,7 @@ func setupDefaultParams() {
 	}
 }
 
-func NewHFGlobalWithReader(reader *jxlio.BitStreamReader, frame *Frame) (*HFGlobal, error) {
+func NewHFGlobalWithReader(reader jxlio.BitReader, frame *Frame) (*HFGlobal, error) {
 	hf := &HFGlobal{}
 
 	quantAllDefault, err := reader.ReadBool()
@@ -289,7 +289,7 @@ func (hfg *HFGlobal) displaySpecificWeights(index int, c int, y int) {
 
 }
 
-func (hfg *HFGlobal) setupDCTParam(reader *jxlio.BitStreamReader, frame *Frame, index int32) error {
+func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index int32) error {
 	encodingMode, err := reader.ReadBits(3)
 	if err != nil {
 		return err
@@ -418,7 +418,7 @@ func (hfg *HFGlobal) setupDCTParam(reader *jxlio.BitStreamReader, frame *Frame, 
 	return nil
 }
 
-func (hfg *HFGlobal) readDCTParams(reader *jxlio.BitStreamReader) ([][]float64, error) {
+func (hfg *HFGlobal) readDCTParams(reader jxlio.BitReader) ([][]float64, error) {
 
 	var numParams uint64
 	var err error

@@ -22,7 +22,7 @@ type MATree struct {
 	multiplier      int32
 }
 
-func NewMATreeWithReader(reader *jxlio.BitStreamReader) (*MATree, error) {
+func NewMATreeWithReader(reader jxlio.BitReader) (*MATree, error) {
 	mt := &MATree{}
 	mt.parent = nil
 	var nodes []*MATree

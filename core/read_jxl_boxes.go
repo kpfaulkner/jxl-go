@@ -27,11 +27,11 @@ type ContainerBoxHeader struct {
 }
 
 type BoxReader struct {
-	reader *jxlio.BitStreamReader
+	reader jxlio.BitReader
 	level  int
 }
 
-func NewBoxReader(reader *jxlio.BitStreamReader) *BoxReader {
+func NewBoxReader(reader jxlio.BitReader) *BoxReader {
 	return &BoxReader{
 		reader: reader,
 		level:  5,

@@ -253,7 +253,7 @@ func (es *EntropyStream) ReadSymbol(reader jxlio.BitReader, context int) (int32,
 	return es.ReadSymbolWithMultiplier(reader, context, 0)
 }
 
-func (es *EntropyStream) TryReadSymbol(reader *jxlio.BitStreamReader, context int) int32 {
+func (es *EntropyStream) TryReadSymbol(reader jxlio.BitReader, context int) int32 {
 	v, err := es.ReadSymbol(reader, context)
 	if err != nil {
 		panic(err)

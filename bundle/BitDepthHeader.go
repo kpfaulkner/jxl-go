@@ -16,7 +16,7 @@ func NewBitDepthHeader() *BitDepthHeader {
 	return bh
 }
 
-func NewBitDepthHeaderWithReader(reader *jxlio.BitStreamReader) (*BitDepthHeader, error) {
+func NewBitDepthHeaderWithReader(reader jxlio.BitReader) (*BitDepthHeader, error) {
 	bh := &BitDepthHeader{}
 	var err error
 	if bh.UsesFloatSamples, err = reader.ReadBool(); err != nil {

@@ -49,7 +49,7 @@ func NewRestorationFilter() *RestorationFilter {
 	return rf
 }
 
-func NewRestorationFilterWithReader(reader *jxlio.BitStreamReader, encoding uint32) (*RestorationFilter, error) {
+func NewRestorationFilterWithReader(reader jxlio.BitReader, encoding uint32) (*RestorationFilter, error) {
 	rf := &RestorationFilter{}
 	rf.epfSharpLut = []float32{0, 1.0 / 7.0, 2.0 / 7.0, 3.0 / 7.0, 4.0 / 7.0, 5.0 / 7.0, 6.0 / 7.0, 1.0}
 	rf.epfChannelScale = []float32{40.0, 5.0, 3.5}
