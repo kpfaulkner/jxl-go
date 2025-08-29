@@ -14,7 +14,7 @@ func NewLFChannelCorrelation() (*LFChannelCorrelation, error) {
 	return NewLFChannelCorrelationWithReaderAndDefault(nil, true)
 }
 
-func NewLFChannelCorrelationWithReaderAndDefault(reader *jxlio.Bitreader, allDefault bool) (*LFChannelCorrelation, error) {
+func NewLFChannelCorrelationWithReaderAndDefault(reader *jxlio.BitStreamReader, allDefault bool) (*LFChannelCorrelation, error) {
 	lf := &LFChannelCorrelation{}
 
 	if allDefault {
@@ -48,7 +48,7 @@ func NewLFChannelCorrelationWithReaderAndDefault(reader *jxlio.Bitreader, allDef
 	return lf, nil
 }
 
-func NewLFChannelCorrelationWithReader(reader *jxlio.Bitreader) (*LFChannelCorrelation, error) {
+func NewLFChannelCorrelationWithReader(reader *jxlio.BitStreamReader) (*LFChannelCorrelation, error) {
 	var allDefault bool
 	var err error
 	if allDefault, err = reader.ReadBool(); err != nil {

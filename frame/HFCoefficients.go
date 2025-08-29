@@ -38,7 +38,7 @@ type HFCoefficients struct {
 	blocks          []*util.Point
 }
 
-func NewHFCoefficientsWithReader(reader *jxlio.Bitreader, frame *Frame, pass uint32, group uint32) (*HFCoefficients, error) {
+func NewHFCoefficientsWithReader(reader *jxlio.BitStreamReader, frame *Frame, pass uint32, group uint32) (*HFCoefficients, error) {
 	hf := &HFCoefficients{}
 
 	hfPreset, err := reader.ReadBits(uint32(util.CeilLog1p(frame.hfGlobal.numHFPresets - 1)))

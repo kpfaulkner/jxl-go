@@ -45,11 +45,11 @@ type Frame struct {
 	buffers        [][]uint8
 	Buffer         []image.ImageBuffer
 	passes         []Pass
-	bitreaders     []*jxlio.Bitreader
+	bitreaders     []*jxlio.BitStreamReader
 	//bounds         *util.Rectangle
 	globalMetadata *bundle.ImageHeader
 	options        *options.JXLOptions
-	reader         *jxlio.Bitreader
+	reader         *jxlio.BitStreamReader
 	Header         *FrameHeader
 	globalTree     *MATree
 	hfGlobal       *HFGlobal
@@ -171,7 +171,7 @@ func ctxFunc(x int64) int {
 	return min(7, util.CeilLog1p(x))
 }
 
-func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, size uint32, skip uint32) ([]uint32, error) {
+func readPermutation(reader *jxlio.BitStreamReader, stream *entropy.EntropyStream, size uint32, skip uint32) ([]uint32, error) {
 	end, err := stream.ReadSymbol(reader, ctxFunc(int64(size)))
 	if err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ func readPermutation(reader *jxlio.Bitreader, stream *entropy.EntropyStream, siz
 	return permutation, nil
 }
 
-func NewFrameWithReader(reader *jxlio.Bitreader, imageHeader *bundle.ImageHeader, options *options.JXLOptions) *Frame {
+func NewFrameWithReader(reader *jxlio.BitStreamReader, imageHeader *bundle.ImageHeader, options *options.JXLOptions) *Frame {
 
 	frame := &Frame{
 		globalMetadata: imageHeader,
@@ -236,7 +236,7 @@ func (f *Frame) SkipFrameData() error {
 }
 
 // gets a bit reader for each TOC entry???
-func (f *Frame) getBitreader(index int) (*jxlio.Bitreader, error) {
+func (f *Frame) getBitreader(index int) (*jxlio.BitStreamReader, error) {
 	var i uint32
 	if len(f.tocLengths) <= 1 {
 		i = 0
@@ -259,14 +259,14 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	}
 	f.decoded = true
 
-	f.bitreaders = make([]*jxlio.Bitreader, len(f.tocLengths))
+	f.bitreaders = make([]*jxlio.BitStreamReader, len(f.tocLengths))
 	if len(f.tocLengths) != 1 {
 		for i := 0; i < len(f.tocLengths); i++ {
 			buffer, err := f.readBuffer(i)
 			if err != nil {
 				return err
 			}
-			f.bitreaders[i] = jxlio.NewBitreader(bytes.NewReader(buffer))
+			f.bitreaders[i] = jxlio.NewBitStreamReader(bytes.NewReader(buffer))
 		}
 	} else {
 		f.bitreaders[0] = f.reader
@@ -513,7 +513,7 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 	return nil
 }
 
-func (f *Frame) decodePasses(reader *jxlio.Bitreader) error {
+func (f *Frame) decodePasses(reader *jxlio.BitStreamReader) error {
 
 	var err error
 	f.passes = make([]Pass, f.Header.passes.numPasses)

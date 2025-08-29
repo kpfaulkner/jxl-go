@@ -452,7 +452,7 @@ func (mc *ModularChannel) getLeafNode(refinedTree *MATree, channelIndex int32, s
 	return leafNode, nil
 }
 
-func (mc *ModularChannel) decode(reader *jxlio.Bitreader, stream *entropy.EntropyStream,
+func (mc *ModularChannel) decode(reader *jxlio.BitStreamReader, stream *entropy.EntropyStream,
 	wpParams *WPParams, tree *MATree, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int32) error {
 
 	if mc.decoded {

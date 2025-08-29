@@ -17,7 +17,7 @@ type PrefixSymbolDistribution struct {
 	defaultSymbol int32
 }
 
-func NewPrefixSymbolDistributionWithReader(reader *jxlio.Bitreader, alphabetSize int32) (*PrefixSymbolDistribution, error) {
+func NewPrefixSymbolDistributionWithReader(reader *jxlio.BitStreamReader, alphabetSize int32) (*PrefixSymbolDistribution, error) {
 	rcvr := &PrefixSymbolDistribution{
 		SymbolDistributionBase: NewSymbolDistributionBase(),
 	}
@@ -42,7 +42,7 @@ func NewPrefixSymbolDistributionWithReader(reader *jxlio.Bitreader, alphabetSize
 	}
 	return rcvr, nil
 }
-func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitreader, hskip int32) error {
+func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.BitStreamReader, hskip int32) error {
 
 	level1Lengths := make([]int32, 18)
 	level1Codecounts := make([]int32, 19)
@@ -170,7 +170,7 @@ func (rcvr *PrefixSymbolDistribution) populateComplexPrefix(reader *jxlio.Bitrea
 	return nil
 }
 
-func (rcvr *PrefixSymbolDistribution) populateSimplePrefix(reader *jxlio.Bitreader) error {
+func (rcvr *PrefixSymbolDistribution) populateSimplePrefix(reader *jxlio.BitStreamReader) error {
 
 	symbols := make([]int32, 4)
 	var lens []int32 = nil
@@ -230,7 +230,7 @@ func (rcvr *PrefixSymbolDistribution) populateSimplePrefix(reader *jxlio.Bitread
 	return nil
 }
 
-func (rcvr *PrefixSymbolDistribution) ReadSymbol(reader *jxlio.Bitreader, state *ANSState) (int32, error) {
+func (rcvr *PrefixSymbolDistribution) ReadSymbol(reader *jxlio.BitStreamReader, state *ANSState) (int32, error) {
 	if rcvr.table == nil {
 		return rcvr.defaultSymbol, nil
 	}

@@ -8,13 +8,13 @@ import (
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
-func GenerateTestBitReader(t *testing.T, filepath string) *jxlio.Bitreader {
+func GenerateTestBitReader(t *testing.T, filepath string) *jxlio.BitStreamReader {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
 		t.Errorf("error reading test jxl file : %v", err)
 		return nil
 	}
-	br := jxlio.NewBitreader(bytes.NewReader(data))
+	br := jxlio.NewBitStreamReader(bytes.NewReader(data))
 
 	return br
 }

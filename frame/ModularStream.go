@@ -43,7 +43,7 @@ type SqueezeParam struct {
 	numC       int
 }
 
-func NewSqueezeParam(reader *jxlio.Bitreader) (SqueezeParam, error) {
+func NewSqueezeParam(reader *jxlio.BitStreamReader) (SqueezeParam, error) {
 	sp := SqueezeParam{}
 	var err error
 	if sp.horizontal, err = reader.ReadBool(); err != nil {
@@ -77,7 +77,7 @@ type TransformInfo struct {
 	sp        []SqueezeParam
 }
 
-func NewTransformInfo(reader *jxlio.Bitreader) (TransformInfo, error) {
+func NewTransformInfo(reader *jxlio.BitStreamReader) (TransformInfo, error) {
 
 	ti := TransformInfo{}
 
@@ -173,15 +173,15 @@ type ModularStream struct {
 	squeezeMap     map[int][]SqueezeParam
 }
 
-func NewModularStreamWithStreamIndex(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelArray []ModularChannel) (*ModularStream, error) {
+func NewModularStreamWithStreamIndex(reader *jxlio.BitStreamReader, frame *Frame, streamIndex int, channelArray []ModularChannel) (*ModularStream, error) {
 	return NewModularStreamWithChannels(reader, frame, streamIndex, len(channelArray), 0, channelArray)
 }
 
-func NewModularStreamWithReader(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int) (*ModularStream, error) {
+func NewModularStreamWithReader(reader *jxlio.BitStreamReader, frame *Frame, streamIndex int, channelCount int, ecStart int) (*ModularStream, error) {
 	return NewModularStreamWithChannels(reader, frame, streamIndex, channelCount, ecStart, nil)
 }
 
-func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (*ModularStream, error) {
+func NewModularStreamWithChannels(reader *jxlio.BitStreamReader, frame *Frame, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (*ModularStream, error) {
 	ms := &ModularStream{}
 	ms.streamIndex = streamIndex
 	ms.frame = frame
@@ -358,7 +358,7 @@ func NewModularStreamWithChannels(reader *jxlio.Bitreader, frame *Frame, streamI
 	return ms, nil
 }
 
-func (ms *ModularStream) decodeChannels(reader *jxlio.Bitreader, partial bool) error {
+func (ms *ModularStream) decodeChannels(reader *jxlio.BitStreamReader, partial bool) error {
 
 	groupDim := uint32(ms.frame.Header.groupDim)
 	for i := 0; i < len(ms.channels); i++ {

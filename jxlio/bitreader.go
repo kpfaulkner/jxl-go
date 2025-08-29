@@ -8,7 +8,35 @@ import (
 	"math"
 )
 
-type Bitreader struct {
+// BitReader is interface to BitStreamReader... am concerned (without measurements)
+// that interface calling might have impact. But will convert to interface and measure
+// later.
+type BitReader interface {
+	Seek(offset int64, whence int) (int64, error)
+	Reset() error
+	AtEnd() bool
+	ReadBytesToBuffer(buffer []uint8, numBytes uint32) error
+	ReadBits(bits uint32) (uint64, error)
+	ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error
+	ReadByte() (uint8, error)
+	ReadEnum() (int32, error)
+	ReadF16() (float32, error)
+	ReadICCVarint() (int32, error)
+	ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 int, u3 int) (uint32, error)
+	ReadBool() (bool, error)
+	ReadU64() (uint64, error)
+	ReadU8() (int, error)
+	GetBitsCount() uint64
+	ShowBits(bits int) (uint64, error)
+	SkipBits(bits uint32) error
+	Skip(bytes uint32) (int64, error)
+	ReadBytesUint64(noBytes int) (uint64, error)
+	ZeroPadToByte() error
+	BitsRead() uint64
+}
+
+// BitStreamReader is the key struct for reading bits from a byte "stream".
+type BitStreamReader struct {
 	//buffer []byte
 	// stream/reader we're using most of the time
 	stream      io.ReadSeeker
@@ -18,24 +46,24 @@ type Bitreader struct {
 	currentByte uint8
 }
 
-func NewBitreaderWithIndex(in io.ReadSeeker, index int) *Bitreader {
+func NewBitStreamReaderWithIndex(in io.ReadSeeker, index int) *BitStreamReader {
 
-	br := NewBitreader(in)
+	br := NewBitStreamReader(in)
 	br.tempIndex = index
 	//br.buffer = make([]byte, 1)
 	return br
 }
 
-func NewBitreader(in io.ReadSeeker) *Bitreader {
+func NewBitStreamReader(in io.ReadSeeker) *BitStreamReader {
 
-	br := &Bitreader{}
+	br := &BitStreamReader{}
 	//br.buffer = make([]byte, 1)
 	br.stream = in
 	return br
 }
 
 // utter hack to seek about the place. TODO(kpfaulkner) confirm this really works.
-func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
+func (br *BitStreamReader) Seek(offset int64, whence int) (int64, error) {
 	n, err := br.stream.Seek(offset, whence)
 	if err != nil {
 		return 0, err
@@ -43,7 +71,7 @@ func (br *Bitreader) Seek(offset int64, whence int) (int64, error) {
 	return n, err
 }
 
-func (br *Bitreader) Reset() error {
+func (br *BitStreamReader) Reset() error {
 
 	_, err := br.stream.Seek(0, io.SeekStart)
 	if err != nil {
@@ -56,7 +84,7 @@ func (br *Bitreader) Reset() error {
 	return nil
 }
 
-func (br *Bitreader) AtEnd() bool {
+func (br *BitStreamReader) AtEnd() bool {
 
 	_, err := br.ShowBits(1)
 	if err != nil {
@@ -67,10 +95,10 @@ func (br *Bitreader) AtEnd() bool {
 
 // ReadBytesToBuffer
 // If part way through a byte then fail. Need to be aligned for this to work.
-func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
+func (br *BitStreamReader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
 
 	if br.index != 0 {
-		return errors.New("Bitreader cache not aligned")
+		return errors.New("BitStreamReader cache not aligned")
 	}
 
 	n, err := br.stream.Read(buffer[:numBytes])
@@ -85,7 +113,7 @@ func (br *Bitreader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
 }
 
 // read single bit and will cache the current byte we're working on.
-func (br *Bitreader) readBit() (uint8, error) {
+func (br *BitStreamReader) readBit() (uint8, error) {
 	if br.index == 0 {
 		buffer := make([]byte, 1)
 		_, err := br.stream.Read(buffer)
@@ -106,7 +134,7 @@ func (br *Bitreader) readBit() (uint8, error) {
 	}
 }
 
-func (br *Bitreader) ReadBits(bits uint32) (uint64, error) {
+func (br *BitStreamReader) ReadBits(bits uint32) (uint64, error) {
 
 	if bits == 0 {
 		return 0, nil
@@ -128,7 +156,7 @@ func (br *Bitreader) ReadBits(bits uint32) (uint64, error) {
 	return v, nil
 }
 
-func (br *Bitreader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error {
+func (br *BitStreamReader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error {
 	if length == 0 {
 		return nil
 	}
@@ -145,7 +173,7 @@ func (br *Bitreader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int6
 	return nil
 }
 
-func (br *Bitreader) ReadByte() (uint8, error) {
+func (br *BitStreamReader) ReadByte() (uint8, error) {
 	v, err := br.ReadBits(8)
 	if err != nil {
 		return 0, err
@@ -153,7 +181,7 @@ func (br *Bitreader) ReadByte() (uint8, error) {
 	return uint8(v), nil
 }
 
-func (br *Bitreader) ReadEnum() (int32, error) {
+func (br *BitStreamReader) ReadEnum() (int32, error) {
 	constant, err := br.ReadU32(0, 0, 1, 0, 2, 4, 18, 6)
 	if err != nil {
 		return 0, err
@@ -164,7 +192,7 @@ func (br *Bitreader) ReadEnum() (int32, error) {
 	return int32(constant), nil
 }
 
-func (br *Bitreader) ReadF16() (float32, error) {
+func (br *BitStreamReader) ReadF16() (float32, error) {
 	bits16, err := br.ReadBits(16)
 	if err != nil {
 		return 0, err
@@ -189,7 +217,7 @@ func (br *Bitreader) ReadF16() (float32, error) {
 	return math.Float32frombits(total), nil
 }
 
-func (br *Bitreader) ReadICCVarint() (int32, error) {
+func (br *BitStreamReader) ReadICCVarint() (int32, error) {
 	value := int32(0)
 	for shift := 0; shift < 63; shift += 7 {
 		b, err := br.ReadBits(8)
@@ -208,7 +236,7 @@ func (br *Bitreader) ReadICCVarint() (int32, error) {
 	return value, nil
 }
 
-func (br *Bitreader) ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 int, u3 int) (uint32, error) {
+func (br *BitStreamReader) ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 int, u3 int) (uint32, error) {
 	choice, err := br.ReadBits(2)
 	if err != nil {
 		return 0, err
@@ -223,7 +251,7 @@ func (br *Bitreader) ReadU32(c0 int, u0 int, c1 int, u1 int, c2 int, u2 int, c3 
 	return uint32(c[choice]) + uint32(b), nil
 }
 
-func (br *Bitreader) ReadBool() (bool, error) {
+func (br *BitStreamReader) ReadBool() (bool, error) {
 	v, err := br.readBit()
 	if err != nil {
 		return false, err
@@ -231,7 +259,7 @@ func (br *Bitreader) ReadBool() (bool, error) {
 	return v == 1, nil
 }
 
-func (br *Bitreader) ReadU64() (uint64, error) {
+func (br *BitStreamReader) ReadU64() (uint64, error) {
 	index, err := br.ReadBits(2)
 	if err != nil {
 		return 0, err
@@ -291,7 +319,7 @@ func (br *Bitreader) ReadU64() (uint64, error) {
 	return value, nil
 }
 
-func (br *Bitreader) ReadU8() (int, error) {
+func (br *BitStreamReader) ReadU8() (int, error) {
 
 	b, err := br.ReadBool()
 	if err != nil {
@@ -316,11 +344,11 @@ func (br *Bitreader) ReadU8() (int, error) {
 	return int(nn + 1<<n), nil
 }
 
-func (br *Bitreader) GetBitsCount() uint64 {
+func (br *BitStreamReader) GetBitsCount() uint64 {
 	return br.bitsRead
 }
 
-func (br *Bitreader) ShowBits(bits int) (uint64, error) {
+func (br *BitStreamReader) ShowBits(bits int) (uint64, error) {
 
 	curPos, err := br.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -346,7 +374,7 @@ func (br *Bitreader) ShowBits(bits int) (uint64, error) {
 	return b, nil
 }
 
-func (br *Bitreader) SkipBits(bits uint32) error {
+func (br *BitStreamReader) SkipBits(bits uint32) error {
 
 	numBytes := bits / 8
 	if numBytes > 0 {
@@ -368,7 +396,7 @@ func (br *Bitreader) SkipBits(bits uint32) error {
 	return nil
 }
 
-func (br *Bitreader) Skip(bytes uint32) (int64, error) {
+func (br *BitStreamReader) Skip(bytes uint32) (int64, error) {
 	err := br.SkipBits(bytes << 3)
 	if err != nil {
 		return 0, err
@@ -376,7 +404,7 @@ func (br *Bitreader) Skip(bytes uint32) (int64, error) {
 	return int64(bytes), nil
 }
 
-func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
+func (br *BitStreamReader) ReadBytesUint64(noBytes int) (uint64, error) {
 	if noBytes < 1 || noBytes > 8 {
 		return 0, fmt.Errorf("number of bytes number should be between 1 and 8.")
 	}
@@ -389,7 +417,7 @@ func (br *Bitreader) ReadBytesUint64(noBytes int) (uint64, error) {
 	return binary.LittleEndian.Uint64(ba), nil
 }
 
-func (br *Bitreader) ZeroPadToByte() error {
+func (br *BitStreamReader) ZeroPadToByte() error {
 
 	if br.index == 0 {
 		return nil
@@ -404,7 +432,7 @@ func (br *Bitreader) ZeroPadToByte() error {
 	return nil
 }
 
-func (br *Bitreader) BitsRead() uint64 {
+func (br *BitStreamReader) BitsRead() uint64 {
 	return br.bitsRead
 }
 

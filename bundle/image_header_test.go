@@ -162,13 +162,13 @@ func TestParseImageHeader(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			var bitReader *jxlio.Bitreader
+			var bitReader *jxlio.BitStreamReader
 			if tc.readData {
 				bitReader = testcommon.GenerateTestBitReader(t, tc.jxlFilePath)
 				// skip first 40 bytes due to box headers.
 				bitReader.Skip(tc.skipBytes)
 			} else {
-				bitReader = jxlio.NewBitreader(bytes.NewReader(tc.data))
+				bitReader = jxlio.NewBitStreamReader(bytes.NewReader(tc.data))
 			}
 
 			header, err := ParseImageHeader(bitReader, 5)
@@ -306,13 +306,13 @@ func TestGetUpWeights(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			var bitReader *jxlio.Bitreader
+			var bitReader *jxlio.BitStreamReader
 			if tc.readData {
 				bitReader = testcommon.GenerateTestBitReader(t, `../testdata/unittest.jxl`)
 				// skip first 40 bytes due to box headers.
 				bitReader.Skip(40)
 			} else {
-				bitReader = jxlio.NewBitreader(bytes.NewReader(tc.data))
+				bitReader = jxlio.NewBitStreamReader(bytes.NewReader(tc.data))
 			}
 
 			header, err := ParseImageHeader(bitReader, 5)

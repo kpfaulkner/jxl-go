@@ -20,7 +20,7 @@ func NewBlendingInfo() *BlendingInfo {
 	return bi
 }
 
-func NewBlendingInfoWithReader(reader *jxlio.Bitreader, extra bool, fullFrame bool) (*BlendingInfo, error) {
+func NewBlendingInfoWithReader(reader *jxlio.BitStreamReader, extra bool, fullFrame bool) (*BlendingInfo, error) {
 
 	bi := &BlendingInfo{}
 	if mode, err := reader.ReadU32(0, 0, 1, 0, 2, 0, 3, 2); err != nil {

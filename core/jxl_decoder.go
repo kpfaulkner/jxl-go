@@ -23,7 +23,7 @@ func NewJXLDecoder(in io.ReadSeeker, opts *options.JXLOptions) *JXLDecoder {
 		in: in,
 	}
 
-	br := jxlio.NewBitreader(in)
+	br := jxlio.NewBitStreamReader(in)
 
 	// if nil options, then create one
 	if opts == nil {

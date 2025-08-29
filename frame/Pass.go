@@ -12,7 +12,7 @@ type Pass struct {
 	maxShift         uint32
 }
 
-func NewPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32, prevMinShift uint32) (Pass, error) {
+func NewPassWithReader(reader *jxlio.BitStreamReader, frame *Frame, passIndex uint32, prevMinShift uint32) (Pass, error) {
 	p := Pass{}
 
 	if passIndex > 0 {

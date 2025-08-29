@@ -30,7 +30,7 @@ func NewColourEncodingBundle() (*ColourEncodingBundle, error) {
 	return ceb, nil
 }
 
-func NewColourEncodingBundleWithReader(reader *jxlio.Bitreader) (*ColourEncodingBundle, error) {
+func NewColourEncodingBundleWithReader(reader *jxlio.BitStreamReader) (*ColourEncodingBundle, error) {
 	ceb := &ColourEncodingBundle{}
 	var allDefault bool
 	var err error

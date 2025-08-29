@@ -29,7 +29,7 @@ type JXLCodestreamDecoder struct {
 	lfBuffer    [][]image2.ImageBuffer
 	canvas      []image2.ImageBuffer
 	boxHeaders  []ContainerBoxHeader
-	bitReader   *jxlio.Bitreader
+	bitReader   *jxlio.BitStreamReader
 	imageHeader *bundle.ImageHeader
 
 	options        options.JXLOptions
@@ -37,7 +37,7 @@ type JXLCodestreamDecoder struct {
 	foundSignature bool
 }
 
-func NewJXLCodestreamDecoder(br *jxlio.Bitreader, opts *options.JXLOptions) *JXLCodestreamDecoder {
+func NewJXLCodestreamDecoder(br *jxlio.BitStreamReader, opts *options.JXLOptions) *JXLCodestreamDecoder {
 	jxl := &JXLCodestreamDecoder{}
 	jxl.bitReader = br
 	jxl.foundSignature = false
@@ -317,7 +317,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 	return nil, nil
 }
 
-func showNextNBytes(reader *jxlio.Bitreader, prefix string, n int) {
+func showNextNBytes(reader *jxlio.BitStreamReader, prefix string, n int) {
 	b, _ := reader.ShowBits(8 * n)
 	fmt.Printf(prefix + " ")
 	for i := 0; i < n; i++ {

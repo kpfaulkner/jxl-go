@@ -16,7 +16,7 @@ type ExtraChannelInfo struct {
 	AlphaAssociated            bool
 }
 
-func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, error) {
+func NewExtraChannelInfoWithReader(reader *jxlio.BitStreamReader) (*ExtraChannelInfo, error) {
 
 	eci := &ExtraChannelInfo{}
 	var err error

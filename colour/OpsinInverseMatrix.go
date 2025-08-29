@@ -2,6 +2,7 @@ package colour
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -50,7 +51,7 @@ func NewOpsinInverseMatrixAllParams(
 	return oim
 }
 
-func NewOpsinInverseMatrixWithReader(reader *jxlio.Bitreader) (*OpsinInverseMatrix, error) {
+func NewOpsinInverseMatrixWithReader(reader jxlio.BitReader) (*OpsinInverseMatrix, error) {
 	oim := &OpsinInverseMatrix{}
 	var err error
 	var useMatrix bool
@@ -134,4 +135,42 @@ func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget f
 		}
 	}
 	return nil
+}
+
+// Matches determines if values are equal. Simplistic but will do for now.
+func (oim *OpsinInverseMatrix) Matches(other OpsinInverseMatrix) bool {
+
+	if !util.CompareMatrix2D(oim.Matrix, other.Matrix, func(a float32, b float32) bool { return a == b }) {
+		return false
+	}
+
+	if slices.Compare(oim.OpsinBias, other.OpsinBias) != 0 {
+		return false
+	}
+
+	if slices.Compare(oim.QuantBias, other.QuantBias) != 0 {
+		return false
+	}
+
+	if oim.QuantBiasNumerator != other.QuantBiasNumerator {
+		return false
+	}
+
+	if !oim.Primaries.Red.Matches(other.Primaries.Red) {
+		return false
+	}
+
+	if !oim.Primaries.Green.Matches(other.Primaries.Green) {
+		return false
+	}
+
+	if !oim.Primaries.Blue.Matches(other.Primaries.Blue) {
+		return false
+	}
+
+	if !oim.WhitePoint.Matches(&other.WhitePoint) {
+		return false
+	}
+
+	return true
 }

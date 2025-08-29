@@ -17,7 +17,7 @@ type HFMetadata struct {
 	blockList      []util.Point
 }
 
-func NewHFMetadataWithReader(reader *jxlio.Bitreader, parent *LFGroup, frame *Frame) (*HFMetadata, error) {
+func NewHFMetadataWithReader(reader *jxlio.BitStreamReader, parent *LFGroup, frame *Frame) (*HFMetadata, error) {
 	hf := &HFMetadata{
 		parent: parent,
 	}

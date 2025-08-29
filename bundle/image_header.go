@@ -126,7 +126,7 @@ func NewImageHeader() *ImageHeader {
 	return ih
 }
 
-func ParseImageHeader(reader *jxlio.Bitreader, level int32) (*ImageHeader, error) {
+func ParseImageHeader(reader *jxlio.BitStreamReader, level int32) (*ImageHeader, error) {
 	header := NewImageHeader()
 
 	var headerBits uint64
@@ -401,7 +401,7 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 		return nil, nil
 	}
 
-	commandReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC))
+	commandReader := jxlio.NewBitStreamReader(bytes.NewReader(h.EncodedICC))
 	outputSize, err := commandReader.ReadICCVarint()
 	if err != nil {
 		return nil, err
@@ -413,7 +413,7 @@ func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
 
 	commandStart := int32(commandReader.GetBitsCount() >> 3)
 	dataStart := commandStart + commandSize
-	dataReader := jxlio.NewBitreader(bytes.NewReader(h.EncodedICC[dataStart:]))
+	dataReader := jxlio.NewBitStreamReader(bytes.NewReader(h.EncodedICC[dataStart:]))
 	headerSize := util.Min(128, outputSize)
 	h.DecodedICC = make([]byte, outputSize)
 	resultPos := int32(0)
@@ -720,7 +720,7 @@ func GetICCContext(buffer []byte, index int) int {
 	return 1 + p1 + 8*p2
 }
 
-func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
+func readPreviewHeader(reader *jxlio.BitStreamReader) (*util.Dimension, error) {
 
 	var dim util.Dimension
 	var err error
@@ -776,7 +776,7 @@ func readPreviewHeader(reader *jxlio.Bitreader) (*util.Dimension, error) {
 	return &dim, nil
 }
 
-func readSizeHeader(reader *jxlio.Bitreader, level int32) (util.Dimension, error) {
+func readSizeHeader(reader *jxlio.BitStreamReader, level int32) (util.Dimension, error) {
 	dim := util.Dimension{}
 	var err error
 

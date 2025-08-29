@@ -30,7 +30,7 @@ func TestReadbit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			resp, err := br.readBit()
 			if err != nil && !tc.expectErr {
@@ -97,7 +97,7 @@ func TestReadbits(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			resp, err := br.ReadBits(tc.numBits)
 			if err != nil && !tc.expectErr {
@@ -185,7 +185,7 @@ func TestReadByteArrayWithOffsetAndLength(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			buffer := make([]uint8, tc.bufferSize)
 			err := br.ReadByteArrayWithOffsetAndLength(buffer, tc.offset, tc.length)
@@ -229,7 +229,7 @@ func TestReadByte(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			resp, err := br.ReadByte()
 			if err != nil && !tc.expectErr {
@@ -276,7 +276,7 @@ func TestReadU32(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 			br.SkipBits(6)
 
 			resp, err := br.ReadU32(1, 9, 1, 13, 1, 18, 1, 30)
@@ -333,7 +333,7 @@ func TestReadU64(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			resp, err := br.ReadU64()
 			if err != nil && !tc.expectErr {
@@ -376,7 +376,7 @@ func TestReadF16(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 			br.SkipBits(6)
 
 			resp, err := br.ReadF16()
@@ -422,7 +422,7 @@ func TestReadEnum(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 			br.SkipBits(6)
 
 			resp, err := br.ReadEnum()
@@ -466,7 +466,7 @@ func TestReadU8(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 			err := br.SkipBits(4)
 
 			resp, err := br.ReadU8()
@@ -525,7 +525,7 @@ func TestSkipBits(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			err := br.SkipBits(tc.numBitsToSkip)
 			if err != nil && !tc.expectErr {
@@ -588,7 +588,7 @@ func TestSkip(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			_, err := br.Skip(tc.numBytesToSkip)
 			if err != nil && !tc.expectErr {
@@ -658,7 +658,7 @@ func TestShowBits(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			resp, err := br.ShowBits(tc.numBitsToShow)
 			if err != nil && !tc.expectErr {
@@ -716,7 +716,7 @@ func TestZeroPadToByte(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
-			br := NewBitreader(data)
+			br := NewBitStreamReader(data)
 
 			err := br.SkipBits(tc.numBitsToSkip)
 			if err != nil && !tc.expectErr {
@@ -854,7 +854,7 @@ func TestUnpackSigned64(t *testing.T) {
 //		t.Run(tc.name, func(t *testing.T) {
 //
 //			data := bytes.NewReader(tc.data)
-//			br := NewBitreader(data)
+//			br := NewBitStreamReader(data)
 //
 //			resp, err := br.ReadICCVarint()
 //			if err != nil && !tc.expectErr {

@@ -3,7 +3,7 @@ package entropy
 import "github.com/kpfaulkner/jxl-go/jxlio"
 
 type SymbolDistribution interface {
-	ReadSymbol(reader *jxlio.Bitreader, state *ANSState) (int32, error)
+	ReadSymbol(reader *jxlio.BitStreamReader, state *ANSState) (int32, error)
 	SetConfig(config *HybridIntegerConfig)
 	GetConfig() *HybridIntegerConfig
 }
@@ -20,7 +20,7 @@ func NewSymbolDistributionBase() *SymbolDistributionBase {
 	return rcvr
 }
 
-func (rcvr *SymbolDistributionBase) ReadSymbol(reader *jxlio.Bitreader, state *ANSState) (int32, error) {
+func (rcvr *SymbolDistributionBase) ReadSymbol(reader *jxlio.BitStreamReader, state *ANSState) (int32, error) {
 
 	return 0, nil
 }

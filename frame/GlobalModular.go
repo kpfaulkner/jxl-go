@@ -11,7 +11,7 @@ type GlobalModular struct {
 	Stream     *ModularStream
 }
 
-func NewGlobalModularWithReader(reader *jxlio.Bitreader, parent *Frame) (*GlobalModular, error) {
+func NewGlobalModularWithReader(reader *jxlio.BitStreamReader, parent *Frame) (*GlobalModular, error) {
 	gm := &GlobalModular{}
 	gm.frame = parent
 

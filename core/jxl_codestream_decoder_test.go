@@ -14,21 +14,21 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-func GenerateTestBitReader(t *testing.T) *jxlio.Bitreader {
+func GenerateTestBitReader(t *testing.T) *jxlio.BitStreamReader {
 	data, err := os.ReadFile(`../testdata/unittest.jxl`)
 	if err != nil {
 		t.Errorf("error reading test jxl file : %v", err)
 		return nil
 	}
-	br := jxlio.NewBitreader(bytes.NewReader(data))
+	br := jxlio.NewBitStreamReader(bytes.NewReader(data))
 
 	return br
 }
 
 // TestReadSignatureAndBoxes tests the ReadSignatureAndBoxes function.
-// For testing, instead of providing a mock Bitreader and having to fake all the data
-// I'll provide a real Bitreader and test the function with real data. May eventually
-// swap it out for a mock Bitreader.
+// For testing, instead of providing a mock BitStreamReader and having to fake all the data
+// I'll provide a real BitStreamReader and test the function with real data. May eventually
+// swap it out for a mock BitStreamReader.
 func TestReadSignatureAndBoxes(t *testing.T) {
 
 	for _, tc := range []struct {

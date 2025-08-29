@@ -84,7 +84,7 @@ type HFPass struct {
 	usedOrders    uint32
 }
 
-func NewHFPassWithReader(reader *jxlio.Bitreader, frame *Frame, passIndex uint32) (*HFPass, error) {
+func NewHFPassWithReader(reader *jxlio.BitStreamReader, frame *Frame, passIndex uint32) (*HFPass, error) {
 	hfp := &HFPass{}
 	hfp.naturalOrder = util.MakeMatrix2D[util.Point](13, 0)
 	hfp.order = util.MakeMatrix3D[util.Point](13, 3, 0)
