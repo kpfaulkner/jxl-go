@@ -1,6 +1,8 @@
 package testcommon
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // FakeBitReader is a mock implementation of a bit reader for testing purposes.
 // Will populate the functions as required

@@ -21,7 +21,7 @@ func NewHybridIntegerConfig(splitExponent int32, msbInToken int32, lsbInToken in
 	return hic
 }
 
-func NewHybridIntegerConfigWithReader(reader *jxlio.BitStreamReader, logAlphabetSize int32) (*HybridIntegerConfig, error) {
+func NewHybridIntegerConfigWithReader(reader jxlio.BitReader, logAlphabetSize int32) (*HybridIntegerConfig, error) {
 	hic := &HybridIntegerConfig{}
 	if splitExp, err := reader.ReadBits(uint32(util.CeilLog1p(int64(logAlphabetSize)))); err != nil {
 		return nil, err

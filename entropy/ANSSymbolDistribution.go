@@ -23,7 +23,7 @@ type ANSSymbolDistribution struct {
 	offsets     []int32
 }
 
-func NewANSSymbolDistribution(reader *jxlio.BitStreamReader, logAlphabetSize int32) (*ANSSymbolDistribution, error) {
+func NewANSSymbolDistribution(reader jxlio.BitReader, logAlphabetSize int32) (*ANSSymbolDistribution, error) {
 	asd := &ANSSymbolDistribution{}
 	asd.logAlphabetSize = logAlphabetSize
 	uniqPos := int32(-1)
@@ -261,7 +261,7 @@ func (asd *ANSSymbolDistribution) generateAliasMapping(uniqPos int32) {
 	}
 }
 
-func (asd *ANSSymbolDistribution) ReadSymbol(reader *jxlio.BitStreamReader, stateObj *ANSState) (int32, error) {
+func (asd *ANSSymbolDistribution) ReadSymbol(reader jxlio.BitReader, stateObj *ANSState) (int32, error) {
 
 	var state int32
 	if !stateObj.HasState {

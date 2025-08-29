@@ -38,7 +38,7 @@ type EntropyStream struct {
 	usesLZ77        bool
 }
 
-func NewEntropyStreamWithReaderAndNumDists(reader *jxlio.BitStreamReader, numDists int) (*EntropyStream, error) {
+func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int) (*EntropyStream, error) {
 	return NewEntropyStreamWithReader(reader, numDists, false)
 }
 
@@ -58,7 +58,7 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 	return es
 }
 
-func NewEntropyStreamWithReader(reader *jxlio.BitStreamReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
+func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
 
 	var err error
 	if numDists <= 0 {
@@ -168,7 +168,7 @@ func NewEntropyStreamWithReader(reader *jxlio.BitStreamReader, numDists int, dis
 
 }
 
-func ReadClusterMap(reader *jxlio.BitStreamReader, clusterMap []int, maxClusters int) (int, error) {
+func ReadClusterMap(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error) {
 	numDists := len(clusterMap)
 	if numDists == 1 {
 		clusterMap[0] = 0
@@ -249,7 +249,7 @@ func (es *EntropyStream) GetState() *ANSState {
 	return es.ansState
 }
 
-func (es *EntropyStream) ReadSymbol(reader *jxlio.BitStreamReader, context int) (int32, error) {
+func (es *EntropyStream) ReadSymbol(reader jxlio.BitReader, context int) (int32, error) {
 	return es.ReadSymbolWithMultiplier(reader, context, 0)
 }
 
@@ -261,7 +261,7 @@ func (es *EntropyStream) TryReadSymbol(reader *jxlio.BitStreamReader, context in
 	return v
 }
 
-func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.BitStreamReader, context int, distanceMultiplier int32) (int32, error) {
+func (es *EntropyStream) ReadSymbolWithMultiplier(reader jxlio.BitReader, context int, distanceMultiplier int32) (int32, error) {
 	if es.numToCopy77 > 0 {
 		es.copyPos77++
 		hybridInt := es.window[es.copyPos77&0xFFFFF]
@@ -327,7 +327,7 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader *jxlio.BitStreamReader,
 	return hybridInt, nil
 }
 
-func (es *EntropyStream) readHybridInteger(reader *jxlio.BitStreamReader, config *HybridIntegerConfig, token int32) (int32, error) {
+func (es *EntropyStream) readHybridInteger(reader jxlio.BitReader, config *HybridIntegerConfig, token int32) (int32, error) {
 	split := 1 << config.SplitExponent
 	if token < int32(split) {
 		return token, nil
