@@ -1,6 +1,8 @@
 package testcommon
 
 import (
+	"fmt"
+
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
@@ -19,7 +21,6 @@ type BitReaderRecorder struct {
 	ReadU8Data                           []int
 	GetBitsCountData                     []uint64
 	ZeroPadToByteData                    []error
-	ReadBoolCallCount                    int
 	ShowBitsData                         []uint64
 	SkipData                             []int64
 	ReadBytesUint64Data                  []uint64
@@ -205,4 +206,56 @@ func (fbr *BitReaderRecorder) ReadBytesUint64(noBytes int) (uint64, error) {
 
 func (fbr *BitReaderRecorder) Reset() error {
 	return nil
+}
+
+func (fbr *BitReaderRecorder) DisplayData() {
+	if fbr.ReadF16Data != nil {
+		fmt.Printf("DATA : ReadF16Data: %#v\n", fbr.ReadF16Data)
+	}
+
+	if fbr.ReadBoolData != nil {
+		fmt.Printf("DATA : ReadBoolData: %#v\n", fbr.ReadBoolData)
+	}
+	if fbr.ReadBytesData != nil {
+		fmt.Printf("DATA : ReadBytesData: %#v\n", fbr.ReadBytesData)
+	}
+	if fbr.ReadBitsData != nil {
+		fmt.Printf("DATA : ReadBitsData: %#v\n", fbr.ReadBitsData)
+	}
+	if fbr.ReadByteArrayWithOffsetAndLengthData != nil {
+		fmt.Printf("DATA : ReadByteArrayWithOffsetAndLengthData: %#v\n", fbr.ReadByteArrayWithOffsetAndLengthData)
+	}
+	if fbr.ReadByteData != nil {
+		fmt.Printf("DATA : ReadByteData: %#v\n", fbr.ReadByteData)
+	}
+	if fbr.ReadEnumData != nil {
+		fmt.Printf("DATA : ReadEnumData: %#v\n", fbr.ReadEnumData)
+	}
+	if fbr.ReadICCVarintData != nil {
+		fmt.Printf("DATA : ReadICCVarintData: %#v\n", fbr.ReadICCVarintData)
+	}
+	if fbr.ReadU64Data != nil {
+		fmt.Printf("DATA : ReadU64Data: %#v\n", fbr.ReadU64Data)
+	}
+	if fbr.ReadU32Data != nil {
+		fmt.Printf("DATA : ReadU32Data: %#v\n", fbr.ReadU32Data)
+	}
+	if fbr.ReadU16Data != nil {
+		fmt.Printf("DATA : ReadU16Data: %#v\n", fbr.ReadU16Data)
+	}
+	if fbr.ReadU8Data != nil {
+		fmt.Printf("DATA : ReadU8Data: %#v\n", fbr.ReadU8Data)
+	}
+	if fbr.GetBitsCountData != nil {
+		fmt.Printf("DATA : GetBitsCountData: %#v\n", fbr.GetBitsCountData)
+	}
+	if fbr.ZeroPadToByteData != nil {
+		fmt.Printf("DATA : ZeroPadToByteData: %#v\n", fbr.ZeroPadToByteData)
+	}
+
+}
+
+func IsRecorder(reader jxlio.BitReader) bool {
+	_, ok := reader.(*BitReaderRecorder)
+	return ok
 }

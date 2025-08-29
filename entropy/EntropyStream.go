@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/testcommon"
 )
 
 var (
@@ -58,7 +59,16 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 	return es
 }
 
-func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
+func NewEntropyStreamWithReader(origReader jxlio.BitReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
+
+	var reader jxlio.BitReader
+	if true || testcommon.IsRecorder(origReader) {
+		reader = origReader
+	} else {
+		recorderReader := testcommon.NewBitReaderRecorder(origReader)
+		defer recorderReader.DisplayData()
+		reader = recorderReader
+	}
 
 	var err error
 	if numDists <= 0 {
