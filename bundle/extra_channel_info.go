@@ -17,6 +17,7 @@ type ExtraChannelInfo struct {
 }
 
 func NewExtraChannelInfoWithReader(reader *jxlio.Bitreader) (*ExtraChannelInfo, error) {
+
 	eci := &ExtraChannelInfo{}
 	var err error
 	var dAlpha bool
