@@ -2,6 +2,7 @@ package entropy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/testcommon"
@@ -62,10 +63,11 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 func NewEntropyStreamWithReader(origReader jxlio.BitReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
 
 	var reader jxlio.BitReader
-	if true || testcommon.IsRecorder(origReader) {
+	var recorderReader *testcommon.BitReaderRecorder
+	if testcommon.IsRecorder(origReader) {
 		reader = origReader
 	} else {
-		recorderReader := testcommon.NewBitReaderRecorder(origReader)
+		recorderReader = testcommon.NewBitReaderRecorder(origReader)
 		defer recorderReader.DisplayData()
 		reader = recorderReader
 	}
@@ -172,6 +174,16 @@ func NewEntropyStreamWithReader(origReader jxlio.BitReader, numDists int, disall
 
 	for i := 0; i < len(es.dists); i++ {
 		es.dists[i].SetConfig(configs[i])
+	}
+
+	//if testcommon.IsRecorder(reader) {
+	//	recorderReader.DisplayData()
+	//}
+
+	for _, w := range es.window {
+		if w != 0 {
+			fmt.Printf("snoop\n")
+		}
 	}
 
 	return es, nil

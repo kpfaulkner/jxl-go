@@ -249,6 +249,9 @@ func (fbr *BitReaderRecorder) DisplayData() {
 	if fbr.GetBitsCountData != nil {
 		fmt.Printf("DATA : GetBitsCountData: %#v\n", fbr.GetBitsCountData)
 	}
+	if fbr.ShowBitsData != nil {
+		fmt.Printf("DATA : ShowBitsData: %#v\n", fbr.ShowBitsData)
+	}
 	if fbr.ZeroPadToByteData != nil {
 		fmt.Printf("DATA : ZeroPadToByteData: %#v\n", fbr.ZeroPadToByteData)
 	}
