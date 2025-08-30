@@ -789,25 +789,9 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		premult := hasAlpha && jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].AlphaAssociated
 
 		refBuffer := jxl.reference[info.Source]
-		if canvas[c].BufferType != frameBuffer.BufferType {
-			var depthCanvas int32
-			if c >= int32(imageColours) {
-				depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].BitDepth.BitsPerSample)
-			} else {
-				depthCanvas = int32(jxl.imageHeader.BitDepth.BitsPerSample)
-			}
-			var depthFrame int32
-			if frameC >= int32(frameColours) {
-				depthFrame = int32(jxl.imageHeader.ExtraChannelInfo[frameC-int32(frameColours)].BitDepth.BitsPerSample)
-			} else {
-				depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
-			}
-			if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
-				return err
-			}
-			if err := canvas[c].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
-				return err
-			}
+		err := jxl.convertCanvasWithDifferentBufferType(canvas, c, frameBuffer, imageColours, frameC, frameColours)
+		if err != nil {
+			return err
 		}
 		if info.Mode == frame.BLEND_REPLACE || refBuffer == nil && info.Mode == frame.BLEND_ADD {
 			offY := frameStartY - header.Bounds.Origin.Y
@@ -827,46 +811,14 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		}
 		ref := refBuffer[c]
 
-		if hasAlpha && (info.Mode == frame.BLEND_BLEND || info.Mode == frame.BLEND_MULADD) {
-			depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
-			alphaIdx := imageColours + int(info.AlphaChannel)
-			if refBuffer[alphaIdx].Width == 0 && refBuffer[alphaIdx].Height == 0 {
-				refBuf, err := image2.NewImageBuffer(image2.TYPE_FLOAT, canvas[c].Height, canvas[c].Width)
-				if err != nil {
-					return err
-				}
-				refBuffer[alphaIdx] = *refBuf
-			}
-			if !refBuffer[alphaIdx].IsFloat() {
-				refBuffer[alphaIdx].CastToFloatIfInt(^(^0 << depth))
-			}
-			if !frameBuffers[alphaIdx].IsFloat() {
-				frameBuffers[alphaIdx].CastToFloatIfInt(^(^0 << depth))
-			}
+		err2 := jxl.blendAlpha(canvas, hasAlpha, info, imageColours, refBuffer, c, frameBuffers)
+		if err2 != nil {
+			return err2
 		}
 
-		if ref.BufferType != frameBuffer.BufferType || info.Mode != frame.BLEND_ADD {
-			var depthCanvas int32
-			var depthFrame int32
-			if c >= int32(imageColours) {
-				depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].BitDepth.BitsPerSample)
-			} else {
-				depthCanvas = int32(jxl.imageHeader.BitDepth.BitsPerSample)
-			}
-			if frameC >= int32(frameColours) {
-				depthFrame = int32(jxl.imageHeader.ExtraChannelInfo[frameC-int32(frameColours)].BitDepth.BitsPerSample)
-			} else {
-				depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
-			}
-			if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
-				return err
-			}
-			if err := canvas[c].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
-				return err
-			}
-			if err := ref.CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
-				return err
-			}
+		err3 := jxl.convertReferenceWithDifferentBufferType(canvas, ref, frameBuffer, info, c, imageColours, frameC, frameColours)
+		if err3 != nil {
+			return err3
 		}
 		var cf, rf, ff, oaf, naf [][]float32
 		if info.Mode != frame.BLEND_ADD || frameBuffer.IsFloat() {
@@ -879,144 +831,224 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 			ff = nil
 		}
 
-		switch info.Mode {
-		case frame.BLEND_ADD:
-			if frameBuffer.IsInt() {
-				ci := canvas[c].IntBuffer
-				ri := ref.IntBuffer
-				fi := frameBuffer.IntBuffer
-				for y := int32(0); y < frameHeight; y++ {
-					cy := y + frameStartY
-					fy := y + frameOffsetY
-					for x := int32(0); x < frameWidth; x++ {
-						cx := x + frameStartX
-						fx := x + frameOffsetX
-						ci[cy][cx] = ri[cy][cx] + fi[fy][fx]
-					}
-				}
-			} else {
-				for y := int32(0); y < frameHeight; y++ {
-					cy := y + frameStartY
-					fy := y + frameOffsetY
-					for x := int32(0); x < frameWidth; x++ {
-						cx := x + frameStartX
-						fx := x + frameOffsetX
-						cf[cy][cx] = rf[cy][cx] + ff[fy][fx]
-					}
-				}
-			}
-			break
-		case frame.BLEND_MULT:
-			for y := int32(0); y < frameHeight; y++ {
-				cy := y + frameStartY
-				fy := y + frameOffsetY
-				for x := int32(0); x < frameWidth; x++ {
-					cx := x + frameStartX
-					fx := x + frameOffsetX
-					newSample := ff[fy][fx]
-					if info.Clamp {
-						if newSample < 0 {
-							newSample = 0
-						} else if newSample > 1 {
-							newSample = 1
-						}
-					}
-					cf[cy][cx] = newSample * rf[cy][cx]
-				}
-			}
-			break
-		case frame.BLEND_BLEND:
-			if hasAlpha {
-				oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
-				naf = frameBuffers[frameColours+int(info.AlphaChannel)].FloatBuffer
-			} else {
-				oaf = nil
-				naf = nil
-			}
+		err4 := jxl.performBlending(canvas, info, frameBuffer, c, ref, frameHeight, frameStartY, frameOffsetY, frameWidth, frameStartX, frameOffsetX, cf, rf, ff, hasAlpha, oaf, refBuffer, imageColours, naf, frameBuffers, frameColours, isAlpha, premult)
+		if err4 != nil {
+			return err4
+		}
+	}
+	return nil
+}
 
+func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer, info *frame.BlendingInfo, frameBuffer image2.ImageBuffer, c int32, ref image2.ImageBuffer, frameHeight int32, frameStartY int32, frameOffsetY int32, frameWidth int32, frameStartX int32, frameOffsetX int32, cf [][]float32, rf [][]float32, ff [][]float32, hasAlpha bool, oaf [][]float32, refBuffer []image2.ImageBuffer, imageColours int, naf [][]float32, frameBuffers []image2.ImageBuffer, frameColours int, isAlpha bool, premult bool) error {
+	switch info.Mode {
+	case frame.BLEND_ADD:
+		if frameBuffer.IsInt() {
+			ci := canvas[c].IntBuffer
+			ri := ref.IntBuffer
+			fi := frameBuffer.IntBuffer
 			for y := int32(0); y < frameHeight; y++ {
 				cy := y + frameStartY
 				fy := y + frameOffsetY
 				for x := int32(0); x < frameWidth; x++ {
 					cx := x + frameStartX
 					fx := x + frameOffsetX
-					var oldAlpha float32
-					var newAlpha float32
-					if hasAlpha {
-						oldAlpha = oaf[cy][cx]
-						newAlpha = naf[fy][fx]
-					} else {
-						oldAlpha = 1.0
-						newAlpha = 1.0
-					}
-					if info.Clamp {
-						if newAlpha < 0 {
-							newAlpha = 0
-						} else if newAlpha > 1 {
-							newAlpha = 1
-						}
-					}
-					alpha := float32(1)
-					oldSample := rf[cy][cx]
-					newSample := ff[fy][fx]
-					if isAlpha || hasAlpha && !premult {
-						alpha = oldAlpha + newAlpha*(1-oldAlpha)
-					}
-					if isAlpha {
-						cf[cy][cx] = alpha
-					} else if !hasAlpha || premult {
-						cf[cy][cx] = newSample + oldSample*(1-newAlpha)
-					} else {
-						cf[cy][cx] = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / alpha
-					}
+					ci[cy][cx] = ri[cy][cx] + fi[fy][fx]
 				}
 			}
-			break
-		case frame.BLEND_MULADD:
-			if hasAlpha {
-				oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
-				naf = frameBuffers[frameColours+int(info.AlphaChannel)].FloatBuffer
-			} else {
-				oaf = nil
-				naf = nil
-			}
-
+		} else {
 			for y := int32(0); y < frameHeight; y++ {
 				cy := y + frameStartY
 				fy := y + frameOffsetY
 				for x := int32(0); x < frameWidth; x++ {
 					cx := x + frameStartX
 					fx := x + frameOffsetX
-					var oldAlpha float32
-					var newAlpha float32
-					if hasAlpha {
-						oldAlpha = oaf[cy][cx]
-						newAlpha = naf[fy][fx]
-					} else {
-						oldAlpha = 1.0
-						newAlpha = 1.0
+					cf[cy][cx] = rf[cy][cx] + ff[fy][fx]
+				}
+			}
+		}
+		break
+	case frame.BLEND_MULT:
+		for y := int32(0); y < frameHeight; y++ {
+			cy := y + frameStartY
+			fy := y + frameOffsetY
+			for x := int32(0); x < frameWidth; x++ {
+				cx := x + frameStartX
+				fx := x + frameOffsetX
+				newSample := ff[fy][fx]
+				if info.Clamp {
+					if newSample < 0 {
+						newSample = 0
+					} else if newSample > 1 {
+						newSample = 1
 					}
-					if info.Clamp {
-						if newAlpha < 0 {
-							newAlpha = 0
-						} else if newAlpha > 1 {
-							newAlpha = 1
-						}
+				}
+				cf[cy][cx] = newSample * rf[cy][cx]
+			}
+		}
+		break
+	case frame.BLEND_BLEND:
+		if hasAlpha {
+			oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
+			naf = frameBuffers[frameColours+int(info.AlphaChannel)].FloatBuffer
+		} else {
+			oaf = nil
+			naf = nil
+		}
+
+		for y := int32(0); y < frameHeight; y++ {
+			cy := y + frameStartY
+			fy := y + frameOffsetY
+			for x := int32(0); x < frameWidth; x++ {
+				cx := x + frameStartX
+				fx := x + frameOffsetX
+				var oldAlpha float32
+				var newAlpha float32
+				if hasAlpha {
+					oldAlpha = oaf[cy][cx]
+					newAlpha = naf[fy][fx]
+				} else {
+					oldAlpha = 1.0
+					newAlpha = 1.0
+				}
+				if info.Clamp {
+					if newAlpha < 0 {
+						newAlpha = 0
+					} else if newAlpha > 1 {
+						newAlpha = 1
 					}
-					oldSample := rf[cy][cx]
-					newSample := ff[fy][fx]
-					alpha := float32(0)
-					if isAlpha {
-						alpha = oldAlpha
-					} else {
-						alpha = oldSample + newAlpha*newSample
-					}
+				}
+				alpha := float32(1)
+				oldSample := rf[cy][cx]
+				newSample := ff[fy][fx]
+				if isAlpha || hasAlpha && !premult {
+					alpha = oldAlpha + newAlpha*(1-oldAlpha)
+				}
+				if isAlpha {
 					cf[cy][cx] = alpha
+				} else if !hasAlpha || premult {
+					cf[cy][cx] = newSample + oldSample*(1-newAlpha)
+				} else {
+					cf[cy][cx] = (newSample*newAlpha + oldSample*oldAlpha*(1-newAlpha)) / alpha
 				}
 			}
-			break
-		default:
-			return errors.New("Illegal blend Mode")
+		}
+		break
+	case frame.BLEND_MULADD:
+		if hasAlpha {
+			oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
+			naf = frameBuffers[frameColours+int(info.AlphaChannel)].FloatBuffer
+		} else {
+			oaf = nil
+			naf = nil
+		}
+
+		for y := int32(0); y < frameHeight; y++ {
+			cy := y + frameStartY
+			fy := y + frameOffsetY
+			for x := int32(0); x < frameWidth; x++ {
+				cx := x + frameStartX
+				fx := x + frameOffsetX
+				var oldAlpha float32
+				var newAlpha float32
+				if hasAlpha {
+					oldAlpha = oaf[cy][cx]
+					newAlpha = naf[fy][fx]
+				} else {
+					oldAlpha = 1.0
+					newAlpha = 1.0
+				}
+				if info.Clamp {
+					if newAlpha < 0 {
+						newAlpha = 0
+					} else if newAlpha > 1 {
+						newAlpha = 1
+					}
+				}
+				oldSample := rf[cy][cx]
+				newSample := ff[fy][fx]
+				alpha := float32(0)
+				if isAlpha {
+					alpha = oldAlpha
+				} else {
+					alpha = oldSample + newAlpha*newSample
+				}
+				cf[cy][cx] = alpha
+			}
+		}
+		break
+	default:
+		return errors.New("Illegal blend Mode")
+	}
+	return nil
+}
+
+func (jxl *JXLCodestreamDecoder) convertReferenceWithDifferentBufferType(canvas []image2.ImageBuffer, ref image2.ImageBuffer, frameBuffer image2.ImageBuffer, info *frame.BlendingInfo, c int32, imageColours int, frameC int32, frameColours int) error {
+	if ref.BufferType != frameBuffer.BufferType || info.Mode != frame.BLEND_ADD {
+		var depthCanvas int32
+		var depthFrame int32
+		if c >= int32(imageColours) {
+			depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].BitDepth.BitsPerSample)
+		} else {
+			depthCanvas = int32(jxl.imageHeader.BitDepth.BitsPerSample)
+		}
+		if frameC >= int32(frameColours) {
+			depthFrame = int32(jxl.imageHeader.ExtraChannelInfo[frameC-int32(frameColours)].BitDepth.BitsPerSample)
+		} else {
+			depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
+		}
+		if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
+			return err
+		}
+		if err := canvas[c].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+			return err
+		}
+		if err := ref.CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (jxl *JXLCodestreamDecoder) blendAlpha(canvas []image2.ImageBuffer, hasAlpha bool, info *frame.BlendingInfo, imageColours int, refBuffer []image2.ImageBuffer, c int32, frameBuffers []image2.ImageBuffer) error {
+	if hasAlpha && (info.Mode == frame.BLEND_BLEND || info.Mode == frame.BLEND_MULADD) {
+		depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
+		alphaIdx := imageColours + int(info.AlphaChannel)
+		if refBuffer[alphaIdx].Width == 0 && refBuffer[alphaIdx].Height == 0 {
+			refBuf, err := image2.NewImageBuffer(image2.TYPE_FLOAT, canvas[c].Height, canvas[c].Width)
+			if err != nil {
+				return err
+			}
+			refBuffer[alphaIdx] = *refBuf
+		}
+		if !refBuffer[alphaIdx].IsFloat() {
+			refBuffer[alphaIdx].CastToFloatIfInt(^(^0 << depth))
+		}
+		if !frameBuffers[alphaIdx].IsFloat() {
+			frameBuffers[alphaIdx].CastToFloatIfInt(^(^0 << depth))
+		}
+	}
+	return nil
+}
+
+func (jxl *JXLCodestreamDecoder) convertCanvasWithDifferentBufferType(canvas []image2.ImageBuffer, c int32, frameBuffer image2.ImageBuffer, imageColours int, frameC int32, frameColours int) error {
+	if canvas[c].BufferType != frameBuffer.BufferType {
+		var depthCanvas int32
+		if c >= int32(imageColours) {
+			depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].BitDepth.BitsPerSample)
+		} else {
+			depthCanvas = int32(jxl.imageHeader.BitDepth.BitsPerSample)
+		}
+		var depthFrame int32
+		if frameC >= int32(frameColours) {
+			depthFrame = int32(jxl.imageHeader.ExtraChannelInfo[frameC-int32(frameColours)].BitDepth.BitsPerSample)
+		} else {
+			depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
+		}
+		if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
+			return err
+		}
+		if err := canvas[c].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+			return err
 		}
 	}
 	return nil
