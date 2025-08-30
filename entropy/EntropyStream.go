@@ -1,6 +1,9 @@
 package entropy
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -64,11 +67,31 @@ func NewEntropyStreamWithReader(origReader jxlio.BitReader, numDists int, disall
 
 	var reader jxlio.BitReader
 	var recorderReader *testcommon.BitReaderRecorder
+	es := &EntropyStream{}
 	if testcommon.IsRecorder(origReader) {
 		reader = origReader
 	} else {
 		recorderReader = testcommon.NewBitReaderRecorder(origReader)
-		defer recorderReader.DisplayData()
+		defer func() {
+			recorderReader.DisplayData()
+
+			buf := new(bytes.Buffer)
+
+			if pre, ok := es.dists[0].(*PrefixSymbolDistribution); ok {
+				for _, row := range pre.table.table {
+					for _, val := range row {
+						err := binary.Write(buf, binary.LittleEndian, val)
+						if err != nil {
+							fmt.Println("Error writing int32:", err)
+							return
+						}
+					}
+				}
+			}
+			sig := sha256.Sum256(buf.Bytes())
+			fmt.Printf("XXXXX sig %v\n", sig)
+
+		}()
 		reader = recorderReader
 	}
 
@@ -76,7 +99,7 @@ func NewEntropyStreamWithReader(origReader jxlio.BitReader, numDists int, disall
 	if numDists <= 0 {
 		return nil, errors.New("Num Dists must be positive")
 	}
-	es := &EntropyStream{}
+
 	if es.usesLZ77, err = reader.ReadBool(); err != nil {
 		return nil, err
 	}
