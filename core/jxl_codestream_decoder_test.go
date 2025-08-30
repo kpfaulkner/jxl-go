@@ -14,8 +14,8 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-func GenerateTestBitReader(t *testing.T) jxlio.BitReader {
-	data, err := os.ReadFile(`../testdata/unittest.jxl`)
+func GenerateTestBitReader(t *testing.T, filename string) jxlio.BitReader {
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		t.Errorf("error reading test jxl file : %v", err)
 		return nil
@@ -44,7 +44,7 @@ func TestReadSignatureAndBoxes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			br := GenerateTestBitReader(t)
+			br := GenerateTestBitReader(t, "../testdata/unittest.jxl")
 			decoder := NewJXLCodestreamDecoder(br, nil)
 			err := decoder.readSignatureAndBoxes()
 			if err != nil && tc.expectErr {
@@ -143,7 +143,7 @@ func TestGetImageHeader(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			br := GenerateTestBitReader(t)
+			br := GenerateTestBitReader(t, "../testdata/unittest.jxl")
 			opts := options.NewJXLOptions(nil)
 			decoder := NewJXLCodestreamDecoder(br, opts)
 
@@ -197,16 +197,23 @@ func TestDecode(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		data      []uint8
+		filename  string
 		expectErr bool
 	}{
 		{
 			name:      "success",
 			expectErr: false,
+			filename:  "../testdata/unittest.jxl",
+		},
+		{
+			name:      "success 2",
+			expectErr: false,
+			filename:  "../testdata/tiny2.jxl",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			br := GenerateTestBitReader(t)
+			br := GenerateTestBitReader(t, tc.filename)
 			opts := options.NewJXLOptions(nil)
 			decoder := NewJXLCodestreamDecoder(br, opts)
 
