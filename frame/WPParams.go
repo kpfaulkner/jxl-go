@@ -13,7 +13,7 @@ type WPParams struct {
 	weight  [4]int64
 }
 
-func NewWPParams(reader *jxlio.BitStreamReader) (*WPParams, error) {
+func NewWPParams(reader jxlio.BitReader) (*WPParams, error) {
 	wp := WPParams{}
 	var err error
 	var defaultParams bool

@@ -69,7 +69,7 @@ type PassGroup struct {
 	lfg                    *LFGroup
 }
 
-func NewPassGroupWithReader(reader *jxlio.BitStreamReader, frame *Frame, pass uint32, group uint32, replacedChannels []ModularChannel) (*PassGroup, error) {
+func NewPassGroupWithReader(reader jxlio.BitReader, frame *Frame, pass uint32, group uint32, replacedChannels []ModularChannel) (*PassGroup, error) {
 
 	pg := &PassGroup{}
 	pg.frame = frame

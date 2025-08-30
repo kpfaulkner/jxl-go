@@ -126,7 +126,7 @@ func NewImageHeader() *ImageHeader {
 	return ih
 }
 
-func ParseImageHeader(reader *jxlio.BitStreamReader, level int32) (*ImageHeader, error) {
+func ParseImageHeader(reader jxlio.BitReader, level int32) (*ImageHeader, error) {
 	header := NewImageHeader()
 
 	var headerBits uint64
@@ -720,7 +720,7 @@ func GetICCContext(buffer []byte, index int) int {
 	return 1 + p1 + 8*p2
 }
 
-func readPreviewHeader(reader *jxlio.BitStreamReader) (*util.Dimension, error) {
+func readPreviewHeader(reader jxlio.BitReader) (*util.Dimension, error) {
 
 	var dim util.Dimension
 	var err error
@@ -776,7 +776,7 @@ func readPreviewHeader(reader *jxlio.BitStreamReader) (*util.Dimension, error) {
 	return &dim, nil
 }
 
-func readSizeHeader(reader *jxlio.BitStreamReader, level int32) (util.Dimension, error) {
+func readSizeHeader(reader jxlio.BitReader, level int32) (util.Dimension, error) {
 	dim := util.Dimension{}
 	var err error
 

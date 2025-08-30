@@ -2,6 +2,7 @@ package entropy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -60,11 +61,13 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 
 func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
 
+	es := &EntropyStream{}
+
 	var err error
 	if numDists <= 0 {
 		return nil, errors.New("Num Dists must be positive")
 	}
-	es := &EntropyStream{}
+
 	if es.usesLZ77, err = reader.ReadBool(); err != nil {
 		return nil, err
 	}
@@ -164,6 +167,16 @@ func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ
 		es.dists[i].SetConfig(configs[i])
 	}
 
+	//if testcommon.IsRecorder(reader) {
+	//	recorderReader.DisplayData()
+	//}
+
+	for _, w := range es.window {
+		if w != 0 {
+			fmt.Printf("snoop\n")
+		}
+	}
+
 	return es, nil
 
 }
@@ -253,7 +266,7 @@ func (es *EntropyStream) ReadSymbol(reader jxlio.BitReader, context int) (int32,
 	return es.ReadSymbolWithMultiplier(reader, context, 0)
 }
 
-func (es *EntropyStream) TryReadSymbol(reader *jxlio.BitStreamReader, context int) int32 {
+func (es *EntropyStream) TryReadSymbol(reader jxlio.BitReader, context int) int32 {
 	v, err := es.ReadSymbol(reader, context)
 	if err != nil {
 		panic(err)

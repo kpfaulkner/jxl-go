@@ -24,7 +24,7 @@ func NewToneMapping() *ToneMapping {
 	return tm
 }
 
-func NewToneMappingWithReader(reader *jxlio.BitStreamReader) (*ToneMapping, error) {
+func NewToneMappingWithReader(reader jxlio.BitReader) (*ToneMapping, error) {
 	tm := &ToneMapping{}
 	var err error
 	var useToneMapping bool

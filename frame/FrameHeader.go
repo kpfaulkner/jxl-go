@@ -62,7 +62,7 @@ type FrameHeader struct {
 	IsLast            bool
 }
 
-func NewFrameHeaderWithReader(reader *jxlio.BitStreamReader, parent *bundle.ImageHeader) (*FrameHeader, error) {
+func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader) (*FrameHeader, error) {
 	fh := &FrameHeader{}
 	var err error
 	var allDefault bool

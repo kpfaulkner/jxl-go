@@ -8,7 +8,7 @@ type CustomXY struct {
 	CIEXY
 }
 
-func NewCustomXY(reader *jxlio.BitStreamReader) (*CustomXY, error) {
+func NewCustomXY(reader jxlio.BitReader) (*CustomXY, error) {
 	cxy := &CustomXY{}
 
 	ciexy, err := cxy.readCustom(reader)
@@ -19,7 +19,7 @@ func NewCustomXY(reader *jxlio.BitStreamReader) (*CustomXY, error) {
 	return cxy, nil
 }
 
-func (cxy *CustomXY) readCustom(reader *jxlio.BitStreamReader) (*CIEXY, error) {
+func (cxy *CustomXY) readCustom(reader jxlio.BitReader) (*CIEXY, error) {
 	var x float32
 	if ux, err := reader.ReadU32(0, 19, 524288, 19, 1048576, 20, 2097152, 21); err != nil {
 		return nil, err

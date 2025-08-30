@@ -10,6 +10,6 @@ type AnimationHeader struct {
 	HaveTimeCodes bool
 }
 
-func NewAnimationHeader(reader *jxlio.BitStreamReader) (*AnimationHeader, error) {
+func NewAnimationHeader(reader jxlio.BitReader) (*AnimationHeader, error) {
 	return nil, errors.New("Animation not implemented")
 }

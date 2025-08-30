@@ -16,7 +16,7 @@ type HFBlockContext struct {
 	numLFContexts int32
 }
 
-func NewHFBlockContextWithReader(reader *jxlio.BitStreamReader) (*HFBlockContext, error) {
+func NewHFBlockContextWithReader(reader jxlio.BitReader) (*HFBlockContext, error) {
 	hf := &HFBlockContext{}
 	hf.lfThresholds = util.MakeMatrix2D[int32](3, 0)
 	useDefault, err := reader.ReadBool()

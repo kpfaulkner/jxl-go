@@ -20,7 +20,7 @@ func NewPassesInfo() *PassesInfo {
 	return pi
 }
 
-func NewPassesInfoWithReader(reader *jxlio.BitStreamReader) (*PassesInfo, error) {
+func NewPassesInfoWithReader(reader jxlio.BitReader) (*PassesInfo, error) {
 	pi := &PassesInfo{}
 	if numPasses, err := reader.ReadU32(1, 0, 2, 0, 3, 0, 4, 3); err != nil {
 		return nil, err

@@ -18,7 +18,7 @@ func NewExtensions() *Extensions {
 	return ex
 }
 
-func NewExtensionsWithReader(reader *jxlio.BitStreamReader) (*Extensions, error) {
+func NewExtensionsWithReader(reader jxlio.BitReader) (*Extensions, error) {
 	ex := &Extensions{}
 	var err error
 	if ex.ExtensionsKey, err = reader.ReadU64(); err != nil {
