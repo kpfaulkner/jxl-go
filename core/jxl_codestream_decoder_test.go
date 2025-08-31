@@ -238,63 +238,123 @@ func TestDecode(t *testing.T) {
 func TestBlendFrame(t *testing.T) {
 
 	for _, tc := range []struct {
-		name string
+		name        string
+		dataGenFunc func(*testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, error, frame2.Frame)
 	}{
 		{
-			name: "success",
+			name:        "success replace",
+			dataGenFunc: generateBlendReplaceTestData,
+		},
+		{
+			name:        "success add",
+			dataGenFunc: generateBlendAddTestData,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			// Need to simplify the code so mocking out structs with fake data
-			// is easier.
-			jxl := NewJXLCodestreamDecoder(nil, nil)
-
-			jxl.imageHeader = &bundle.ImageHeader{
-				Size: util.Dimension{Width: 10, Height: 10},
-				ColourEncoding: &colour.ColourEncodingBundle{
-					ColourEncoding: colour.CE_RGB,
-				},
-			}
-			bufferRef, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
-			jxl.reference = make([][]image.ImageBuffer, 1)
-			jxl.reference[0] = []image.ImageBuffer{*bufferRef}
-
-			canvas, err := image.NewImageBuffer(image.TYPE_INT, 10, 10)
-			if err != nil {
-				t.Errorf("error creating image buffer : %v", err)
-			}
-
-			buffer, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
-			frame := frame2.Frame{
-				Buffer: []image.ImageBuffer{*buffer},
-				Header: &frame2.FrameHeader{
-					BlendingInfo: &frame2.BlendingInfo{
-						Source: 0,
-					},
-					Bounds: &util.Rectangle{
-						Origin: util.Point{
-							X: 0,
-							Y: 0,
-						},
-						Size: util.Dimension{
-							Width:  10,
-							Height: 10,
-						},
-					},
-				},
-				GlobalMetadata: &bundle.ImageHeader{
-					ColourEncoding: &colour.ColourEncodingBundle{
-						ColourEncoding: colour.CE_RGB,
-					},
-				},
-			}
+			jxl, canvas, err, frame := tc.dataGenFunc(t)
 
 			err = jxl.blendFrame([]image.ImageBuffer{*canvas}, &frame)
 			if err != nil {
 				t.Errorf("error blending frame : %v", err)
 			}
-
 		})
 	}
+}
+
+func generateBlendReplaceTestData(t *testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, error, frame2.Frame) {
+
+	// Need to simplify the code so mocking out structs with fake data
+	// is easier.
+	jxl := NewJXLCodestreamDecoder(nil, nil)
+
+	jxl.imageHeader = &bundle.ImageHeader{
+		Size: util.Dimension{Width: 10, Height: 10},
+		ColourEncoding: &colour.ColourEncodingBundle{
+			ColourEncoding: colour.CE_RGB,
+		},
+	}
+	bufferRef, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+	jxl.reference = make([][]image.ImageBuffer, 1)
+	jxl.reference[0] = []image.ImageBuffer{*bufferRef}
+
+	canvas, err := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+	if err != nil {
+		t.Errorf("error creating image buffer : %v", err)
+	}
+
+	buffer, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+	frame := frame2.Frame{
+		Buffer: []image.ImageBuffer{*buffer},
+		Header: &frame2.FrameHeader{
+			BlendingInfo: &frame2.BlendingInfo{
+				Source: 0,
+			},
+			Bounds: &util.Rectangle{
+				Origin: util.Point{
+					X: 0,
+					Y: 0,
+				},
+				Size: util.Dimension{
+					Width:  10,
+					Height: 10,
+				},
+			},
+		},
+		GlobalMetadata: &bundle.ImageHeader{
+			ColourEncoding: &colour.ColourEncodingBundle{
+				ColourEncoding: colour.CE_RGB,
+			},
+		},
+	}
+	return jxl, canvas, err, frame
+}
+
+func generateBlendAddTestData(t *testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, error, frame2.Frame) {
+
+	// Need to simplify the code so mocking out structs with fake data
+	// is easier.
+	jxl := NewJXLCodestreamDecoder(nil, nil)
+
+	jxl.imageHeader = &bundle.ImageHeader{
+		Size: util.Dimension{Width: 10, Height: 10},
+		ColourEncoding: &colour.ColourEncodingBundle{
+			ColourEncoding: colour.CE_RGB,
+		},
+	}
+	bufferRef, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+	jxl.reference = make([][]image.ImageBuffer, 1)
+	jxl.reference[0] = []image.ImageBuffer{*bufferRef}
+
+	canvas, err := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+	if err != nil {
+		t.Errorf("error creating image buffer : %v", err)
+	}
+
+	buffer, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+	frame := frame2.Frame{
+		Buffer: []image.ImageBuffer{*buffer},
+		Header: &frame2.FrameHeader{
+			BlendingInfo: &frame2.BlendingInfo{
+				Source: 0,
+				Mode:   frame2.BLEND_ADD,
+			},
+			Bounds: &util.Rectangle{
+				Origin: util.Point{
+					X: 0,
+					Y: 0,
+				},
+				Size: util.Dimension{
+					Width:  10,
+					Height: 10,
+				},
+			},
+		},
+		GlobalMetadata: &bundle.ImageHeader{
+			ColourEncoding: &colour.ColourEncodingBundle{
+				ColourEncoding: colour.CE_RGB,
+			},
+		},
+	}
+	return jxl, canvas, err, frame
 }
