@@ -362,27 +362,28 @@ func generateBlendAddTestData(t *testing.T) (*JXLCodestreamDecoder, *image.Image
 func TestPerformBlending(t *testing.T) {
 
 	for _, tc := range []struct {
-		name                string
-		canvas              []image.ImageBuffer
-		info                *frame2.BlendingInfo
-		frameBuffer         image.ImageBuffer
-		canvasIdx           int32
-		ref                 image.ImageBuffer
-		frameHeight         int32
-		frameStartY         int32
-		frameOffsetY        int32
-		frameWidth          int32
-		frameStartX         int32
-		frameOffsetX        int32
-		hasAlpha            bool
-		refBuffer           []image.ImageBuffer
-		imageColours        int
-		frameBuffers        []image.ImageBuffer
-		frameColours        int
-		isAlpha             bool
-		premult             bool
-		expectedImageBuffer image.ImageBuffer
-		expectErr           bool
+		name                 string
+		canvas               []image.ImageBuffer
+		info                 *frame2.BlendingInfo
+		frameBuffer          image.ImageBuffer
+		canvasIdx            int32
+		ref                  image.ImageBuffer
+		frameHeight          int32
+		frameStartY          int32
+		frameOffsetY         int32
+		frameWidth           int32
+		frameStartX          int32
+		frameOffsetX         int32
+		hasAlpha             bool
+		refBuffer            []image.ImageBuffer
+		imageColours         int
+		frameBuffers         []image.ImageBuffer
+		frameColours         int
+		isAlpha              bool
+		premult              bool
+		expectedImageBuffer  image.ImageBuffer
+		checkCanvasIntBuffer bool // either int or float
+		expectErr            bool
 	}{
 		{
 			name: "blend add is int, success",
@@ -431,7 +432,8 @@ func TestPerformBlending(t *testing.T) {
 				BufferType: image.TYPE_INT,
 				IntBuffer:  makeFullMatrix[int32](10, 10, 7),
 			},
-			expectErr: false,
+			expectErr:            false,
+			checkCanvasIntBuffer: true,
 		},
 		{
 			name: "blend add is float, success",
@@ -477,7 +479,58 @@ func TestPerformBlending(t *testing.T) {
 				BufferType:  image.TYPE_FLOAT,
 				FloatBuffer: makeFullMatrix[float32](10, 10, 7),
 			},
-			expectErr: false,
+			expectErr:            false,
+			checkCanvasIntBuffer: false,
+		},
+		{
+			name: "blend mult is int, success",
+			canvas: []image.ImageBuffer{{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 2),
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			}},
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_MULT,
+			},
+
+			frameBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 3),
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			canvasIdx: 0,
+			ref: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 4),
+				IntBuffer:   makeFullMatrix[int32](10, 10, 4),
+			},
+			frameHeight:  10,
+			frameStartY:  0,
+			frameOffsetY: 0,
+			frameWidth:   10,
+			frameStartX:  0,
+			frameOffsetX: 0,
+			hasAlpha:     false,
+			refBuffer:    nil,
+			imageColours: 0,
+			frameBuffers: nil,
+			frameColours: 0,
+			isAlpha:      false,
+			premult:      false,
+			expectedImageBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 12),
+			},
+			expectErr:            false,
+			checkCanvasIntBuffer: false,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -492,8 +545,14 @@ func TestPerformBlending(t *testing.T) {
 				t.Errorf("expected no error but got %v", err)
 			}
 
-			if !tc.expectErr && !reflect.DeepEqual(tc.canvas[0].IntBuffer, tc.expectedImageBuffer.IntBuffer) {
-				t.Errorf("expected %v but got %v", tc.expectedImageBuffer.IntBuffer, tc.canvas[0].IntBuffer)
+			if tc.checkCanvasIntBuffer {
+				if !tc.expectErr && !reflect.DeepEqual(tc.canvas[0].IntBuffer, tc.expectedImageBuffer.IntBuffer) {
+					t.Errorf("expected %v but got %v", tc.expectedImageBuffer.IntBuffer, tc.canvas[0].IntBuffer)
+				}
+			} else {
+				if !tc.expectErr && !reflect.DeepEqual(tc.canvas[0].FloatBuffer, tc.expectedImageBuffer.FloatBuffer) {
+					t.Errorf("expected %v but got %v", tc.expectedImageBuffer.IntBuffer, tc.canvas[0].IntBuffer)
+				}
 			}
 		})
 	}
