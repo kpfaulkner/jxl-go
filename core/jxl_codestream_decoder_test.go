@@ -2,13 +2,14 @@ package core
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/colour"
+	frame2 "github.com/kpfaulkner/jxl-go/frame"
+	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -217,7 +218,7 @@ func TestDecode(t *testing.T) {
 			opts := options.NewJXLOptions(nil)
 			decoder := NewJXLCodestreamDecoder(br, opts)
 
-			jxlImage, err := decoder.decode()
+			_, err := decoder.decode()
 			if err != nil && tc.expectErr {
 				// got what we wanted..
 				return
@@ -230,8 +231,69 @@ func TestDecode(t *testing.T) {
 			if err != nil && !tc.expectErr {
 				t.Errorf("expected no error but got %v", err)
 			}
+		})
+	}
+}
 
-			fmt.Printf("XXXXX jxlimage witdh %d\n", jxlImage.Width)
+func TestBlendFrame(t *testing.T) {
+
+	for _, tc := range []struct {
+		name string
+	}{
+		{
+			name: "success",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			// Need to simplify the code so mocking out structs with fake data
+			// is easier.
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+
+			jxl.imageHeader = &bundle.ImageHeader{
+				Size: util.Dimension{Width: 10, Height: 10},
+				ColourEncoding: &colour.ColourEncodingBundle{
+					ColourEncoding: colour.CE_RGB,
+				},
+			}
+			bufferRef, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+			jxl.reference = make([][]image.ImageBuffer, 1)
+			jxl.reference[0] = []image.ImageBuffer{*bufferRef}
+
+			canvas, err := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+			if err != nil {
+				t.Errorf("error creating image buffer : %v", err)
+			}
+
+			buffer, _ := image.NewImageBuffer(image.TYPE_INT, 10, 10)
+			frame := frame2.Frame{
+				Buffer: []image.ImageBuffer{*buffer},
+				Header: &frame2.FrameHeader{
+					BlendingInfo: &frame2.BlendingInfo{
+						Source: 0,
+					},
+					Bounds: &util.Rectangle{
+						Origin: util.Point{
+							X: 0,
+							Y: 0,
+						},
+						Size: util.Dimension{
+							Width:  10,
+							Height: 10,
+						},
+					},
+				},
+				GlobalMetadata: &bundle.ImageHeader{
+					ColourEncoding: &colour.ColourEncodingBundle{
+						ColourEncoding: colour.CE_RGB,
+					},
+				},
+			}
+
+			err = jxl.blendFrame([]image.ImageBuffer{*canvas}, &frame)
+			if err != nil {
+				t.Errorf("error blending frame : %v", err)
+			}
 
 		})
 	}

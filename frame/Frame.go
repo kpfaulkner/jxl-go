@@ -46,8 +46,7 @@ type Frame struct {
 	Buffer         []image.ImageBuffer
 	passes         []Pass
 	bitreaders     []jxlio.BitReader
-	//bounds         *util.Rectangle
-	globalMetadata *bundle.ImageHeader
+	GlobalMetadata *bundle.ImageHeader
 	options        *options.JXLOptions
 	reader         jxlio.BitReader
 	Header         *FrameHeader
@@ -70,7 +69,7 @@ func (f *Frame) ReadFrameHeader() (FrameHeader, error) {
 
 	f.reader.ZeroPadToByte()
 	var err error
-	f.Header, err = NewFrameHeaderWithReader(f.reader, f.globalMetadata)
+	f.Header, err = NewFrameHeaderWithReader(f.reader, f.GlobalMetadata)
 	if err != nil {
 		return FrameHeader{}, err
 	}
@@ -216,7 +215,7 @@ func readPermutation(reader jxlio.BitReader, stream *entropy.EntropyStream, size
 func NewFrameWithReader(reader jxlio.BitReader, imageHeader *bundle.ImageHeader, options *options.JXLOptions) *Frame {
 
 	frame := &Frame{
-		globalMetadata: imageHeader,
+		GlobalMetadata: imageHeader,
 		options:        options,
 		reader:         reader,
 	}
@@ -287,7 +286,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	}
 
 	numColours := f.GetColourChannelCount()
-	f.Buffer = make([]image.ImageBuffer, numColours+len(f.globalMetadata.ExtraChannelInfo))
+	f.Buffer = make([]image.ImageBuffer, numColours+len(f.GlobalMetadata.ExtraChannelInfo))
 
 	for c := 0; c < len(f.Buffer); c++ {
 		channelSize := util.Dimension{
@@ -300,10 +299,10 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		}
 		var isFloat bool
 		if c < f.GetColourChannelCount() {
-			isFloat = f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT ||
-				f.globalMetadata.BitDepth.ExpBits != 0
+			isFloat = f.GlobalMetadata.XybEncoded || f.Header.Encoding == VARDCT ||
+				f.GlobalMetadata.BitDepth.ExpBits != 0
 		} else {
-			isFloat = f.globalMetadata.ExtraChannelInfo[c-numColours].BitDepth.ExpBits != 0
+			isFloat = f.GlobalMetadata.ExtraChannelInfo[c-numColours].BitDepth.ExpBits != 0
 		}
 		typeToUse := image.TYPE_INT
 		if isFloat {
@@ -356,7 +355,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	for c := 0; c < len(modularBuffer); c++ {
 		cIn := c
 		isModularColour := f.Header.Encoding == MODULAR && c < f.GetColourChannelCount()
-		isModularXYB := f.globalMetadata.XybEncoded && isModularColour
+		isModularXYB := f.GlobalMetadata.XybEncoded && isModularColour
 		var cOut int
 		if isModularXYB {
 			cOut = cMap[c]
@@ -414,10 +413,10 @@ func (f *Frame) IsVisible() bool {
 }
 
 func (f *Frame) GetColourChannelCount() int {
-	if f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
+	if f.GlobalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
 		return 3
 	}
-	return f.globalMetadata.GetColourChannelCount()
+	return f.GlobalMetadata.GetColourChannelCount()
 }
 
 func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
@@ -645,7 +644,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		// get floating point version of frame buffer
 		buffers := util.MakeMatrix3D[float32](3, 0, 0)
 		for c := 0; c < 3; c++ {
-			f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+			f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
 			buffers[c] = f.Buffer[c].FloatBuffer
 		}
 
@@ -705,7 +704,7 @@ func (f *Frame) invertSubsampling() error {
 		for xShift > 0 {
 			xShift--
 			oldBuffer := f.Buffer[c]
-			oldBuffer.CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+			oldBuffer.CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
 			oldChannel := oldBuffer.FloatBuffer
 			newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height, oldBuffer.Width*2)
 			if err != nil {
@@ -737,7 +736,7 @@ func (f *Frame) invertSubsampling() error {
 		for yShift > 0 {
 			yShift--
 			oldBuffer := f.Buffer[c]
-			oldBuffer.CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+			oldBuffer.CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
 			oldChannel := oldBuffer.FloatBuffer
 			newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height*2, oldBuffer.Width)
 			if err != nil {
@@ -788,7 +787,7 @@ func (f *Frame) performGabConvolution() error {
 	}
 
 	for c := int32(0); c < colours; c++ {
-		f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+		f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
 		height := f.Buffer[c].Height
 		width := f.Buffer[c].Width
 		buffC := f.Buffer[c].FloatBuffer
@@ -882,7 +881,7 @@ func (f *Frame) performEdgePreservingFilter() error {
 
 	outputBuffer := make([]image.ImageBuffer, colours)
 	for c := int32(0); c < colours; c++ {
-		f.Buffer[c].CastToFloatIfInt(^(^0 << f.globalMetadata.BitDepth.BitsPerSample))
+		f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
 		outBuf, err := image.NewImageBuffer(image.TYPE_FLOAT, int32(paddedSize.Height), int32(paddedSize.Width))
 		if err != nil {
 			return err
@@ -1071,9 +1070,9 @@ func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuff
 
 	var depth uint32
 	if c < colour {
-		depth = f.globalMetadata.BitDepth.BitsPerSample
+		depth = f.GlobalMetadata.BitDepth.BitsPerSample
 	} else {
-		depth = f.globalMetadata.ExtraChannelInfo[c-colour].BitDepth.BitsPerSample
+		depth = f.GlobalMetadata.ExtraChannelInfo[c-colour].BitDepth.BitsPerSample
 	}
 
 	if err := ib.CastToFloatIfInt(^(^0 << depth)); err != nil {
@@ -1082,7 +1081,7 @@ func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuff
 
 	buffer := ib.FloatBuffer
 	l := util.CeilLog1p(k-1) - 1
-	up, err := f.globalMetadata.GetUpWeights()
+	up, err := f.GlobalMetadata.GetUpWeights()
 	if err != nil {
 		return nil, err
 	}
@@ -1203,10 +1202,10 @@ func (f *Frame) getGroupSize(groupID int32) (util.Dimension, error) {
 }
 
 func (f *Frame) getColourChannelCount() int32 {
-	if f.globalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
+	if f.GlobalMetadata.XybEncoded || f.Header.Encoding == VARDCT {
 		return 3
 	}
-	return int32(f.globalMetadata.GetColourChannelCount())
+	return int32(f.GlobalMetadata.GetColourChannelCount())
 }
 
 // generate a total (signature?) for each row of each channel in the buffer.

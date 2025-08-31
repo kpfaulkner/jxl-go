@@ -38,7 +38,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 
 	lf := NewLFGlobal()
 	lf.frame = parent
-	extra := len(lf.frame.globalMetadata.ExtraChannelInfo)
+	extra := len(lf.frame.GlobalMetadata.ExtraChannelInfo)
 	if lf.frame.Header.Flags&PATCHES != 0 {
 
 		return nil, errors.New("Patches not implemented yet")
@@ -53,7 +53,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 		}
 		lf.Patches = make([]Patch, numPatches)
 		for i := 0; i < int(numPatches); i++ {
-			lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.globalMetadata.ExtraChannelInfo), len(parent.globalMetadata.AlphaIndices))
+			lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.GlobalMetadata.ExtraChannelInfo), len(parent.GlobalMetadata.AlphaIndices))
 			if err != nil {
 				return nil, err
 			}
@@ -142,8 +142,8 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 	subModularChannelCount := extra
 	ecStart := 0
 	if lf.frame.Header.Encoding == MODULAR {
-		if !lf.frame.Header.DoYCbCr && !lf.frame.globalMetadata.XybEncoded &&
-			lf.frame.globalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
+		if !lf.frame.Header.DoYCbCr && !lf.frame.GlobalMetadata.XybEncoded &&
+			lf.frame.GlobalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
 			ecStart = 1
 		} else {
 			ecStart = 3

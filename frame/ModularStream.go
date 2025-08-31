@@ -222,7 +222,7 @@ func NewModularStreamWithChannels(reader jxlio.BitReader, frame *Frame, streamIn
 			if i < ecStart {
 				dimShift = 0
 			} else {
-				dimShift = frame.globalMetadata.ExtraChannelInfo[i-ecStart].DimShift
+				dimShift = frame.GlobalMetadata.ExtraChannelInfo[i-ecStart].DimShift
 			}
 			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.Height), int32(size.Width), dimShift, dimShift, false))
 		}
@@ -516,7 +516,7 @@ func (ms *ModularStream) applyTransforms() error {
 			first := ms.transforms[i].beginC + 1
 			endC := ms.transforms[i].beginC + ms.transforms[i].numC - 1
 			last := endC + 1
-			bitDepth := ms.frame.globalMetadata.BitDepth.BitsPerSample
+			bitDepth := ms.frame.GlobalMetadata.BitDepth.BitsPerSample
 			firstChannel := ms.channels[first]
 			c0 := ms.channels[0]
 			for j := first + 1; j <= last; j++ {

@@ -257,7 +257,7 @@ func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
 }
 
 func (hf *HFCoefficients) dequantizeHFCoefficients() error {
-	matrix := hf.frame.globalMetadata.OpsinInverseMatrix
+	matrix := hf.frame.GlobalMetadata.OpsinInverseMatrix
 	header := hf.frame.Header
 	globalScale := 65536.0 / float32(hf.frame.LfGlobal.globalScale)
 	scaleFactor := [3]float32{

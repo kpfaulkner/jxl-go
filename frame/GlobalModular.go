@@ -31,11 +31,11 @@ func NewGlobalModularWithReader(reader jxlio.BitReader, parent *Frame) (*GlobalM
 	}
 
 	gm.frame.globalTree = gm.globalTree
-	subModularChannelCount := len(gm.frame.globalMetadata.ExtraChannelInfo)
+	subModularChannelCount := len(gm.frame.GlobalMetadata.ExtraChannelInfo)
 	header := gm.frame.Header
 	ecStart := 0
 	if header.Encoding == MODULAR {
-		if !header.DoYCbCr && !gm.frame.globalMetadata.XybEncoded && gm.frame.globalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
+		if !header.DoYCbCr && !gm.frame.GlobalMetadata.XybEncoded && gm.frame.GlobalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
 			ecStart = 1
 		} else {
 			ecStart = 3

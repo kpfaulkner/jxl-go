@@ -42,7 +42,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 		pX := pos.X << 8
 		lf.dequantLFCoeff = dequantLFCoeff
 		for c := 0; c < 3; c++ {
-			lfBuffer[c].CastToFloatIfInt(^(^0 << frame.globalMetadata.BitDepth.BitsPerSample))
+			lfBuffer[c].CastToFloatIfInt(^(^0 << frame.GlobalMetadata.BitDepth.BitsPerSample))
 			b := lfBuffer[c].FloatBuffer
 			for y := int32(0); y < int32(len(dequantLFCoeff[c])); y++ {
 				for x, d := pX, 0; x < pX+int32(len(dequantLFCoeff[c][y])); x, d = x+1, d+1 {
