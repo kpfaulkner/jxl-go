@@ -816,7 +816,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 			return err2
 		}
 
-		err3 := jxl.convertReferenceWithDifferentBufferType(canvas, ref, frameBuffer, info, c, imageColours, frameC, frameColours)
+		err3 := jxl.convertReferenceWithDifferentBufferType(canvas, &ref, &frameBuffer, info, c, imageColours, frameC, frameColours)
 		if err3 != nil {
 			return err3
 		}
@@ -996,12 +996,20 @@ func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer,
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) convertReferenceWithDifferentBufferType(canvas []image2.ImageBuffer, ref image2.ImageBuffer, frameBuffer image2.ImageBuffer, info *frame.BlendingInfo, c int32, imageColours int, frameC int32, frameColours int) error {
+func (jxl *JXLCodestreamDecoder) convertReferenceWithDifferentBufferType(
+	canvas []image2.ImageBuffer,
+	ref *image2.ImageBuffer,
+	frameBuffer *image2.ImageBuffer,
+	info *frame.BlendingInfo,
+	canvasIdx int32,
+	imageColours int,
+	frameC int32,
+	frameColours int) error {
 	if ref.BufferType != frameBuffer.BufferType || info.Mode != frame.BLEND_ADD {
 		var depthCanvas int32
 		var depthFrame int32
-		if c >= int32(imageColours) {
-			depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].BitDepth.BitsPerSample)
+		if canvasIdx >= int32(imageColours) {
+			depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[canvasIdx-int32(imageColours)].BitDepth.BitsPerSample)
 		} else {
 			depthCanvas = int32(jxl.imageHeader.BitDepth.BitsPerSample)
 		}
@@ -1013,7 +1021,7 @@ func (jxl *JXLCodestreamDecoder) convertReferenceWithDifferentBufferType(canvas 
 		if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
 			return err
 		}
-		if err := canvas[c].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+		if err := canvas[canvasIdx].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
 			return err
 		}
 		if err := ref.CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {

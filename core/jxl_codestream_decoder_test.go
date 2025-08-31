@@ -689,3 +689,135 @@ func makeFullMatrix[T any](height int, width int, val T) [][]T {
 	}
 	return mat
 }
+
+func TestConvertReferenceWithDifferentBufferType(t *testing.T) {
+
+	for _, tc := range []struct {
+		name                           string
+		canvas                         []image.ImageBuffer
+		info                           *frame2.BlendingInfo
+		frameBuffer                    *image.ImageBuffer
+		canvasIdx                      int32
+		ref                            *image.ImageBuffer
+		frameHeight                    int32
+		frameStartY                    int32
+		frameOffsetY                   int32
+		frameWidth                     int32
+		frameStartX                    int32
+		frameOffsetX                   int32
+		hasAlpha                       bool
+		refBuffer                      []image.ImageBuffer
+		imageColours                   int
+		frameBuffers                   []image.ImageBuffer
+		frameColours                   int
+		isAlpha                        bool
+		premult                        bool
+		expectedFrameBufferImageBuffer image.ImageBuffer
+		expectedRefImageBuffer         image.ImageBuffer
+		expectedCanvasImageBuffer      image.ImageBuffer
+		checkCanvasIntBuffer           bool // either int or float
+		expectErr                      bool
+	}{
+		{
+			name: "blend add is int, success",
+			canvas: []image.ImageBuffer{{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			}},
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_MULT,
+			},
+
+			frameBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			canvasIdx: 0,
+			ref: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 4),
+			},
+			frameHeight:  10,
+			frameStartY:  0,
+			frameOffsetY: 0,
+			frameWidth:   10,
+			frameStartX:  0,
+			frameOffsetX: 0,
+			hasAlpha:     false,
+			refBuffer:    nil,
+			imageColours: 0,
+			frameBuffers: nil,
+			frameColours: 0,
+			isAlpha:      false,
+			premult:      false,
+			expectedCanvasImageBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 0.007843138),
+			},
+			expectedFrameBufferImageBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 0.011764707),
+			},
+			expectedRefImageBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 0.015686275),
+			},
+			expectErr:            false,
+			checkCanvasIntBuffer: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+			jxl.imageHeader = &bundle.ImageHeader{
+				ExtraChannelInfo: []bundle.ExtraChannelInfo{{
+					BitDepth: bundle.BitDepthHeader{
+						BitsPerSample:    8,
+						ExpBits:          0,
+						UsesFloatSamples: false,
+					},
+				}},
+			}
+
+			err := jxl.convertReferenceWithDifferentBufferType(tc.canvas, tc.ref, tc.frameBuffer, tc.info, tc.canvasIdx, tc.imageColours, 0, tc.frameColours)
+			if err != nil {
+				t.Errorf("error blending frame : %v", err)
+			}
+
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+			if !tc.expectErr && !reflect.DeepEqual(tc.canvas[0].FloatBuffer, tc.expectedCanvasImageBuffer.FloatBuffer) {
+				t.Errorf("expected %v but got %v", tc.expectedCanvasImageBuffer.FloatBuffer, tc.canvas[0].FloatBuffer)
+			}
+
+			if !tc.expectErr && !reflect.DeepEqual(tc.ref.FloatBuffer, tc.expectedRefImageBuffer.FloatBuffer) {
+				t.Errorf("expected %v but got %v", tc.expectedRefImageBuffer.FloatBuffer, tc.ref.FloatBuffer)
+			}
+
+			if !tc.expectErr && !reflect.DeepEqual(tc.frameBuffer.FloatBuffer, tc.expectedFrameBufferImageBuffer.FloatBuffer) {
+				t.Errorf("expected %v but got %v", tc.expectedFrameBufferImageBuffer.FloatBuffer, tc.frameBuffer.FloatBuffer)
+			}
+
+		})
+	}
+}
