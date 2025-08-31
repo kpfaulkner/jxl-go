@@ -820,18 +820,8 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		if err3 != nil {
 			return err3
 		}
-		var cf, rf, ff, oaf, naf [][]float32
-		if info.Mode != frame.BLEND_ADD || frameBuffer.IsFloat() {
-			cf = canvas[c].FloatBuffer
-			rf = ref.FloatBuffer
-			ff = frameBuffer.FloatBuffer
-		} else {
-			cf = nil
-			rf = nil
-			ff = nil
-		}
 
-		err4 := jxl.performBlending(canvas, info, frameBuffer, c, ref, frameHeight, frameStartY, frameOffsetY, frameWidth, frameStartX, frameOffsetX, cf, rf, ff, hasAlpha, oaf, refBuffer, imageColours, naf, frameBuffers, frameColours, isAlpha, premult)
+		err4 := jxl.performBlending(canvas, info, frameBuffer, c, ref, frameHeight, frameStartY, frameOffsetY, frameWidth, frameStartX, frameOffsetX, hasAlpha, refBuffer, imageColours, frameBuffers, frameColours, isAlpha, premult)
 		if err4 != nil {
 			return err4
 		}
@@ -839,11 +829,35 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer, info *frame.BlendingInfo, frameBuffer image2.ImageBuffer, c int32, ref image2.ImageBuffer, frameHeight int32, frameStartY int32, frameOffsetY int32, frameWidth int32, frameStartX int32, frameOffsetX int32, cf [][]float32, rf [][]float32, ff [][]float32, hasAlpha bool, oaf [][]float32, refBuffer []image2.ImageBuffer, imageColours int, naf [][]float32, frameBuffers []image2.ImageBuffer, frameColours int, isAlpha bool, premult bool) error {
+// perform blending...  was refactored to a separate function but the number of parameters
+// is insane. Need to tidy this up... but will leave for now.
+func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer,
+	info *frame.BlendingInfo, frameBuffer image2.ImageBuffer,
+	canvasIdx int32, ref image2.ImageBuffer,
+	frameHeight int32, frameStartY int32,
+	frameOffsetY int32, frameWidth int32,
+	frameStartX int32, frameOffsetX int32,
+	hasAlpha bool,
+	refBuffer []image2.ImageBuffer,
+	imageColours int,
+	frameBuffers []image2.ImageBuffer,
+	frameColours int, isAlpha bool, premult bool) error {
+
+	var cf, rf, ff, oaf, naf [][]float32
+	if info.Mode != frame.BLEND_ADD || frameBuffer.IsFloat() {
+		cf = canvas[canvasIdx].FloatBuffer
+		rf = ref.FloatBuffer
+		ff = frameBuffer.FloatBuffer
+	} else {
+		cf = nil
+		rf = nil
+		ff = nil
+	}
+
 	switch info.Mode {
 	case frame.BLEND_ADD:
 		if frameBuffer.IsInt() {
-			ci := canvas[c].IntBuffer
+			ci := canvas[canvasIdx].IntBuffer
 			ri := ref.IntBuffer
 			fi := frameBuffer.IntBuffer
 			for y := int32(0); y < frameHeight; y++ {

@@ -358,3 +358,153 @@ func generateBlendAddTestData(t *testing.T) (*JXLCodestreamDecoder, *image.Image
 	}
 	return jxl, canvas, err, frame
 }
+
+func TestPerformBlending(t *testing.T) {
+
+	for _, tc := range []struct {
+		name                string
+		canvas              []image.ImageBuffer
+		info                *frame2.BlendingInfo
+		frameBuffer         image.ImageBuffer
+		canvasIdx           int32
+		ref                 image.ImageBuffer
+		frameHeight         int32
+		frameStartY         int32
+		frameOffsetY        int32
+		frameWidth          int32
+		frameStartX         int32
+		frameOffsetX        int32
+		hasAlpha            bool
+		refBuffer           []image.ImageBuffer
+		imageColours        int
+		frameBuffers        []image.ImageBuffer
+		frameColours        int
+		isAlpha             bool
+		premult             bool
+		expectedImageBuffer image.ImageBuffer
+		expectErr           bool
+	}{
+		{
+			name: "blend add is int, success",
+			canvas: []image.ImageBuffer{{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			}},
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_ADD,
+			},
+
+			frameBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			canvasIdx: 0,
+			ref: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 4),
+			},
+			frameHeight:  10,
+			frameStartY:  0,
+			frameOffsetY: 0,
+			frameWidth:   10,
+			frameStartX:  0,
+			frameOffsetX: 0,
+			hasAlpha:     false,
+			refBuffer:    nil,
+			imageColours: 0,
+			frameBuffers: nil,
+			frameColours: 0,
+			isAlpha:      false,
+			premult:      false,
+			expectedImageBuffer: image.ImageBuffer{
+				Width:      10,
+				Height:     10,
+				BufferType: image.TYPE_INT,
+				IntBuffer:  makeFullMatrix[int32](10, 10, 7),
+			},
+			expectErr: false,
+		},
+		{
+			name: "blend add is float, success",
+			canvas: []image.ImageBuffer{{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 2),
+			}},
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_ADD,
+			},
+
+			frameBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 3),
+			},
+			canvasIdx: 0,
+			ref: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 4),
+			},
+			frameHeight:  10,
+			frameStartY:  0,
+			frameOffsetY: 0,
+			frameWidth:   10,
+			frameStartX:  0,
+			frameOffsetX: 0,
+			hasAlpha:     false,
+			refBuffer:    nil,
+			imageColours: 0,
+			frameBuffers: nil,
+			frameColours: 0,
+			isAlpha:      false,
+			premult:      false,
+			expectedImageBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: makeFullMatrix[float32](10, 10, 7),
+			},
+			expectErr: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+			err := jxl.performBlending(tc.canvas, tc.info, tc.frameBuffer, tc.canvasIdx, tc.ref, tc.frameHeight, tc.frameStartY, tc.frameOffsetY, tc.frameWidth, tc.frameStartX, tc.frameOffsetX, tc.hasAlpha, tc.refBuffer, tc.imageColours, tc.frameBuffers, tc.frameColours, tc.isAlpha, tc.premult)
+
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+			if !tc.expectErr && !reflect.DeepEqual(tc.canvas[0].IntBuffer, tc.expectedImageBuffer.IntBuffer) {
+				t.Errorf("expected %v but got %v", tc.expectedImageBuffer.IntBuffer, tc.canvas[0].IntBuffer)
+			}
+		})
+	}
+}
+
+func makeFullMatrix[T any](height int, width int, val T) [][]T {
+	mat := util.MakeMatrix2D[T](height, width)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			mat[y][x] = val
+		}
+	}
+	return mat
+}
