@@ -33,7 +33,7 @@ func WritePNG(jxlImage *JXLImage, output io.Writer) error {
 		}
 	}
 
-	if err := writeIDAT2(jxlImage, output); err != nil {
+	if err := writeIDAT(jxlImage, output); err != nil {
 		return err
 	}
 	output.Write([]byte{0, 0, 0, 0})
@@ -154,63 +154,6 @@ func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
 }
 
 func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
-
-	var buf bytes.Buffer
-	buf.Write([]byte("IDAT"))
-
-	var compressedBytes bytes.Buffer
-	w, err := zlib.NewWriterLevel(&compressedBytes, 1)
-	if err != nil {
-		return err
-	}
-
-	if err = jxlImage.Buffer[0].CastToIntIfFloat(255); err != nil {
-		return err
-	}
-
-	if err = jxlImage.Buffer[1].CastToIntIfFloat(255); err != nil {
-		return err
-	}
-	if err = jxlImage.Buffer[2].CastToIntIfFloat(255); err != nil {
-		return err
-	}
-
-	if jxlImage.HasAlpha() {
-		if err = jxlImage.Buffer[3].CastToIntIfFloat(255); err != nil {
-			return err
-		}
-	}
-
-	for y := uint32(0); y < jxlImage.Height; y++ {
-		w.Write([]byte{0})
-		for x := uint32(0); x < jxlImage.Width; x++ {
-
-			// FIXME(kpfaulkner) remove 3 assumption
-			for c := 0; c < 3; c++ {
-				dat := byte(jxlImage.Buffer[c].IntBuffer[y][x])
-				w.Write([]byte{dat})
-			}
-			if jxlImage.HasAlpha() {
-				w.Write([]byte{byte(jxlImage.Buffer[3].IntBuffer[y][x])})
-			}
-		}
-	}
-	w.Close()
-
-	buf.Write(compressedBytes.Bytes())
-	bb := buf.Bytes()
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint32(b, uint32(len(bb))-4)
-	output.Write(b)
-	output.Write(bb)
-	checksum := crc32.ChecksumIEEE(bb)
-	binary.BigEndian.PutUint32(b, checksum)
-	output.Write(b)
-
-	return nil
-}
-
-func writeIDAT2(jxlImage *JXLImage, output io.Writer) error {
 
 	var buf bytes.Buffer
 	buf.Write([]byte("IDAT"))
