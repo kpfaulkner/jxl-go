@@ -824,7 +824,6 @@ func TestConvertReferenceWithDifferentBufferType(t *testing.T) {
 
 func TestBlendAlpha(t *testing.T) {
 
-	// canvas image2.ImageBuffer, hasAlpha bool, info *frame.BlendingInfo, imageColours int, refBuffer []image2.ImageBuffer, frameBuffers []image2.ImageBuffer) error {
 	for _, tc := range []struct {
 		name         string
 		canvas       image.ImageBuffer
@@ -919,6 +918,165 @@ func TestBlendAlpha(t *testing.T) {
 			}
 			if !tc.expectErr && err != nil {
 				t.Errorf("expected no error but got %v", err)
+			}
+
+		})
+	}
+}
+
+func TestConvertCanvasWithDifferentBufferType(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		canvas              image.ImageBuffer
+		hasAlpha            bool
+		chanNo              int32
+		frameChanNo         int32
+		info                *frame2.BlendingInfo
+		imageColours        int
+		frameColours        int
+		frameBuffer         *image.ImageBuffer
+		expectErr           bool
+		expectedFrameBuffer image.ImageBuffer
+		expectedCanvas      image.ImageBuffer
+	}{
+		{
+			name: "convert extra channels",
+			canvas: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			},
+			chanNo: 0,
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_BLEND,
+			},
+			hasAlpha: true,
+			frameBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			imageColours: 0,
+			expectErr:    false,
+			expectedFrameBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+				FloatBuffer: makeFullMatrix[float32](10, 10, 0.011764707),
+			},
+		},
+		{
+			name: "convert colour channels",
+			canvas: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			},
+			chanNo: 0,
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_BLEND,
+			},
+			hasAlpha: true,
+			frameBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			imageColours: 1,
+			expectErr:    false,
+			expectedFrameBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+				FloatBuffer: makeFullMatrix[float32](10, 10, 0.011764707),
+			},
+		},
+		{
+			name: "convert frame colour channels",
+			canvas: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			},
+			chanNo: 0,
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_BLEND,
+			},
+			hasAlpha: true,
+			frameBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			imageColours: 1,
+			frameChanNo:  0,
+			frameColours: 1,
+			expectErr:    false,
+			expectedFrameBuffer: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_FLOAT,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+				FloatBuffer: makeFullMatrix[float32](10, 10, 0.011764707),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+			jxl.imageHeader = &bundle.ImageHeader{
+				BitDepth: &bundle.BitDepthHeader{
+					BitsPerSample:    8,
+					ExpBits:          0,
+					UsesFloatSamples: false,
+				},
+				ExtraChannelInfo: []bundle.ExtraChannelInfo{{
+					BitDepth: bundle.BitDepthHeader{
+						BitsPerSample:    8,
+						ExpBits:          0,
+						UsesFloatSamples: false,
+					},
+				}},
+			}
+
+			err := jxl.convertCanvasWithDifferentBufferType(
+				[]image.ImageBuffer{tc.canvas},
+				tc.chanNo,
+				tc.frameBuffer,
+				tc.imageColours,
+				tc.frameChanNo,
+				tc.frameColours)
+			if err != nil {
+				t.Errorf("error blending frame : %v", err)
+			}
+
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+			if !tc.expectErr && !reflect.DeepEqual(tc.canvas.FloatBuffer, tc.expectedCanvas.FloatBuffer) {
+				t.Errorf("expected %v but got %v", tc.expectedCanvas.FloatBuffer, tc.canvas.FloatBuffer)
+			}
+
+			if !tc.expectErr && !reflect.DeepEqual(tc.frameBuffer.FloatBuffer, tc.expectedFrameBuffer.FloatBuffer) {
+				t.Errorf("expected %v but got %v", tc.expectedFrameBuffer.FloatBuffer, tc.frameBuffer.FloatBuffer)
 			}
 
 		})

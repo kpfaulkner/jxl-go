@@ -789,7 +789,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		premult := hasAlpha && jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].AlphaAssociated
 
 		refBuffer := jxl.reference[info.Source]
-		err := jxl.convertCanvasWithDifferentBufferType(canvas, c, frameBuffer, imageColours, frameC, frameColours)
+		err := jxl.convertCanvasWithDifferentBufferType(canvas, c, &frameBuffer, imageColours, frameC, frameColours)
 		if err != nil {
 			return err
 		}
@@ -1052,24 +1052,30 @@ func (jxl *JXLCodestreamDecoder) blendAlpha(canvas image2.ImageBuffer, hasAlpha 
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) convertCanvasWithDifferentBufferType(canvas []image2.ImageBuffer, c int32, frameBuffer image2.ImageBuffer, imageColours int, frameC int32, frameColours int) error {
-	if canvas[c].BufferType != frameBuffer.BufferType {
+func (jxl *JXLCodestreamDecoder) convertCanvasWithDifferentBufferType(
+	canvas []image2.ImageBuffer,
+	channelNo int32,
+	frameBuffer *image2.ImageBuffer,
+	imageColours int,
+	frameChannelNo int32,
+	frameColours int) error {
+	if canvas[channelNo].BufferType != frameBuffer.BufferType {
 		var depthCanvas int32
-		if c >= int32(imageColours) {
-			depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[c-int32(imageColours)].BitDepth.BitsPerSample)
+		if channelNo >= int32(imageColours) {
+			depthCanvas = int32(jxl.imageHeader.ExtraChannelInfo[channelNo-int32(imageColours)].BitDepth.BitsPerSample)
 		} else {
 			depthCanvas = int32(jxl.imageHeader.BitDepth.BitsPerSample)
 		}
 		var depthFrame int32
-		if frameC >= int32(frameColours) {
-			depthFrame = int32(jxl.imageHeader.ExtraChannelInfo[frameC-int32(frameColours)].BitDepth.BitsPerSample)
+		if frameChannelNo >= int32(frameColours) {
+			depthFrame = int32(jxl.imageHeader.ExtraChannelInfo[frameChannelNo-int32(frameColours)].BitDepth.BitsPerSample)
 		} else {
 			depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
 		}
 		if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
 			return err
 		}
-		if err := canvas[c].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+		if err := canvas[channelNo].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
 			return err
 		}
 	}
