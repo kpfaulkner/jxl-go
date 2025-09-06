@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 	"io"
+
+	"github.com/kpfaulkner/jxl-go/colour"
 )
 
 // WritePNG instead of using standard golang image/png package since we need
@@ -101,21 +103,24 @@ func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
 	// colourmode is 6 if include alpha...  otherwise 2
 	colourMode := byte(2)
 
-	var bitDepth int32
-	if jxlImage.imageHeader.BitDepth.BitsPerSample > 8 {
-		bitDepth = 16
-		if jxlImage.HasAlpha() {
-			colourMode = 6
-		} else {
-			colourMode = 2
-		}
-	} else {
-		bitDepth = 8
-		if jxlImage.HasAlpha() {
+	if jxlImage.ColorEncoding == colour.CE_GRAY {
+		if jxlImage.alphaIndex >= 0 {
 			colourMode = 4
 		} else {
 			colourMode = 0
 		}
+	} else {
+		if jxlImage.alphaIndex >= 0 {
+			colourMode = 6
+		} else {
+			colourMode = 2
+		}
+	}
+	var bitDepth int32
+	if jxlImage.imageHeader.BitDepth.BitsPerSample > 8 {
+		bitDepth = 16
+	} else {
+		bitDepth = 8
 	}
 
 	ihdr := make([]byte, 17)
