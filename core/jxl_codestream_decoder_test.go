@@ -821,3 +821,106 @@ func TestConvertReferenceWithDifferentBufferType(t *testing.T) {
 		})
 	}
 }
+
+func TestBlendAlpha(t *testing.T) {
+
+	// canvas image2.ImageBuffer, hasAlpha bool, info *frame.BlendingInfo, imageColours int, refBuffer []image2.ImageBuffer, frameBuffers []image2.ImageBuffer) error {
+	for _, tc := range []struct {
+		name         string
+		canvas       image.ImageBuffer
+		hasAlpha     bool
+		info         *frame2.BlendingInfo
+		imageColours int
+		refBuffer    *image.ImageBuffer
+		frameBuffer  *image.ImageBuffer
+		expectErr    bool
+	}{
+		{
+			name: "blend alpha with ref success",
+			canvas: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			},
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_BLEND,
+			},
+			hasAlpha: true,
+			frameBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			refBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 4),
+			},
+			imageColours: 0,
+			expectErr:    false,
+		},
+		{
+			name: "blend alpha without ref success",
+			canvas: image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 2),
+			},
+			info: &frame2.BlendingInfo{
+				Mode: frame2.BLEND_BLEND,
+			},
+			hasAlpha: true,
+			frameBuffer: &image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			},
+			refBuffer: &image.ImageBuffer{
+				Width:       0,
+				Height:      0,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 4),
+			},
+			imageColours: 0,
+			expectErr:    false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+			jxl.imageHeader = &bundle.ImageHeader{
+				ExtraChannelInfo: []bundle.ExtraChannelInfo{{
+					BitDepth: bundle.BitDepthHeader{
+						BitsPerSample:    8,
+						ExpBits:          0,
+						UsesFloatSamples: false,
+					},
+				}},
+			}
+
+			err := jxl.blendAlpha(tc.canvas, tc.hasAlpha, tc.info, tc.imageColours, []image.ImageBuffer{*tc.refBuffer}, []image.ImageBuffer{*tc.frameBuffer})
+			if err != nil {
+				t.Errorf("error blending frame : %v", err)
+			}
+
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+		})
+	}
+}

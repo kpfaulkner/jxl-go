@@ -811,7 +811,7 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		}
 		ref := refBuffer[c]
 
-		err2 := jxl.blendAlpha(canvas, hasAlpha, info, imageColours, refBuffer, c, frameBuffers)
+		err2 := jxl.blendAlpha(canvas[c], hasAlpha, info, imageColours, refBuffer, frameBuffers)
 		if err2 != nil {
 			return err2
 		}
@@ -1031,12 +1031,12 @@ func (jxl *JXLCodestreamDecoder) convertReferenceWithDifferentBufferType(
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) blendAlpha(canvas []image2.ImageBuffer, hasAlpha bool, info *frame.BlendingInfo, imageColours int, refBuffer []image2.ImageBuffer, c int32, frameBuffers []image2.ImageBuffer) error {
+func (jxl *JXLCodestreamDecoder) blendAlpha(canvas image2.ImageBuffer, hasAlpha bool, info *frame.BlendingInfo, imageColours int, refBuffer []image2.ImageBuffer, frameBuffers []image2.ImageBuffer) error {
 	if hasAlpha && (info.Mode == frame.BLEND_BLEND || info.Mode == frame.BLEND_MULADD) {
 		depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
 		alphaIdx := imageColours + int(info.AlphaChannel)
 		if refBuffer[alphaIdx].Width == 0 && refBuffer[alphaIdx].Height == 0 {
-			refBuf, err := image2.NewImageBuffer(image2.TYPE_FLOAT, canvas[c].Height, canvas[c].Width)
+			refBuf, err := image2.NewImageBuffer(image2.TYPE_FLOAT, canvas.Height, canvas.Width)
 			if err != nil {
 				return err
 			}
