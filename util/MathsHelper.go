@@ -3,7 +3,6 @@ package util
 import (
 	"cmp"
 	"errors"
-	"fmt"
 	"math"
 	"math/bits"
 

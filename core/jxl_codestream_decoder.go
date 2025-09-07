@@ -1100,7 +1100,6 @@ func (jxl *JXLCodestreamDecoder) copyToCanvas(canvas *image2.ImageBuffer, start 
 			copy(canvas.FloatBuffer[y+uint32(start.Y)][start.X:], frameBuffer.FloatBuffer[y+uint32(off.Y)][off.X:uint32(off.X)+size.Width])
 		}
 	}
-	fmt.Printf("end copyOfCanvas\n")
 	return nil
 }
 
