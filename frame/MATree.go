@@ -190,17 +190,15 @@ func (t *MATree) walk(walkerFunc func(inp int32) (int32, error)) (*MATree, error
 		return t, nil
 	}
 
-	var branch *MATree
 	value, err := walkerFunc(t.property)
 	if err != nil {
 		return nil, err
 	}
+
 	if value > t.value {
-		branch = t.leftChildNode
-	} else {
-		branch = t.rightChildNode
+		return t.leftChildNode.walk(walkerFunc)
 	}
-	return branch.walk(walkerFunc)
+	return t.rightChildNode.walk(walkerFunc)
 }
 
 func (t *MATree) getSize() int {

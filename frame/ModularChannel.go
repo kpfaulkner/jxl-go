@@ -154,14 +154,15 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 	logWeight := util.FloorLog1p(int64(wSum)-1) - 4
 	wSum = 0
 	weight := mc.weight
+
+	s := int32(0)
 	for e := 0; e < 4; e++ {
 		weight[e] = weight[e] >> logWeight
 		wSum += weight[e]
-	}
-	s := (wSum >> 1) - 1
-	for e := 0; e < 4; e++ {
 		s += mc.subpred[e] * mc.weight[e]
 	}
+	s += (wSum >> 1) - 1
+
 	mc.pred[y][x] = int32((int64(s) * oneL24OverKP1[wSum-1]) >> 24)
 	if (tN^tW)|(tN^tNW) <= 0 {
 		mc.pred[y][x] = util.Clamp(mc.pred[y][x], w3, n3, ne3)
