@@ -66,10 +66,6 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame *Frame, pass uint
 	for c := 0; c < 3; c++ {
 		sY := size.Height >> header.jpegUpsamplingY[c]
 		sX := size.Width >> header.jpegUpsamplingX[c]
-		if sX == 160 {
-			fmt.Printf("snoop\n")
-		}
-
 		hf.quantizedCoeffs[c] = util.MakeMatrix2D[int32](sY, sX)
 		hf.dequantHFCoeff[c] = util.MakeMatrix2D[float32](sY, sX)
 	}
@@ -403,10 +399,6 @@ func (hf *HFCoefficients) finalizeLLF() error {
 			pixelGroupX := sGroupX << 3
 			sLfgY := posInLfg.Y >> header.jpegUpsamplingY[c]
 			sLfgX := posInLfg.X >> header.jpegUpsamplingX[c]
-
-			if sLfgX == 80 {
-				fmt.Printf("snoop\n")
-			}
 
 			dqlf := hf.lfg.lfCoeff.dequantLFCoeff[c]
 			dq := hf.dequantHFCoeff[c]

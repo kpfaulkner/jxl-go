@@ -149,10 +149,6 @@ func (f *Frame) ReadTOC() error {
 }
 
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
-
-	if index == 8 {
-		fmt.Printf("snoop\n")
-	}
 	length := f.tocLengths[index]
 	buffer := make([]uint8, length+4)
 	err := f.reader.ReadBytesToBuffer(buffer, length)
@@ -541,9 +537,6 @@ func (f *Frame) startWorker(inputChan chan Inp, passGroups [][]PassGroup) {
 
 func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) error {
 
-	if iPass == 0 && iGroup == 2 {
-		fmt.Printf("snoop\n")
-	}
 	br, err := f.getBitreader(2 + int(f.numLFGroups) + iPass*int(f.numGroups) + iGroup)
 	if err != nil {
 		return err
@@ -612,9 +605,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	for pass := 0; pass < numPasses; pass++ {
 		j := 0
 		for i := 0; i < len(f.passes[pass].replacedChannels); i++ {
-			if i == 36 {
-				fmt.Printf("snoop\n")
-			}
 			if f.passes[pass].replacedChannels[i] == nil {
 				continue
 			}
@@ -623,11 +613,6 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			channel := f.LfGlobal.globalModular.channels[ii]
 			channel.allocate()
 			for group := 0; group < int(f.numGroups); group++ {
-				fmt.Printf("Pass %d Group %d Channel %d\n", pass, group, jj)
-				if pass == 0 && group == 2 && jj == 0 {
-					fmt.Printf("snoop\n")
-				}
-
 				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
@@ -651,20 +636,15 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		for pass := 0; pass < numPasses; pass++ {
 			for group := 0; group < numGroups; group++ {
 				passGroup := passGroups[pass][group]
-				if pass == 0 && group == 1 {
-					fmt.Printf("snoop\n")
-				}
 				var prev *PassGroup
 				if pass > 0 {
 					prev = &passGroups[pass-1][group]
 				} else {
 					prev = nil
 				}
-				//displayBuffers("Before", buffers)
 				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
 					return err
 				}
-				//displayBuffers("After", buffers)
 			}
 		}
 	}

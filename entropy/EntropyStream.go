@@ -2,7 +2,6 @@ package entropy
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
@@ -165,16 +164,6 @@ func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ
 
 	for i := 0; i < len(es.dists); i++ {
 		es.dists[i].SetConfig(configs[i])
-	}
-
-	//if testcommon.IsRecorder(reader) {
-	//	recorderReader.DisplayData()
-	//}
-
-	for _, w := range es.window {
-		if w != 0 {
-			fmt.Printf("snoop\n")
-		}
 	}
 
 	return es, nil
