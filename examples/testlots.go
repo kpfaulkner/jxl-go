@@ -20,6 +20,13 @@ func main() {
 
 	filePaths := []string{
 
+		`..\testdata\ants-lossless.jxl|ants-lossless.png`,
+
+		// bbb.jxl still has some issues...  95% good.. but somethings wrong :/
+		`..\testdata\bbb.jxl|bbb.png`,
+
+		`..\testdata\bench.jxl|bench.png`,
+
 		// not looking like ref.png but same as jxlatte output
 		`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl|spot.png`,
 		`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl|upsampling.png`,
@@ -36,8 +43,7 @@ func main() {
 		`..\testdata\unittest.jxl|unittest.png`,
 		`..\testdata\bench.jxl|bench.png`,
 		`..\testdata\alpha-triangles.jxl|alpha-triangles.png`,
-		`..\testdata\bbb.jxl|bbb.png`,
-		`..\testdata\ants-lossless.jxl|ants-lossless.png`,
+
 		`..\testdata\lenna.jxl|lenna.png`,
 		`..\testdata\quilt.jxl|quilt.png`,
 		`..\testdata\wb-rainbow.jxl|wb-rainbow.png`,
@@ -88,7 +94,7 @@ func main() {
 			pngFileName := path.Join(destinationDir, newFile)
 
 			// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
-			if jxlImage.HasICCProfile() || true {
+			if jxlImage.HasICCProfile() {
 				f, err := os.Create(pngFileName)
 				if err != nil {
 					log.Fatalf("boomage %v", err)
