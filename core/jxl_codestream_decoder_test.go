@@ -1082,3 +1082,147 @@ func TestConvertCanvasWithDifferentBufferType(t *testing.T) {
 		})
 	}
 }
+
+func TestComputePatches(t *testing.T) {
+
+	for _, tc := range []struct {
+		name        string
+		frame       *frame2.Frame
+		imageHeader *bundle.ImageHeader
+		expectErr   bool
+	}{
+		{
+			name: "success",
+			imageHeader: &bundle.ImageHeader{
+				Level: 5,
+				Size: util.Dimension{
+					Width:  3264,
+					Height: 2448,
+				},
+				Orientation: 1,
+				BitDepth: &bundle.BitDepthHeader{
+					UsesFloatSamples: false,
+					BitsPerSample:    8,
+					ExpBits:          0,
+				},
+				OrientedWidth:       3264,
+				OrientedHeight:      2448,
+				Modular16BitBuffers: true,
+				ExtraChannelInfo:    nil,
+				XybEncoded:          false,
+				ColourEncoding: &colour.ColourEncodingBundle{
+					UseIccProfile:  false,
+					ColourEncoding: 0,
+					WhitePoint:     1,
+					White: &colour.CIEXY{
+						X: 0.3127,
+						Y: 0.329,
+					},
+					Primaries: 1,
+					Prim: &colour.CIEPrimaries{
+						Red: &colour.CIEXY{
+							X: 0.6399987,
+							Y: 0.33001015,
+						},
+						Green: &colour.CIEXY{
+							X: 0.3000038,
+							Y: 0.60000336,
+						},
+						Blue: &colour.CIEXY{
+							X: 0.15000205,
+							Y: 0.059997205,
+						},
+					},
+					Tf:              16777229,
+					RenderingIntent: 0,
+				},
+				AlphaIndices: nil,
+				ToneMapping: &colour.ToneMapping{
+					IntensityTarget:      255,
+					MinNits:              0,
+					RelativeToMaxDisplay: false,
+					LinearBelow:          0,
+				},
+				Extensions:         nil,
+				OpsinInverseMatrix: nil,
+				Up2Weights:         nil,
+				Up4Weights:         nil,
+				Up8Weights:         nil,
+				EncodedICC:         nil,
+			},
+			frame: &frame2.Frame{
+				Buffer: []image.ImageBuffer{{
+					Width:       10,
+					Height:      10,
+					BufferType:  image.TYPE_INT,
+					FloatBuffer: nil,
+					IntBuffer:   util.MakeMatrix2D[int32](10, 10),
+				}},
+				LfGlobal: &frame2.LFGlobal{
+					Patches: []frame2.Patch{{
+						Width:  10,
+						Height: 10,
+						Bounds: util.Rectangle{},
+						Ref:    0,
+						Origin: util.Point{},
+						Positions: []util.Point{{
+							X: 5,
+							Y: 5,
+						}},
+						BlendingInfos: [][]frame2.BlendingInfo{{frame2.BlendingInfo{
+							Mode:         frame2.BLEND_ADD,
+							AlphaChannel: 0,
+							Clamp:        false,
+							Source:       0,
+						}}},
+					}},
+				},
+				Header: &frame2.FrameHeader{
+					BlendingInfo: &frame2.BlendingInfo{
+						Source: 0,
+					},
+					Bounds: &util.Rectangle{
+						Origin: util.Point{
+							X: 0,
+							Y: 0,
+						},
+						Size: util.Dimension{
+							Width:  10,
+							Height: 10,
+						},
+					},
+				},
+				GlobalMetadata: &bundle.ImageHeader{
+					ColourEncoding: &colour.ColourEncodingBundle{
+						ColourEncoding: colour.CE_RGB,
+					},
+				},
+			},
+			expectErr: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+			jxl.imageHeader = tc.imageHeader
+			jxl.reference = make([][]image.ImageBuffer, 1)
+			jxl.reference[0] = []image.ImageBuffer{image.ImageBuffer{
+				Width:       10,
+				Height:      10,
+				BufferType:  image.TYPE_INT,
+				FloatBuffer: nil,
+				IntBuffer:   makeFullMatrix[int32](10, 10, 3),
+			}}
+
+			err := jxl.computePatches(tc.frame)
+
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+		})
+	}
+}
