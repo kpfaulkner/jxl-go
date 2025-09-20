@@ -13,6 +13,7 @@ type FakeBitReader struct {
 	ReadU32Data  []uint32
 	ReadU8Data   []int
 	ShowBitsData []uint64
+	ReadEnumData []int32
 }
 
 func (fbr *FakeBitReader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) error {
@@ -40,8 +41,12 @@ func (fbr *FakeBitReader) ReadByte() (uint8, error) {
 }
 
 func (fbr *FakeBitReader) ReadEnum() (int32, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(fbr.ReadEnumData) > 0 {
+		val := fbr.ReadEnumData[0]
+		fbr.ReadEnumData = fbr.ReadEnumData[1:]
+		return val, nil
+	}
+	return 0, fmt.Errorf("No more data")
 }
 
 func (fbr *FakeBitReader) ReadICCVarint() (int32, error) {
