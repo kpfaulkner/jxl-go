@@ -44,10 +44,6 @@ func AdaptWhitePoint(targetWP *CIEXY, currentWP *CIEXY) ([][]float32, error) {
 		return nil, err
 	}
 
-	if isLMSValid(lmsCurrent) {
-		return nil, errors.New("Invalid LMS")
-	}
-
 	wTarget, err := GetXYZ(*targetWP)
 	if err != nil {
 		return nil, err
@@ -57,9 +53,10 @@ func AdaptWhitePoint(targetWP *CIEXY, currentWP *CIEXY) ([][]float32, error) {
 		return nil, err
 	}
 
-	if isLMSValid(lmsTarget) {
+	if !isLMSValid(lmsCurrent) {
 		return nil, errors.New("Invalid LMS")
 	}
+
 	a := util.MakeMatrix2D[float32](3, 3)
 	for i := 0; i < 3; i++ {
 		a[i][i] = lmsTarget[i] / lmsCurrent[i]
