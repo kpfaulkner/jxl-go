@@ -1226,3 +1226,175 @@ func TestComputePatches(t *testing.T) {
 		})
 	}
 }
+
+func TestTransposeBufferInt(t *testing.T) {
+
+	for _, tc := range []struct {
+		name           string
+		src            [][]int32
+		orientation    uint32
+		expectedResult [][]int32
+		expectErr      bool
+	}{
+		{
+			name:           "success orientation 1",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    1,
+			expectedResult: [][]int32{{1, 2, 3}, {4, 5, 6}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 2",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    2,
+			expectedResult: [][]int32{{3, 2, 1}, {6, 5, 4}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 3",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    3,
+			expectedResult: [][]int32{{6, 5, 4}, {3, 2, 1}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 4",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    4,
+			expectedResult: [][]int32{{4, 5, 6}, {1, 2, 3}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 5",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    5,
+			expectedResult: [][]int32{{1, 4}, {2, 5}, {3, 6}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 6",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    6,
+			expectedResult: [][]int32{{4, 1}, {5, 2}, {6, 3}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 7",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    7,
+			expectedResult: [][]int32{{6, 3}, {5, 2}, {4, 1}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 8",
+			src:            [][]int32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    8,
+			expectedResult: [][]int32{{3, 6}, {2, 5}, {1, 4}},
+			expectErr:      false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+
+			res, err := jxl.transposeBufferInt(tc.src, tc.orientation)
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+			if !reflect.DeepEqual(res, tc.expectedResult) {
+				t.Errorf("expected matrix %+v, got %+v", tc.expectedResult, res)
+			}
+
+		})
+	}
+}
+
+func TestTransposeBufferFloat(t *testing.T) {
+
+	for _, tc := range []struct {
+		name           string
+		src            [][]float32
+		orientation    uint32
+		expectedResult [][]float32
+		expectErr      bool
+	}{
+		{
+			name:           "success orientation 1",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    1,
+			expectedResult: [][]float32{{1, 2, 3}, {4, 5, 6}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 2",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    2,
+			expectedResult: [][]float32{{3, 2, 1}, {6, 5, 4}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 3",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    3,
+			expectedResult: [][]float32{{6, 5, 4}, {3, 2, 1}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 4",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    4,
+			expectedResult: [][]float32{{4, 5, 6}, {1, 2, 3}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 5",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    5,
+			expectedResult: [][]float32{{1, 4}, {2, 5}, {3, 6}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 6",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    6,
+			expectedResult: [][]float32{{4, 1}, {5, 2}, {6, 3}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 7",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    7,
+			expectedResult: [][]float32{{6, 3}, {5, 2}, {4, 1}},
+			expectErr:      false,
+		},
+		{
+			name:           "success orientation 8",
+			src:            [][]float32{{1, 2, 3}, {4, 5, 6}},
+			orientation:    8,
+			expectedResult: [][]float32{{3, 6}, {2, 5}, {1, 4}},
+			expectErr:      false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			jxl := NewJXLCodestreamDecoder(nil, nil)
+
+			res, err := jxl.transposeBufferFloat(tc.src, tc.orientation)
+			if tc.expectErr && err == nil {
+				t.Errorf("expected error but got none")
+			}
+			if !tc.expectErr && err != nil {
+				t.Errorf("expected no error but got %v", err)
+			}
+
+			if !reflect.DeepEqual(res, tc.expectedResult) {
+				t.Errorf("expected matrix %+v, got %+v", tc.expectedResult, res)
+			}
+
+		})
+	}
+}
