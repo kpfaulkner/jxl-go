@@ -185,14 +185,15 @@ func TestGetMatrix(t *testing.T) {
 		QuantBias:     []float32{0.94534993, 0.9299455, 0.9500649},
 		CbrtOpsinBias: []float32{-0.1559542, -0.1559542, -0.1559542},
 		Primaries: CIEPrimaries{
-			Red:   &CIEXY{X: 0.399987, Y: 0.33001015},
+			Red:   &CIEXY{X: 0.6399987, Y: 0.33001015},
 			Green: &CIEXY{X: 0.3000038, Y: 0.60000336},
 			Blue:  &CIEXY{X: 0.15000205, Y: 0.059997205},
 		},
 		WhitePoint:         CIEXY{X: 0.3127, Y: 0.329},
 		QuantBiasNumerator: 0.145}
 
-	if !reflect.DeepEqual(expectedResult, *oim) {
+	if !reflect.DeepEqual(*oim, expectedResult) {
 		t.Errorf("expected OpsInverseMatrix %+v, got %+v", expectedResult, *oim)
 	}
+
 }
