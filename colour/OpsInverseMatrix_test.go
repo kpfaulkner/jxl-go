@@ -1,8 +1,8 @@
 package colour
 
 import (
-	"fmt"
 	"math"
+	"reflect"
 	"testing"
 
 	"github.com/kpfaulkner/jxl-go/testcommon"
@@ -98,7 +98,6 @@ func TestNewOpsinInverseMatrixWithReader(t *testing.T) {
 
 			matrix, err := NewOpsinInverseMatrixWithReader(bitReader)
 
-			fmt.Printf("XXXXXX %#v\n", *matrix)
 			if tc.expectErr && err == nil {
 				t.Errorf("expected error but got none")
 			}
@@ -148,4 +147,52 @@ func TestInvertXYB(t *testing.T) {
 
 	}
 
+}
+
+func TestGetMatrix(t *testing.T) {
+
+	matrix := NewOpsinInverseMatrix()
+
+	// dummy data..
+	buf := util.MakeMatrix3D[float32](3, 3, 3)
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 3; j++ {
+			for k := 0; k < 3; k++ {
+				buf[i][j][k] = float32(i*9 + j*3 + k + 1)
+			}
+		}
+	}
+
+	prim := CIEPrimaries{
+		Red:   &CIEXY{X: 0.6399987, Y: 0.33001015},
+		Green: &CIEXY{X: 0.3000038, Y: 0.60000336},
+		Blue:  &CIEXY{X: 0.15000205, Y: 0.059997205},
+	}
+
+	white := CIEXY{X: 0.3127, Y: 0.329}
+
+	oim, err := matrix.GetMatrix(&prim, &white)
+	if err != nil {
+		t.Errorf("GetMatrix() unexpected error: %v", err)
+	}
+
+	expectedResult := OpsinInverseMatrix{
+		Matrix: [][]float32{
+			[]float32{11.031567, -9.866944, -0.16462299},
+			[]float32{-3.2541473, 4.4187703, -0.16462299},
+			[]float32{-3.6588514, 2.712923, 1.9459282}},
+		OpsinBias:     []float32{-0.0037930734, -0.0037930734, -0.0037930734},
+		QuantBias:     []float32{0.94534993, 0.9299455, 0.9500649},
+		CbrtOpsinBias: []float32{-0.1559542, -0.1559542, -0.1559542},
+		Primaries: CIEPrimaries{
+			Red:   &CIEXY{X: 0.399987, Y: 0.33001015},
+			Green: &CIEXY{X: 0.3000038, Y: 0.60000336},
+			Blue:  &CIEXY{X: 0.15000205, Y: 0.059997205},
+		},
+		WhitePoint:         CIEXY{X: 0.3127, Y: 0.329},
+		QuantBiasNumerator: 0.145}
+
+	if !reflect.DeepEqual(expectedResult, *oim) {
+		t.Errorf("expected OpsInverseMatrix %+v, got %+v", expectedResult, *oim)
+	}
 }
