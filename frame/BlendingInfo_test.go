@@ -9,7 +9,7 @@ import (
 
 func TestNewBlendingInfo(t *testing.T) {
 	bi := NewBlendingInfo()
-	expectedBI := &BlendingInfo{Mode: BLEND_REPLACE, AlphaChannel: 0, Clamp: false, Source: 0}
+	expectedBI := BlendingInfo{Mode: BLEND_REPLACE, AlphaChannel: 0, Clamp: false, Source: 0}
 
 	if !reflect.DeepEqual(*bi, expectedBI) {
 		t.Errorf("expected BlendinfInfo %+v, got %+v", expectedBI, *bi)
