@@ -28,9 +28,6 @@ func NewBlendingInfoWithReader(reader jxlio.BitReader, extra bool, fullFrame boo
 	} else {
 		bi.Mode = mode
 	}
-	//if bi.Mode == 0 {
-	//	return bi, nil
-	//}
 
 	if extra && (bi.Mode == BLEND_BLEND || bi.Mode == BLEND_MULADD) {
 		if alphaChannel, err := reader.ReadU32(0, 0, 1, 0, 2, 0, 3, 3); err != nil {
