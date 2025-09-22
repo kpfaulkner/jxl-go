@@ -3,7 +3,6 @@ package frame
 import (
 	"errors"
 
-	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -16,7 +15,7 @@ type HFBlockContext struct {
 	numLFContexts int32
 }
 
-func NewHFBlockContextWithReader(reader jxlio.BitReader) (*HFBlockContext, error) {
+func NewHFBlockContextWithReader(reader jxlio.BitReader, readClusterMap func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*HFBlockContext, error) {
 	hf := &HFBlockContext{}
 	hf.lfThresholds = util.MakeMatrix2D[int32](3, 0)
 	useDefault, err := reader.ReadBool()
@@ -75,7 +74,8 @@ func NewHFBlockContextWithReader(reader jxlio.BitReader) (*HFBlockContext, error
 	}
 
 	hf.clusterMap = make([]int, bSize)
-	nc, err := entropy.ReadClusterMap(reader, hf.clusterMap, 16)
+	//nc, err := entropy.ReadClusterMap(reader, hf.clusterMap, 16)
+	nc, err := readClusterMap(reader, hf.clusterMap, 16)
 	if err != nil {
 		return nil, err
 	}

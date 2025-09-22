@@ -103,7 +103,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 		for i := 0; i < 3; i++ {
 			lf.scaledDequant[i] = (1 << 16) * lf.lfDequant[i] / float32(lf.globalScale*lf.quantLF)
 		}
-		lf.hfBlockCtx, err = NewHFBlockContextWithReader(reader)
+		lf.hfBlockCtx, err = NewHFBlockContextWithReader(reader, entropy.ReadClusterMap)
 		if err != nil {
 			return nil, err
 		}

@@ -132,19 +132,6 @@ func (f *Frame) ReadTOC() error {
 	}
 
 	f.reader.ZeroPadToByte()
-
-	//f.buffers = make([][]uint8, tocEntries)
-	//
-	//// TODO(kpfaulkner) potentially make this more concurrent?
-	//if tocEntries != 1 && !f.options.ParseOnly {
-	//	for i := 0; i < int(tocEntries); i++ {
-	//		b, err := f.readBuffer(i)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		f.buffers[i] = b
-	//	}
-	//}
 	return nil
 }
 
@@ -242,8 +229,6 @@ func (f *Frame) getBitreader(index int) (jxlio.BitReader, error) {
 		i = uint32(index)
 	}
 
-	//permutedIndex := f.tocPermutation[index]
-	//return jxlio.NewBitreaderWithIndex(bytes.NewReader(f.buffers[i]), int(i)), nil
 	return f.bitreaders[i], nil
 }
 
