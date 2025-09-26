@@ -38,6 +38,17 @@ type Inp struct {
 	iGroup int
 }
 
+type Framer interface {
+	getLFGroupForGroup(groupID int32) *LFGroup
+	getHFGlobal() *HFGlobal
+	getLFGlobal() *LFGlobal
+	getFrameHeader() *FrameHeader
+	getPasses() []Pass
+	getGroupSize(groupID int32) (util.Dimension, error)
+	groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point
+	getGlobalMetadata() *bundle.ImageHeader
+}
+
 type Frame struct {
 	tocPermutation []uint32
 	tocLengths     []uint32
@@ -63,6 +74,18 @@ type Frame struct {
 	permutatedTOC    bool
 
 	decoded bool
+}
+
+func (f *Frame) getGlobalMetadata() *bundle.ImageHeader {
+	return f.GlobalMetadata
+}
+
+func (f *Frame) getPasses() []Pass {
+	return f.passes
+}
+
+func (f *Frame) getFrameHeader() *FrameHeader {
+	return f.Header
 }
 
 func (f *Frame) ReadFrameHeader() (FrameHeader, error) {
@@ -230,6 +253,14 @@ func (f *Frame) getBitreader(index int) (jxlio.BitReader, error) {
 	}
 
 	return f.bitreaders[i], nil
+}
+
+func (f *Frame) getHFGlobal() *HFGlobal {
+	return f.hfGlobal
+}
+
+func (f *Frame) getLFGlobal() *LFGlobal {
+	return f.LfGlobal
 }
 
 func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
@@ -1134,10 +1165,6 @@ func (f *Frame) getGroupLocation(groupID int32) *util.Point {
 func (f *Frame) getLFGroupForGroup(groupID int32) *LFGroup {
 	pos := f.getGroupLocation(groupID)
 	idx := (pos.Y>>3)*int32(f.lfGroupRowStride) + (pos.X >> 3)
-	//idx1 := uint32(pos.Y) >> 3
-	//idx2 := uint32(f.lfGroupRowStride)
-	//idx3 := uint32(pos.X >> 3)
-	//idx := idx1*idx2 + idx3
 	return f.lfGroups[idx]
 }
 

@@ -252,6 +252,10 @@ func NewHFGlobalWithReader(reader jxlio.BitReader, frame *Frame) (*HFGlobal, err
 	return hf, nil
 }
 
+func (hfg *HFGlobal) getHFPresets() int32 {
+	return hfg.numHFPresets
+}
+
 func (hfg *HFGlobal) totalWeights() {
 
 	var total float32 = 0

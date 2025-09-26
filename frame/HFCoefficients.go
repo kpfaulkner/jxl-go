@@ -28,7 +28,7 @@ var (
 type HFCoefficients struct {
 	hfPreset        int32
 	groupID         uint32
-	frame           *Frame
+	frame           Framer
 	hfctx           *HFBlockContext
 	lfg             *LFGroup
 	stream          *entropy.EntropyStream
@@ -38,22 +38,22 @@ type HFCoefficients struct {
 	blocks          []*util.Point
 }
 
-func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame *Frame, pass uint32, group uint32) (*HFCoefficients, error) {
+func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint32, group uint32) (*HFCoefficients, error) {
 	hf := &HFCoefficients{}
 
-	hfPreset, err := reader.ReadBits(uint32(util.CeilLog1p(frame.hfGlobal.numHFPresets - 1)))
+	hfPreset, err := reader.ReadBits(uint32(util.CeilLog1p(frame.getHFGlobal().numHFPresets - 1)))
 	if err != nil {
 		return nil, err
 	}
 	hf.hfPreset = int32(hfPreset)
 	hf.groupID = group
 	hf.frame = frame
-	hf.hfctx = frame.LfGlobal.hfBlockCtx
+	hf.hfctx = frame.getLFGlobal().hfBlockCtx
 	hf.lfg = frame.getLFGroupForGroup(int32(group))
 	offset := 495 * hf.hfctx.numClusters * hf.hfPreset
-	header := frame.Header
+	header := frame.getFrameHeader()
 	shift := header.passes.shift[pass]
-	hfPass := hf.frame.passes[pass].hfPass
+	hfPass := hf.frame.getPasses()[pass].hfPass
 	size, err := hf.frame.getGroupSize(int32(hf.groupID))
 	if err != nil {
 		return nil, err
@@ -253,15 +253,15 @@ func (hf *HFCoefficients) bakeDequantizedCoeffs() error {
 }
 
 func (hf *HFCoefficients) dequantizeHFCoefficients() error {
-	matrix := hf.frame.GlobalMetadata.OpsinInverseMatrix
-	header := hf.frame.Header
-	globalScale := 65536.0 / float32(hf.frame.LfGlobal.globalScale)
+	matrix := hf.frame.getGlobalMetadata().OpsinInverseMatrix
+	header := hf.frame.getFrameHeader()
+	globalScale := 65536.0 / float32(hf.frame.getLFGlobal().globalScale)
 	scaleFactor := [3]float32{
 		globalScale * float32(math.Pow(0.8, float64(header.xqmScale-2))),
 		globalScale,
 		globalScale * float32(math.Pow(0.8, float64(header.bqmScale-2))),
 	}
-	weights := hf.frame.hfGlobal.weights
+	weights := hf.frame.getHFGlobal().weights
 	qbclut := [][]float32{
 		{-matrix.QuantBias[0], 0.0, matrix.QuantBias[0]},
 		{-matrix.QuantBias[1], 0.0, matrix.QuantBias[1]},
@@ -323,14 +323,14 @@ func (hf *HFCoefficients) dequantizeHFCoefficients() error {
 
 func (hf *HFCoefficients) chromaFromLuma() error {
 
-	header := hf.frame.Header
+	header := hf.frame.getFrameHeader()
 	xMatch := slices.ContainsFunc(header.jpegUpsamplingX, func(x int32) bool { return x != 0 })
 	yMatch := slices.ContainsFunc(header.jpegUpsamplingY, func(y int32) bool { return y != 0 })
 	if xMatch || yMatch {
 		return nil
 	}
 
-	lfc := hf.frame.LfGlobal.lfChanCorr
+	lfc := hf.frame.getLFGlobal().lfChanCorr
 	xFactorHF := hf.lfg.hfMetadata.hfStreamBuffer[0]
 	bFactorHF := hf.lfg.hfMetadata.hfStreamBuffer[1]
 	xFactors := util.MakeMatrix2D[float32](len(xFactorHF), len(xFactorHF[0]))
@@ -379,7 +379,7 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 func (hf *HFCoefficients) finalizeLLF() error {
 
 	scratchBlock := util.MakeMatrix3D[float32](2, 32, 32)
-	header := hf.frame.Header
+	header := hf.frame.getFrameHeader()
 	for i := 0; i < len(hf.blocks); i++ {
 		posInLfg := hf.blocks[i]
 		if posInLfg == nil {
