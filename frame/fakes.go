@@ -6,51 +6,46 @@ import (
 )
 
 type FakeFramer struct {
-	lfGroup  *LFGroup
-	hfGlobal *HFGlobal
-	lfGlobal *LFGlobal
-	header   *FrameHeader
-	passes   []Pass
+	lfGroup                *LFGroup
+	hfGlobal               *HFGlobal
+	lfGlobal               *LFGlobal
+	header                 *FrameHeader
+	passes                 []Pass
+	groupSize              *util.Dimension
+	groupPosInLFGroupPoint *util.Point
+	imageHeader            *bundle.ImageHeader
 }
 
-func (f FakeFramer) getLFGroupForGroup(groupID int32) *LFGroup {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getLFGroupForGroup(groupID int32) *LFGroup {
+	return f.lfGroup
 }
 
-func (f FakeFramer) getHFGlobal() *HFGlobal {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getHFGlobal() *HFGlobal {
+	return f.hfGlobal
 }
 
-func (f FakeFramer) getLFGlobal() *LFGlobal {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getLFGlobal() *LFGlobal {
+	return f.lfGlobal
 }
 
-func (f FakeFramer) getFrameHeader() *FrameHeader {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getFrameHeader() *FrameHeader {
+	return f.header
 }
 
-func (f FakeFramer) getPasses() []Pass {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getPasses() []Pass {
+	return f.passes
 }
 
-func (f FakeFramer) getGroupSize(groupID int32) (util.Dimension, error) {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getGroupSize(groupID int32) (util.Dimension, error) {
+	return *f.groupSize, nil
 }
 
-func (f FakeFramer) groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point {
+	return *f.groupPosInLFGroupPoint
 }
 
-func (f FakeFramer) getGlobalMetadata() *bundle.ImageHeader {
-	//TODO implement me
-	panic("implement me")
+func (f *FakeFramer) getGlobalMetadata() *bundle.ImageHeader {
+	return f.imageHeader
 }
 
 func NewFakeFramer() Framer {
