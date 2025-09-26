@@ -41,6 +41,10 @@ type HFCoefficients struct {
 func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint32, group uint32) (*HFCoefficients, error) {
 	hf := &HFCoefficients{}
 
+	if frame == nil || reader == nil {
+		return nil, errors.New("frame or reader is nil")
+	}
+
 	hfPreset, err := reader.ReadBits(uint32(util.CeilLog1p(frame.getHFGlobal().numHFPresets - 1)))
 	if err != nil {
 		return nil, err

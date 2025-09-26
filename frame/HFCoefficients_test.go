@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/testcommon"
+	"github.com/kpfaulkner/jxl-go/util"
 )
 
 func TestNewHFCoefficientsWithReader(t *testing.T) {
@@ -27,18 +27,35 @@ func TestNewHFCoefficientsWithReader(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:    "success",
-			pass:    0,
-			group:   0,
-			frame:   NewFakeFramer(),
-			u32Data: []uint32{},
+			name: "success",
+			frame: &FakeFramer{
+				lfGroup:  &LFGroup{},
+				hfGlobal: &HFGlobal{numHFPresets: 1},
+				lfGlobal: &LFGlobal{
+					hfBlockCtx: &HFBlockContext{},
+				},
+				header: &FrameHeader{
+					passes: &PassesInfo{
+						shift: []uint32{0},
+					},
+				},
+				passes: []Pass{{
+					hfPass: &HFPass{},
+				}},
+				groupSize:              &util.Dimension{Width: 1, Height: 1},
+				groupPosInLFGroupPoint: nil,
+				imageHeader:            nil,
+			},
+			pass:     0,
+			group:    0,
+			boolData: []bool{},
+			enumData: nil,
+			u32Data:  []uint32{},
 			bitsData: []uint64{
 				0, // hfPreset
 			},
-			boolData:       []bool{},
 			expectedResult: HFCoefficients{},
-
-			expectErr: false,
+			expectErr:      false,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -59,7 +76,7 @@ func TestNewHFCoefficientsWithReader(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(*hfc, tc.expectedResult) {
-				t.Errorf("expected HFBlockContext %+v, got %+v", tc.expectedResult, *hf)
+				t.Errorf("expected HFBlockContext %+v, got %+v", tc.expectedResult, *hfc)
 			}
 
 		})
