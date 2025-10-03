@@ -196,6 +196,17 @@ func Abs[T signedInts](a T) T {
 	return a
 }
 
+func MakeSliceWithDefault[T any](length int, defaultVal T) []T {
+	if length < 0 {
+		return nil
+	}
+	m := make([]T, length)
+	for i := 0; i < length; i++ {
+		m[i] = defaultVal
+	}
+	return m
+}
+
 func MatrixIdentity(i int) [][]float32 {
 	matrix := make([][]float32, i)
 	for j := 0; j < i; j++ {

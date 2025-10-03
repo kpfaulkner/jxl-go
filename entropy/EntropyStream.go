@@ -3,7 +3,6 @@ package entropy
 import (
 	"errors"
 
-	"github.com/kpfaulkner/jxl-go/frame"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
@@ -41,9 +40,9 @@ type EntropyStream struct {
 
 // Creating function types to make easier to pass in functions to functions (for later mocking)
 type ReadClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)
-type EntropyStreamWithReaderAndNumDistsFunc func(reader jxlio.BitReader, numDists int, readClusterMapFunc frame.ReadClusterMapFunc) (*entropy.EntropyStream, error)
+type EntropyStreamWithReaderAndNumDistsFunc func(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (*EntropyStream, error)
 
-func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc frame.ReadClusterMapFunc) (*EntropyStream, error) {
+func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (*EntropyStream, error) {
 	return NewEntropyStreamWithReader(reader, numDists, false, readClusterMapFunc)
 }
 

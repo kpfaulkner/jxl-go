@@ -50,7 +50,7 @@ func NewPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32, p
 	}
 	var err error
 	if frame.Header.Encoding == VARDCT {
-		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex, entropy.ReadClusterMap, entropy.NewEntropyStreamWithReaderAndNumDists)
+		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex, entropy.ReadClusterMap, entropy.NewEntropyStreamWithReaderAndNumDists, readPermutation)
 		if err != nil {
 			return Pass{}, err
 		}

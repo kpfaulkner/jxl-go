@@ -85,8 +85,9 @@ type HFPass struct {
 }
 
 func NewHFPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32,
-	readClusterMapFunc ReadClusterMapFunc,
-	newEntropyStreamWithReader EntropyStreamWithReaderAndNumDistsFunc) (*HFPass, error) {
+	readClusterMapFunc entropy.ReadClusterMapFunc,
+	newEntropyStreamWithReader entropy.EntropyStreamWithReaderAndNumDistsFunc,
+	readPermutation ReadPermutationFunc) (*HFPass, error) {
 	hfp := &HFPass{}
 	hfp.naturalOrder = util.MakeMatrix2D[util.Point](13, 0)
 	hfp.order = util.MakeMatrix3D[util.Point](13, 3, 0)

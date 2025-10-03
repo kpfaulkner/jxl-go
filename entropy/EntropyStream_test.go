@@ -45,7 +45,7 @@ func TestNewEntropyStreamWithReaderAndNumDists(t *testing.T) {
 			bitReader.ReadU32Data = tc.readU32Data
 			bitReader.ShowBitsData = tc.showBitsData
 
-			entropyStream, err := NewEntropyStreamWithReaderAndNumDists(bitReader, 1)
+			entropyStream, err := NewEntropyStreamWithReaderAndNumDists(bitReader, 1, ReadClusterMap)
 
 			if err != nil && tc.expectErr {
 				// got what we wanted..

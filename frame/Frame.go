@@ -33,6 +33,7 @@ var (
 		{X: 0, Y: -2}, {X: 0, Y: 2}, {X: 2, Y: 0}, {X: -2, Y: 0}}
 )
 
+type ReadPermutationFunc func(reader jxlio.BitReader, stream *entropy.EntropyStream, size uint32, skip uint32) ([]uint32, error)
 type Inp struct {
 	iPass  int
 	iGroup int
