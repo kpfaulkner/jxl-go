@@ -340,7 +340,7 @@ func ParseImageHeader(reader jxlio.BitReader, level int32) (*ImageHeader, error)
 			return nil, errors.New("Invalid encoded Size")
 		}
 		header.EncodedICC = make([]byte, encodedSize)
-		iccDistribution, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 41)
+		iccDistribution, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 41, entropy.ReadClusterMap)
 		if err != nil {
 			return nil, err
 		}

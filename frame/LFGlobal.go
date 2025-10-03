@@ -39,7 +39,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 
 		return nil, errors.New("Patches not implemented yet")
 
-		stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 10)
+		stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 10, entropy.ReadClusterMap)
 		if err != nil {
 			return nil, err
 		}

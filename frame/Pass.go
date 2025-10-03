@@ -1,6 +1,7 @@
 package frame
 
 import (
+	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -49,7 +50,7 @@ func NewPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32, p
 	}
 	var err error
 	if frame.Header.Encoding == VARDCT {
-		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex)
+		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex, entropy.ReadClusterMap, entropy.NewEntropyStreamWithReaderAndNumDists)
 		if err != nil {
 			return Pass{}, err
 		}

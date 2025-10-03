@@ -4,11 +4,63 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/testcommon"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-func TestNewHFCoefficientsWithReader(t *testing.T) {
+//func TestNewHFCoefficientsWithReader(t *testing.T) {
+//
+//	for _, tc := range []struct {
+//		name      string
+//		data      []uint8
+//		filename  string
+//		expectErr bool
+//	}{
+//		{
+//			name:      "success",
+//			expectErr: false,
+//			filename:  "../testdata/unittest.jxl",
+//		},
+//		{
+//			name:      "success 2",
+//			expectErr: false,
+//			filename:  "../testdata/tiny2.jxl",
+//		},
+//	} {
+//		t.Run(tc.name, func(t *testing.T) {
+//
+//			file, err := os.Open(tc.filename)
+//			if err != nil {
+//				t.Errorf("error opening test jxl file : %v", err)
+//				return
+//			}
+//			defer file.Close() // Ensure the file is closed
+//
+//			// The *os.File directly implements io.ReadSeeker
+//			var readSeeker io.ReadSeeker = file
+//
+//			opts := options.NewJXLOptions(nil)
+//			decoder := core.NewJXLDecoder(readSeeker, opts)
+//
+//			_, err = decoder.Decode()
+//			if err != nil && tc.expectErr {
+//				// got what we wanted..
+//				return
+//			}
+//
+//			if err == nil && tc.expectErr {
+//				t.Errorf("expected error but got none")
+//			}
+//
+//			if err != nil && !tc.expectErr {
+//				t.Errorf("expected no error but got %v", err)
+//			}
+//		})
+//	}
+//}
+
+func TestNewHFCoefficientsWithReaderOrig(t *testing.T) {
 
 	for _, tc := range []struct {
 		name           string
@@ -29,21 +81,34 @@ func TestNewHFCoefficientsWithReader(t *testing.T) {
 		{
 			name: "success",
 			frame: &FakeFramer{
-				lfGroup:  &LFGroup{},
+				lfGroup: &LFGroup{
+					hfMetadata: &HFMetadata{
+
+						blockList: []util.Point{{
+							X: 0,
+							Y: 0,
+						}},
+					},
+					lfGroupID: 0,
+				},
 				hfGlobal: &HFGlobal{numHFPresets: 1},
 				lfGlobal: &LFGlobal{
 					hfBlockCtx: &HFBlockContext{},
 				},
 				header: &FrameHeader{
+					jpegUpsamplingX: []int32{0, 0, 0},
+					jpegUpsamplingY: []int32{0, 0, 0},
 					passes: &PassesInfo{
 						shift: []uint32{0},
 					},
 				},
 				passes: []Pass{{
-					hfPass: &HFPass{},
+					hfPass: &HFPass{
+						contextStream: &entropy.EntropyStream{},
+					},
 				}},
 				groupSize:              &util.Dimension{Width: 1, Height: 1},
-				groupPosInLFGroupPoint: nil,
+				groupPosInLFGroupPoint: &util.Point{X: 0, Y: 0},
 				imageHeader:            nil,
 			},
 			pass:     0,

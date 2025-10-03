@@ -124,7 +124,7 @@ func (f *Frame) ReadTOC() error {
 		return err
 	}
 	if f.permutatedTOC {
-		tocStream, err := entropy.NewEntropyStreamWithReaderAndNumDists(f.reader, 8)
+		tocStream, err := entropy.NewEntropyStreamWithReaderAndNumDists(f.reader, 8, entropy.ReadClusterMap)
 		if err != nil {
 			return err
 		}

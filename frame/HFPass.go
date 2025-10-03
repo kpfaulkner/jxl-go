@@ -84,7 +84,9 @@ type HFPass struct {
 	usedOrders    uint32
 }
 
-func NewHFPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32) (*HFPass, error) {
+func NewHFPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32,
+	readClusterMapFunc ReadClusterMapFunc,
+	newEntropyStreamWithReader EntropyStreamWithReaderAndNumDistsFunc) (*HFPass, error) {
 	hfp := &HFPass{}
 	hfp.naturalOrder = util.MakeMatrix2D[util.Point](13, 0)
 	hfp.order = util.MakeMatrix3D[util.Point](13, 3, 0)
@@ -95,7 +97,7 @@ func NewHFPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32)
 	hfp.usedOrders = usedOrders
 	var stream *entropy.EntropyStream
 	if usedOrders != 0 {
-		if stream, err = entropy.NewEntropyStreamWithReaderAndNumDists(reader, 8); err != nil {
+		if stream, err = newEntropyStreamWithReader(reader, 8, readClusterMapFunc); err != nil {
 			return nil, err
 		}
 	} else {
@@ -127,8 +129,8 @@ func NewHFPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32)
 	if stream != nil && !stream.ValidateFinalState() {
 		return nil, errors.New("ANS state decoding error")
 	}
-	numContexts := 495 * frame.hfGlobal.numHFPresets * frame.LfGlobal.hfBlockCtx.numClusters
-	contextStream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, int(numContexts))
+	numContexts := 495 * frame.getHFGlobal().numHFPresets * frame.getLFGlobal().hfBlockCtx.numClusters
+	contextStream, err := newEntropyStreamWithReader(reader, int(numContexts), readClusterMapFunc)
 	if err != nil {
 		return nil, err
 	}

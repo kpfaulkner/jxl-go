@@ -3,6 +3,7 @@ package entropy
 import (
 	"errors"
 
+	"github.com/kpfaulkner/jxl-go/frame"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
@@ -38,8 +39,12 @@ type EntropyStream struct {
 	usesLZ77        bool
 }
 
-func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int) (*EntropyStream, error) {
-	return NewEntropyStreamWithReader(reader, numDists, false)
+// Creating function types to make easier to pass in functions to functions (for later mocking)
+type ReadClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)
+type EntropyStreamWithReaderAndNumDistsFunc func(reader jxlio.BitReader, numDists int, readClusterMapFunc frame.ReadClusterMapFunc) (*entropy.EntropyStream, error)
+
+func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc frame.ReadClusterMapFunc) (*EntropyStream, error) {
+	return NewEntropyStreamWithReader(reader, numDists, false, readClusterMapFunc)
 }
 
 func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
@@ -58,7 +63,7 @@ func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
 	return es
 }
 
-func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool) (*EntropyStream, error) {
+func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*EntropyStream, error) {
 
 	es := &EntropyStream{}
 
@@ -95,7 +100,7 @@ func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ
 	}
 
 	es.clusterMap = make([]int, numDists)
-	numClusters, err := ReadClusterMap(reader, es.clusterMap, numDists)
+	numClusters, err := readClusterMapFunc(reader, es.clusterMap, numDists)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +204,7 @@ func ReadClusterMap(reader jxlio.BitReader, clusterMap []int, maxClusters int) (
 			if useMtf, err = reader.ReadBool(); err != nil {
 				return 0, err
 			}
-			nested, err := NewEntropyStreamWithReader(reader, 1, numDists <= 2)
+			nested, err := NewEntropyStreamWithReader(reader, 1, numDists <= 2, ReadClusterMap)
 			if err != nil {
 				return 0, err
 			}

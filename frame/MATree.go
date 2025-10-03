@@ -27,7 +27,7 @@ func NewMATreeWithReader(reader jxlio.BitReader) (*MATree, error) {
 	mt.parent = nil
 	var nodes []*MATree
 
-	stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 6)
+	stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 6, entropy.ReadClusterMap)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func NewMATreeWithReader(reader jxlio.BitReader) (*MATree, error) {
 	if !stream.ValidateFinalState() {
 		return nil, errors.New("illegal MA Tree Entropy Stream")
 	}
-	mt.stream, err = entropy.NewEntropyStreamWithReader(reader, (len(nodes)+1)/2, false)
+	mt.stream, err = entropy.NewEntropyStreamWithReader(reader, (len(nodes)+1)/2, false, entropy.ReadClusterMap)
 	if err != nil {
 		return nil, err
 	}
