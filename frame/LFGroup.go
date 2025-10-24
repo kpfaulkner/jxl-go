@@ -13,7 +13,7 @@ type LFGroup struct {
 	lfGroupID      int32
 	frame          *Frame
 	size           util.Dimension
-	modularLFGroup *ModularStream
+	modularLFGroup ModularStreamer
 }
 
 func NewLFGroup(reader jxlio.BitReader, parent *Frame, index int32, replaced []ModularChannel, lfBuffer []image.ImageBuffer) (*LFGroup, error) {
@@ -33,7 +33,7 @@ func NewLFGroup(reader jxlio.BitReader, parent *Frame, index int32, replaced []M
 	}
 
 	if parent.Header.Encoding == VARDCT {
-		lfg.lfCoeff, err = NewLFCoefficientsWithReader(reader, lfg, parent, lfBuffer)
+		lfg.lfCoeff, err = NewLFCoefficientsWithReader(reader, lfg, parent, lfBuffer, NewModularStreamWithChannels)
 		if err != nil {
 			return nil, err
 		}

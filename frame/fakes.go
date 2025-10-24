@@ -16,6 +16,16 @@ type FakeFramer struct {
 	imageHeader            *bundle.ImageHeader
 }
 
+func (f *FakeFramer) getLFGroupLocation(lfGroupID int32) *util.Point {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f *FakeFramer) getGlobalTree() *MATree {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (f *FakeFramer) getLFGroupForGroup(groupID int32) *LFGroup {
 	return f.lfGroup
 }
@@ -49,5 +59,13 @@ func (f *FakeFramer) getGlobalMetadata() *bundle.ImageHeader {
 }
 
 func NewFakeFramer() Framer {
-	return &FakeFramer{}
+	ff := &FakeFramer{
+		header: &FrameHeader{
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+		},
+		lfGlobal: NewLFGlobal(),
+	}
+	ff.lfGlobal.scaledDequant = []float32{1, 1, 1}
+	return ff
 }

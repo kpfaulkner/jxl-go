@@ -9,18 +9,20 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
+type NewModularStreamFunc func(reader jxlio.BitReader, frame Framer, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (ModularStreamer, error)
+
 type LFCoefficients struct {
 	dequantLFCoeff [][][]float32
 	lfIndex        [][]int32
-	frame          *Frame
+	frame          Framer
 }
 
-func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame *Frame, lfBuffer []image.ImageBuffer) (*LFCoefficients, error) {
+func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame Framer, lfBuffer []image.ImageBuffer, modularStreamFunc NewModularStreamFunc) (*LFCoefficients, error) {
 	lf := &LFCoefficients{}
 
 	lf.frame = frame
 	lf.lfIndex = util.MakeMatrix2D[int32](parent.size.Height, parent.size.Width)
-	header := frame.Header
+	header := frame.getFrameHeader()
 	adapativeSmoothing := (header.Flags & (SKIP_ADAPTIVE_LF_SMOOTHING | USE_LF_FRAME)) == 0
 	info := make([]ModularChannel, 3)
 	dequantLFCoeff := util.MakeMatrix3D[float32](3, 0, 0)
@@ -42,7 +44,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 		pX := pos.X << 8
 		lf.dequantLFCoeff = dequantLFCoeff
 		for c := 0; c < 3; c++ {
-			lfBuffer[c].CastToFloatIfInt(^(^0 << frame.GlobalMetadata.BitDepth.BitsPerSample))
+			lfBuffer[c].CastToFloatIfInt(^(^0 << frame.getGlobalMetadata().BitDepth.BitsPerSample))
 			b := lfBuffer[c].FloatBuffer
 			for y := int32(0); y < int32(len(dequantLFCoeff[c])); y++ {
 				for x, d := pX, 0; x < pX+int32(len(dequantLFCoeff[c][y])); x, d = x+1, d+1 {
@@ -56,7 +58,9 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 	if err != nil {
 		return nil, err
 	}
-	lfQuantStream, err := NewModularStreamWithStreamIndex(reader, frame, int(1+parent.lfGroupID), info)
+
+	// use function to pass in func to create ModularStream... just easier to test.
+	lfQuantStream, err := modularStreamFunc(reader, frame, int(1+parent.lfGroupID), len(info), 0, info)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +70,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 		return nil, err
 	}
 	lfQuant := lfQuantStream.getDecodedBuffer()
-	scaledDequant := frame.LfGlobal.scaledDequant
+	scaledDequant := frame.getLFGlobal().scaledDequant
 	for i := 0; i < 3; i++ {
 		c := cMap[i]
 		xx := 1 << extraPrecision
@@ -83,7 +87,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 	if !subSampled {
 
 		// TOOD(kpfaulkner) investigate what this really does.
-		lfc := frame.LfGlobal.lfChanCorr
+		lfc := frame.getLFGlobal().lfChanCorr
 		kX := lfc.baseCorrelationX + float32(lfc.xFactorLF-128)/float32(lfc.colorFactor)
 		kB := lfc.baseCorrelationB + float32(lfc.bFactorLF-128)/float32(lfc.colorFactor)
 		dqLFY := dequantLFCoeff[1]
@@ -111,7 +115,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 }
 
 func (c *LFCoefficients) populatedLFIndex(parent *LFGroup, lfQuant [][][]int32) error {
-	hfctx := c.frame.LfGlobal.hfBlockCtx
+	hfctx := c.frame.getLFGlobal().hfBlockCtx
 	for y := uint32(0); y < parent.size.Height; y++ {
 		for x := uint32(0); x < parent.size.Width; x++ {
 			c.lfIndex[y][x] = c.getLFIndex(lfQuant, hfctx, y, x)
@@ -122,7 +126,7 @@ func (c *LFCoefficients) populatedLFIndex(parent *LFGroup, lfQuant [][][]int32) 
 
 func (c *LFCoefficients) getLFIndex(lfQuant [][][]int32, hfctx *HFBlockContext, y uint32, x uint32) int32 {
 	index := make([]int, 3)
-	header := c.frame.Header
+	header := c.frame.getFrameHeader()
 	for i := 0; i < 3; i++ {
 		sy := y >> header.jpegUpsamplingY[i]
 		sx := x >> header.jpegUpsamplingX[i]

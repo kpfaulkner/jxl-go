@@ -155,8 +155,15 @@ func NewTransformInfo(reader jxlio.BitReader) (TransformInfo, error) {
 	return ti, nil
 }
 
+type ModularStreamer interface {
+	decodeChannels(reader jxlio.BitReader, partial bool) error
+	getDecodedBuffer() [][][]int32
+	applyTransforms() error
+	getChannels() []*ModularChannel
+}
+
 type ModularStream struct {
-	frame        *Frame
+	frame        Framer
 	streamIndex  int
 	channelCount int
 	ecStart      int
@@ -173,15 +180,15 @@ type ModularStream struct {
 	squeezeMap     map[int][]SqueezeParam
 }
 
-func NewModularStreamWithStreamIndex(reader jxlio.BitReader, frame *Frame, streamIndex int, channelArray []ModularChannel) (*ModularStream, error) {
+func NewModularStreamWithStreamIndex(reader jxlio.BitReader, frame Framer, streamIndex int, channelArray []ModularChannel) (ModularStreamer, error) {
 	return NewModularStreamWithChannels(reader, frame, streamIndex, len(channelArray), 0, channelArray)
 }
 
-func NewModularStreamWithReader(reader jxlio.BitReader, frame *Frame, streamIndex int, channelCount int, ecStart int) (*ModularStream, error) {
+func NewModularStreamWithReader(reader jxlio.BitReader, frame Framer, streamIndex int, channelCount int, ecStart int) (ModularStreamer, error) {
 	return NewModularStreamWithChannels(reader, frame, streamIndex, channelCount, ecStart, nil)
 }
 
-func NewModularStreamWithChannels(reader jxlio.BitReader, frame *Frame, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (*ModularStream, error) {
+func NewModularStreamWithChannels(reader jxlio.BitReader, frame Framer, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (ModularStreamer, error) {
 	ms := &ModularStream{}
 	ms.streamIndex = streamIndex
 	ms.frame = frame
@@ -217,12 +224,12 @@ func NewModularStreamWithChannels(reader jxlio.BitReader, frame *Frame, streamIn
 
 	if channelArray == nil || len(channelArray) == 0 {
 		for i := 0; i < channelCount; i++ {
-			size := frame.Header.Bounds.Size
+			size := frame.getFrameHeader().Bounds.Size
 			var dimShift int32
 			if i < ecStart {
 				dimShift = 0
 			} else {
-				dimShift = frame.GlobalMetadata.ExtraChannelInfo[i-ecStart].DimShift
+				dimShift = frame.getGlobalMetadata().ExtraChannelInfo[i-ecStart].DimShift
 			}
 			ms.channels = append(ms.channels, NewModularChannelWithAllParams(int32(size.Height), int32(size.Width), dimShift, dimShift, false))
 		}
@@ -342,7 +349,7 @@ func NewModularStreamWithChannels(reader jxlio.BitReader, frame *Frame, streamIn
 		}
 		ms.tree = tree
 	} else {
-		ms.tree = frame.globalTree
+		ms.tree = frame.getGlobalTree()
 	}
 
 	ms.stream = entropy.NewEntropyStreamWithStream(ms.tree.stream)
@@ -358,9 +365,13 @@ func NewModularStreamWithChannels(reader jxlio.BitReader, frame *Frame, streamIn
 	return ms, nil
 }
 
+func (ms *ModularStream) getChannels() []*ModularChannel {
+	return ms.channels
+}
+
 func (ms *ModularStream) decodeChannels(reader jxlio.BitReader, partial bool) error {
 
-	groupDim := uint32(ms.frame.Header.groupDim)
+	groupDim := uint32(ms.frame.getFrameHeader().groupDim)
 	for i := 0; i < len(ms.channels); i++ {
 		channel := ms.channels[i]
 		if partial && i >= ms.nbMetaChannels &&
@@ -516,7 +527,7 @@ func (ms *ModularStream) applyTransforms() error {
 			first := ms.transforms[i].beginC + 1
 			endC := ms.transforms[i].beginC + ms.transforms[i].numC - 1
 			last := endC + 1
-			bitDepth := ms.frame.GlobalMetadata.BitDepth.BitsPerSample
+			bitDepth := ms.frame.getGlobalMetadata().BitDepth.BitsPerSample
 			firstChannel := ms.channels[first]
 			c0 := ms.channels[0]
 			for j := first + 1; j <= last; j++ {

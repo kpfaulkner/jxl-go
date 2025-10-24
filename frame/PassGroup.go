@@ -61,7 +61,7 @@ var (
 
 type PassGroup struct {
 	modularPassGroupBuffer [][][]int32
-	modularStream          *ModularStream
+	modularStream          ModularStreamer
 	frame                  *Frame
 	groupID                uint32
 	passID                 uint32

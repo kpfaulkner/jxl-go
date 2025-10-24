@@ -48,6 +48,8 @@ type Framer interface {
 	getGroupSize(groupID int32) (util.Dimension, error)
 	groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point
 	getGlobalMetadata() *bundle.ImageHeader
+	getLFGroupLocation(lfGroupID int32) *util.Point
+	getGlobalTree() *MATree
 }
 
 type Frame struct {
@@ -75,6 +77,10 @@ type Frame struct {
 	permutatedTOC    bool
 
 	decoded bool
+}
+
+func (f *Frame) getGlobalTree() *MATree {
+	return f.globalTree
 }
 
 func (f *Frame) getGlobalMetadata() *bundle.ImageHeader {
@@ -466,8 +472,8 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 	lfReplacementChannels := []*ModularChannel{}
 	lfReplacementChannelIndicies := []int{}
 
-	for i := 0; i < len(f.LfGlobal.globalModular.channels); i++ {
-		ch := f.LfGlobal.globalModular.channels[i]
+	for i := 0; i < len(f.LfGlobal.globalModular.getChannels()); i++ {
+		ch := f.LfGlobal.globalModular.getChannels()[i]
 		if !ch.decoded {
 			if ch.hshift >= 3 && ch.vshift >= 3 {
 				lfReplacementChannelIndicies = append(lfReplacementChannelIndicies, i)
@@ -513,9 +519,9 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
 		for j := 0; j < len(lfReplacementChannelIndicies); j++ {
 			index := lfReplacementChannelIndicies[j]
-			channel := f.LfGlobal.globalModular.channels[index]
+			channel := f.LfGlobal.globalModular.getChannels()[index]
 			channel.allocate()
-			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.channels[index]
+			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.getChannels()[index]
 			newChannel := newChannelInfo.buffer
 			for y := 0; y < len(newChannel); y++ {
 				copy(channel.buffer[int32(y)+newChannelInfo.origin.Y], newChannel[y])
@@ -627,10 +633,10 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 			}
 			ii := i
 			jj := j
-			channel := f.LfGlobal.globalModular.channels[ii]
+			channel := f.LfGlobal.globalModular.getChannels()[ii]
 			channel.allocate()
 			for group := 0; group < int(f.numGroups); group++ {
-				newChannelInfo := passGroups[pass][group].modularStream.channels[jj]
+				newChannelInfo := passGroups[pass][group].modularStream.getChannels()[jj]
 				buff := newChannelInfo.buffer
 				for y := 0; y < len(buff); y++ {
 					idx := y + int(newChannelInfo.origin.Y)

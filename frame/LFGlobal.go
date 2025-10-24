@@ -6,6 +6,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/colour"
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
+	"github.com/kpfaulkner/jxl-go/util"
 )
 
 type LFGlobal struct {
@@ -20,13 +21,23 @@ type LFGlobal struct {
 	globalScale   int32
 	quantLF       int32
 	scaledDequant []float32
-	globalModular *ModularStream
+	globalModular ModularStreamer
 }
 
 func NewLFGlobal() *LFGlobal {
 	lf := &LFGlobal{}
 	lf.lfDequant = []float32{1.0 / 4096.0, 1.0 / 512.0, 1.0 / 256.0}
 	lf.scaledDequant = make([]float32, 3)
+	lf.lfChanCorr = &LFChannelCorrelation{
+		colorFactor:      0,
+		baseCorrelationX: 0,
+		baseCorrelationB: 0,
+		xFactorLF:        0,
+		bFactorLF:        0,
+	}
+	lf.hfBlockCtx = &HFBlockContext{
+		lfThresholds: util.MakeMatrix2D[int32](3, 3),
+	}
 	return lf
 }
 
