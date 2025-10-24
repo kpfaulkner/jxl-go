@@ -2,6 +2,7 @@ package frame
 
 import (
 	"github.com/kpfaulkner/jxl-go/bundle"
+	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
@@ -25,6 +26,7 @@ func (f *FakeFramer) getGlobalTree() *MATree {
 	//TODO implement me
 	panic("implement me")
 }
+func (f *FakeFramer) setGlobalTree(tree *MATree) {}
 
 func (f *FakeFramer) getLFGroupForGroup(groupID int32) *LFGroup {
 	return f.lfGroup
@@ -64,8 +66,13 @@ func NewFakeFramer() Framer {
 			jpegUpsamplingX: []int32{0, 0, 0},
 			jpegUpsamplingY: []int32{0, 0, 0},
 		},
-		lfGlobal: NewLFGlobal(),
+		lfGlobal:    NewLFGlobal(),
+		imageHeader: &bundle.ImageHeader{},
 	}
 	ff.lfGlobal.scaledDequant = []float32{1, 1, 1}
 	return ff
+}
+
+func NewFakeHFBlockContextFunc(reader jxlio.BitReader, readClusterMap func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*HFBlockContext, error) {
+	return nil, nil
 }

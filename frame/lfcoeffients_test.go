@@ -9,7 +9,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
-func TestNNewLFCoefficientsWithReader(t *testing.T) {
+func TestNewLFCoefficientsWithReader(t *testing.T) {
 
 	for _, tc := range []struct {
 		name           string
@@ -24,17 +24,17 @@ func TestNNewLFCoefficientsWithReader(t *testing.T) {
 		expectedResult LFCoefficients
 		expectErr      bool
 	}{
-		//{
-		//	name: "no data",
-		//	parent: &LFGroup{
-		//		size: util.Dimension{
-		//			Width:  5,
-		//			Height: 5,
-		//		},
-		//	},
-		//	frame:     NewFakeFramer(),
-		//	expectErr: true,
-		//},
+		{
+			name: "no data",
+			parent: &LFGroup{
+				size: util.Dimension{
+					Width:  5,
+					Height: 5,
+				},
+			},
+			frame:     NewFakeFramer(),
+			expectErr: true,
+		},
 		{
 			name:  "success",
 			frame: NewFakeFramer(),

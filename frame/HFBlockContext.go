@@ -14,6 +14,7 @@ type HFBlockContext struct {
 	qfThresholds  []int32
 	numLFContexts int32
 }
+type NewHFBlockContextFunc func(reader jxlio.BitReader, readClusterMap func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*HFBlockContext, error)
 
 func NewHFBlockContextWithReader(reader jxlio.BitReader, readClusterMap func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*HFBlockContext, error) {
 	hf := &HFBlockContext{}

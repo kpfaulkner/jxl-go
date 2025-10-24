@@ -10,18 +10,17 @@ import (
 )
 
 type LFGlobal struct {
-	frame           *Frame
+	frame           Framer
 	Patches         []Patch
 	splines         []SplinesBundle
 	noiseParameters []NoiseParameters
 	lfDequant       []float32
 	hfBlockCtx      *HFBlockContext
 	lfChanCorr      *LFChannelCorrelation
-	//gModular        *GlobalModular
-	globalScale   int32
-	quantLF       int32
-	scaledDequant []float32
-	globalModular ModularStreamer
+	globalScale     int32
+	quantLF         int32
+	scaledDequant   []float32
+	globalModular   ModularStreamer
 }
 
 func NewLFGlobal() *LFGlobal {
@@ -41,12 +40,12 @@ func NewLFGlobal() *LFGlobal {
 	return lf
 }
 
-func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, error) {
+func NewLFGlobalWithReader(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error) {
 
 	lf := NewLFGlobal()
 	lf.frame = parent
-	extra := len(lf.frame.GlobalMetadata.ExtraChannelInfo)
-	if lf.frame.Header.Flags&PATCHES != 0 {
+	extra := len(lf.frame.getGlobalMetadata().ExtraChannelInfo)
+	if lf.frame.getFrameHeader().Flags&PATCHES != 0 {
 
 		return nil, errors.New("Patches not implemented yet")
 
@@ -60,7 +59,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 		}
 		lf.Patches = make([]Patch, numPatches)
 		for i := 0; i < int(numPatches); i++ {
-			lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.GlobalMetadata.ExtraChannelInfo), len(parent.GlobalMetadata.AlphaIndices))
+			lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.getGlobalMetadata().ExtraChannelInfo), len(parent.getGlobalMetadata().AlphaIndices))
 			if err != nil {
 				return nil, err
 			}
@@ -70,13 +69,13 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 		lf.Patches = []Patch{}
 	}
 
-	if lf.frame.Header.Flags&SPLINES != 0 {
+	if lf.frame.getFrameHeader().Flags&SPLINES != 0 {
 		return nil, errors.New("Splines not implemented yet")
 	} else {
 		lf.splines = nil
 	}
 
-	if lf.frame.Header.Flags&NOISE != 0 {
+	if lf.frame.getFrameHeader().Flags&NOISE != 0 {
 		return nil, errors.New("Noise not implemented yet")
 	} else {
 		lf.noiseParameters = nil
@@ -96,11 +95,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 		}
 	}
 
-	if lf.frame.Header.Encoding == VARDCT {
-		//lf.quantizer, err = NewQuantizerWithReader(reader, lf.lfDequant)
-		//if err != nil {
-		//	return nil, err
-		//}
+	if lf.frame.getFrameHeader().Encoding == VARDCT {
 		globalScale, err := reader.ReadU32(1, 11, 2049, 11, 4097, 12, 8193, 16)
 		if err != nil {
 			return nil, err
@@ -114,7 +109,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 		for i := 0; i < 3; i++ {
 			lf.scaledDequant[i] = (1 << 16) * lf.lfDequant[i] / float32(lf.globalScale*lf.quantLF)
 		}
-		lf.hfBlockCtx, err = NewHFBlockContextWithReader(reader, entropy.ReadClusterMap)
+		lf.hfBlockCtx, err = hfBlockContextFunc(reader, entropy.ReadClusterMap)
 		if err != nil {
 			return nil, err
 		}
@@ -145,12 +140,12 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent *Frame) (*LFGlobal, er
 	} else {
 		globalTree = nil
 	}
-	lf.frame.globalTree = globalTree
+	lf.frame.setGlobalTree(globalTree)
 	subModularChannelCount := extra
 	ecStart := 0
-	if lf.frame.Header.Encoding == MODULAR {
-		if !lf.frame.Header.DoYCbCr && !lf.frame.GlobalMetadata.XybEncoded &&
-			lf.frame.GlobalMetadata.ColourEncoding.ColourEncoding == colour.CE_GRAY {
+	if lf.frame.getFrameHeader().Encoding == MODULAR {
+		if !lf.frame.getFrameHeader().DoYCbCr && !lf.frame.getGlobalMetadata().XybEncoded &&
+			lf.frame.getGlobalMetadata().ColourEncoding.ColourEncoding == colour.CE_GRAY {
 			ecStart = 1
 		} else {
 			ecStart = 3

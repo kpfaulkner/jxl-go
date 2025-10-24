@@ -50,6 +50,7 @@ type Framer interface {
 	getGlobalMetadata() *bundle.ImageHeader
 	getLFGroupLocation(lfGroupID int32) *util.Point
 	getGlobalTree() *MATree
+	setGlobalTree(tree *MATree)
 }
 
 type Frame struct {
@@ -81,6 +82,9 @@ type Frame struct {
 
 func (f *Frame) getGlobalTree() *MATree {
 	return f.globalTree
+}
+func (f *Frame) setGlobalTree(tree *MATree) {
+	f.globalTree = tree
 }
 
 func (f *Frame) getGlobalMetadata() *bundle.ImageHeader {
@@ -294,7 +298,7 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	if err != nil {
 		return err
 	}
-	f.LfGlobal, err = NewLFGlobalWithReader(lfGlobalBitReader, f)
+	f.LfGlobal, err = NewLFGlobalWithReader(lfGlobalBitReader, f, NewHFBlockContextWithReader)
 	if err != nil {
 		return err
 	}
