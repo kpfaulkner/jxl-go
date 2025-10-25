@@ -35,7 +35,7 @@ func TestNewLFGlobalWithReader(t *testing.T) {
 			name:               "success",
 			parent:             NewFakeFramer(),
 			hfBlockContextFunc: NewFakeHFBlockContextFunc,
-			boolData:           []bool{true},
+			boolData:           []bool{true, true, false},
 			enumData:           nil,
 			u32Data:            []uint32{0, 0},
 			bitsData:           []uint64{},
