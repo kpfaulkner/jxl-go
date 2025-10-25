@@ -2,6 +2,7 @@ package frame
 
 import (
 	"github.com/kpfaulkner/jxl-go/bundle"
+	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -15,6 +16,18 @@ type FakeFramer struct {
 	groupSize              *util.Dimension
 	groupPosInLFGroupPoint *util.Point
 	imageHeader            *bundle.ImageHeader
+}
+
+func (f *FakeFramer) getLFGroupSize(lfGroupID int32) (util.Dimension, error) {
+	//TODO implement me
+	return util.Dimension{
+		Width:  5,
+		Height: 5,
+	}, nil
+}
+
+func (f *FakeFramer) getNumLFGroups() uint32 {
+	return 0
 }
 
 func (f *FakeFramer) getLFGroupLocation(lfGroupID int32) *util.Point {
@@ -75,4 +88,13 @@ func NewFakeFramer() Framer {
 
 func NewFakeHFBlockContextFunc(reader jxlio.BitReader, readClusterMap func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*HFBlockContext, error) {
 	return nil, nil
+}
+
+func NewFakeHFMetadataFunc(reader jxlio.BitReader, parent *LFGroup, frame Framer) (*HFMetadata, error) {
+
+	return &HFMetadata{}, nil
+}
+
+func NewFakeLFCoeffientsFunc(reader jxlio.BitReader, parent *LFGroup, frame Framer, lfBuffer []image.ImageBuffer, modularStreamFunc NewModularStreamFunc) (*LFCoefficients, error) {
+	return &LFCoefficients{}, nil
 }

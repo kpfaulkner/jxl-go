@@ -51,6 +51,8 @@ type Framer interface {
 	getLFGroupLocation(lfGroupID int32) *util.Point
 	getGlobalTree() *MATree
 	setGlobalTree(tree *MATree)
+	getLFGroupSize(lfGroupID int32) (util.Dimension, error)
+	getNumLFGroups() uint32
 }
 
 type Frame struct {
@@ -514,7 +516,7 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 			info.size.Width = util.Min(info.size.Width, lfWidth-uint32(info.origin.X))
 			replaced[i] = info
 		}
-		f.lfGroups[lfGroupID], err = NewLFGroup(reader, f, int32(lfGroupID), replaced, lfBuffer)
+		f.lfGroups[lfGroupID], err = NewLFGroupWithReader(reader, f, int32(lfGroupID), replaced, lfBuffer, NewLFCoefficientsWithReader, NewHFMetadataWithReader)
 		if err != nil {
 			return err
 		}
@@ -1018,6 +1020,10 @@ func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) [][][]float32 {
 		}
 	}
 	return data
+}
+
+func (f *Frame) getNumLFGroups() uint32 {
+	return f.numLFGroups
 }
 
 func (f *Frame) InitializeNoise(seed0 int64) error {

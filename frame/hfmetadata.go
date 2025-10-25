@@ -16,8 +16,9 @@ type HFMetadata struct {
 	parent         *LFGroup
 	blockList      []util.Point
 }
+type NewHFMetadataWithReaderFunc func(reader jxlio.BitReader, parent *LFGroup, frame Framer) (*HFMetadata, error)
 
-func NewHFMetadataWithReader(reader jxlio.BitReader, parent *LFGroup, frame *Frame) (*HFMetadata, error) {
+func NewHFMetadataWithReader(reader jxlio.BitReader, parent *LFGroup, frame Framer) (*HFMetadata, error) {
 	hf := &HFMetadata{
 		parent: parent,
 	}
@@ -35,7 +36,7 @@ func NewHFMetadataWithReader(reader jxlio.BitReader, parent *LFGroup, frame *Fra
 	bFromY := NewModularChannelWithAllParams(correlationHeight, correlationWidth, 0, 0, false)
 	blockInfo := NewModularChannelWithAllParams(2, int32(hf.nbBlocks), 0, 0, false)
 	sharpness := NewModularChannelWithAllParams(int32(parent.size.Height), int32(parent.size.Width), 0, 0, false)
-	hfStream, err := NewModularStreamWithStreamIndex(reader, frame, 1+2*int(frame.numLFGroups)+int(parent.lfGroupID), []ModularChannel{*xFromY, *bFromY, *blockInfo, *sharpness})
+	hfStream, err := NewModularStreamWithStreamIndex(reader, frame, 1+2*int(frame.getNumLFGroups())+int(parent.lfGroupID), []ModularChannel{*xFromY, *bFromY, *blockInfo, *sharpness})
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,8 @@ import (
 
 type NewModularStreamFunc func(reader jxlio.BitReader, frame Framer, streamIndex int, channelCount int, ecStart int, channelArray []ModularChannel) (ModularStreamer, error)
 
+type NewLFCoefficientsWithReaderFunc func(reader jxlio.BitReader, parent *LFGroup, frame Framer, lfBuffer []image.ImageBuffer, modularStreamFunc NewModularStreamFunc) (*LFCoefficients, error)
+
 type LFCoefficients struct {
 	dequantLFCoeff [][][]float32
 	lfIndex        [][]int32
