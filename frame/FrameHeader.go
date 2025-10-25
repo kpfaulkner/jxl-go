@@ -12,7 +12,10 @@ const (
 	REFERENCE_ONLY   = 2
 	SKIP_PROGRESSIVE = 3
 
-	VARDCT  = 0
+	// lossy
+	VARDCT = 0
+
+	// lossless
 	MODULAR = 1
 
 	NOISE                      = 1
