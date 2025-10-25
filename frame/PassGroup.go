@@ -265,7 +265,10 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 
 func layBlock(block [][]float32, buffer [][]float32, inPos util.Point, outPos util.Point, inSize util.Dimension) {
 	for y := int32(0); y < int32(inSize.Height); y++ {
-		copy(buffer[y+outPos.Y][outPos.X:], block[y+inPos.Y][inPos.X:])
+
+		// Make sure to specify end position in X slice. ie the outPos.X + inSize.Width etc.
+		// otherwise some images end up with black unpopulated sections.
+		copy(buffer[y+outPos.Y][outPos.X:outPos.X+int32(inSize.Width)], block[y+inPos.Y][inPos.X:inPos.X+int32(inSize.Width)])
 	}
 }
 
