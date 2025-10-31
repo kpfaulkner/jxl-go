@@ -38,140 +38,47 @@ type EntropyStream struct {
 	usesLZ77        bool
 }
 
-// Creating function types to make easier to pass in functions to functions (for later mocking)
-type ReadClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)
-type EntropyStreamWithReaderAndNumDistsFunc func(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (*EntropyStream, error)
-
-func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (*EntropyStream, error) {
-	return NewEntropyStreamWithReader(reader, numDists, false, readClusterMapFunc)
+type EntropyStreamer interface {
+	//LoadWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) error
+	//LoadWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) error
+	//LoadWithStream(stream EntropyStreamer) error
+	GetDists() []SymbolDistribution
+	GetState() *ANSState
+	ReadSymbol(reader jxlio.BitReader, context int) (int32, error)
+	TryReadSymbol(reader jxlio.BitReader, context int) int32
+	ReadSymbolWithMultiplier(reader jxlio.BitReader, context int, distanceMultiplier int32) (int32, error)
+	ReadHybridInteger(reader jxlio.BitReader, config *HybridIntegerConfig, token int32) (int32, error)
+	ValidateFinalState() bool
 }
 
-func NewEntropyStreamWithStream(stream *EntropyStream) *EntropyStream {
+// Creating function types to make easier to pass in functions to functions (for later mocking)
+type ReadClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)
+
+type EntropyStreamWithReaderAndNumDistsFunc func(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (EntropyStreamer, error)
+type EntropyStreamWithReaderFunc func(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (EntropyStreamer, error)
+
+// "constructors" are wrappers to other functions that do the work.
+// Ideally if we get into a situation where we need to mock these out we can switch from
+// constructors to creating the struct and then calling the underlying function.
+// This isn't just a "in-theory-we'll-need-it, but have hit it quite a bit to
+// increase test coverage. Unsure if good or bad idea yet.
+func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (EntropyStreamer, error) {
 	es := &EntropyStream{}
-	es.usesLZ77 = stream.usesLZ77
-	es.lz77MinLength = stream.lz77MinLength
-	es.lz77MinSymbol = stream.lz77MinSymbol
-	es.lzLengthConfig = stream.lzLengthConfig
-	es.clusterMap = stream.clusterMap
-	es.dists = stream.dists
-	es.logAlphabetSize = stream.logAlphabetSize
-	if es.usesLZ77 {
-		es.window = make([]int32, 1<<20)
-	}
-	es.ansState = &ANSState{State: -1, HasState: false}
+	es.LoadWithReaderAndNumDists(reader, numDists, readClusterMapFunc)
+	return es, nil
+}
+
+func NewEntropyStreamWithStream(stream EntropyStreamer) EntropyStreamer {
+	es := &EntropyStream{}
+	es.LoadWithStream(stream)
 	return es
 }
 
-func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (*EntropyStream, error) {
+func NewEntropyStreamWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (EntropyStreamer, error) {
 
 	es := &EntropyStream{}
-
-	var err error
-	if numDists <= 0 {
-		return nil, errors.New("Num Dists must be positive")
-	}
-
-	if es.usesLZ77, err = reader.ReadBool(); err != nil {
-		return nil, err
-	}
-	es.ansState = &ANSState{State: -1, HasState: false}
-	if es.usesLZ77 {
-		if disallowLZ77 {
-			return nil, errors.New("Nested distributions cannot use LZ77")
-		}
-		if lz77MinSymbol, err := reader.ReadU32(224, 0, 512, 0, 4096, 0, 8, 15); err != nil {
-			return nil, err
-		} else {
-			es.lz77MinSymbol = int32(lz77MinSymbol)
-		}
-
-		if lz77MinLength, err := reader.ReadU32(3, 0, 4, 0, 5, 2, 9, 8); err != nil {
-			return nil, err
-		} else {
-			es.lz77MinLength = int32(lz77MinLength)
-		}
-		numDists++
-		es.lzLengthConfig, err = NewHybridIntegerConfigWithReader(reader, 8)
-		if err != nil {
-			return nil, err
-		}
-		es.window = make([]int32, 1<<20)
-	}
-
-	es.clusterMap = make([]int, numDists)
-	numClusters, err := readClusterMapFunc(reader, es.clusterMap, numDists)
-	if err != nil {
-		return nil, err
-	}
-
-	es.dists = make([]SymbolDistribution, numClusters)
-	var prefixCodes bool
-
-	if prefixCodes, err = reader.ReadBool(); err != nil {
-		return nil, err
-	}
-	if prefixCodes {
-		es.logAlphabetSize = 15
-	} else {
-		if logAlphabetSize, err := reader.ReadBits(2); err != nil {
-			return nil, err
-		} else {
-			es.logAlphabetSize = 5 + int32(logAlphabetSize)
-		}
-	}
-
-	configs := make([]*HybridIntegerConfig, len(es.dists))
-	for i := 0; i < len(configs); i++ {
-		configs[i], err = NewHybridIntegerConfigWithReader(reader, es.logAlphabetSize)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if prefixCodes {
-		alphabetSizes := make([]int32, len(es.dists))
-		for i := 0; i < len(es.dists); i++ {
-			var readBits bool
-			if readBits, err = reader.ReadBool(); err != nil {
-				return nil, err
-			}
-			if readBits {
-				var n uint64
-				if n, err = reader.ReadBits(4); err != nil {
-					return nil, err
-				}
-
-				if alphaSize, err := reader.ReadBits(uint32(n)); err != nil {
-					return nil, err
-				} else {
-					alphabetSizes[i] = 1 + int32(1<<n+alphaSize)
-				}
-			} else {
-				alphabetSizes[i] = 1
-			}
-		}
-		for i := 0; i < len(es.dists); i++ {
-			es.dists[i], err = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		for i := 0; i < len(es.dists); i++ {
-			d, err := NewANSSymbolDistribution(reader, es.logAlphabetSize)
-			if err != nil {
-				return nil, err
-			}
-			es.dists[i] = d
-		}
-	}
-
-	for i := 0; i < len(es.dists); i++ {
-		es.dists[i].SetConfig(configs[i])
-	}
-
-	return es, nil
-
+	err := es.LoadWithReader(reader, numDists, disallowLZ77, readClusterMapFunc)
+	return es, err
 }
 
 func ReadClusterMap(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error) {
@@ -251,6 +158,139 @@ func ReadClusterMap(reader jxlio.BitReader, clusterMap []int, maxClusters int) (
 	return numClusters, nil
 }
 
+func (es *EntropyStream) GetDists() []SymbolDistribution {
+	return es.dists
+}
+
+func (es *EntropyStream) LoadWithStream(stream EntropyStreamer) error {
+	inputStream := stream.(*EntropyStream)
+	es.usesLZ77 = inputStream.usesLZ77
+	es.lz77MinLength = inputStream.lz77MinLength
+	es.lz77MinSymbol = inputStream.lz77MinSymbol
+	es.lzLengthConfig = inputStream.lzLengthConfig
+	es.clusterMap = inputStream.clusterMap
+	es.dists = inputStream.dists
+	es.logAlphabetSize = inputStream.logAlphabetSize
+	if es.usesLZ77 {
+		es.window = make([]int32, 1<<20)
+	}
+	es.ansState = &ANSState{State: -1, HasState: false}
+	return nil
+}
+
+func (es *EntropyStream) LoadWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) error {
+	return es.LoadWithReader(reader, numDists, false, readClusterMapFunc)
+}
+
+func (es *EntropyStream) LoadWithReader(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) error {
+
+	var err error
+	if numDists <= 0 {
+		return errors.New("Num Dists must be positive")
+	}
+
+	if es.usesLZ77, err = reader.ReadBool(); err != nil {
+		return err
+	}
+	es.ansState = &ANSState{State: -1, HasState: false}
+	if es.usesLZ77 {
+		if disallowLZ77 {
+			return errors.New("Nested distributions cannot use LZ77")
+		}
+		if lz77MinSymbol, err := reader.ReadU32(224, 0, 512, 0, 4096, 0, 8, 15); err != nil {
+			return err
+		} else {
+			es.lz77MinSymbol = int32(lz77MinSymbol)
+		}
+
+		if lz77MinLength, err := reader.ReadU32(3, 0, 4, 0, 5, 2, 9, 8); err != nil {
+			return err
+		} else {
+			es.lz77MinLength = int32(lz77MinLength)
+		}
+		numDists++
+		es.lzLengthConfig, err = NewHybridIntegerConfigWithReader(reader, 8)
+		if err != nil {
+			return err
+		}
+		es.window = make([]int32, 1<<20)
+	}
+
+	es.clusterMap = make([]int, numDists)
+	numClusters, err := readClusterMapFunc(reader, es.clusterMap, numDists)
+	if err != nil {
+		return err
+	}
+
+	es.dists = make([]SymbolDistribution, numClusters)
+	var prefixCodes bool
+
+	if prefixCodes, err = reader.ReadBool(); err != nil {
+		return err
+	}
+	if prefixCodes {
+		es.logAlphabetSize = 15
+	} else {
+		if logAlphabetSize, err := reader.ReadBits(2); err != nil {
+			return err
+		} else {
+			es.logAlphabetSize = 5 + int32(logAlphabetSize)
+		}
+	}
+
+	configs := make([]*HybridIntegerConfig, len(es.dists))
+	for i := 0; i < len(configs); i++ {
+		configs[i], err = NewHybridIntegerConfigWithReader(reader, es.logAlphabetSize)
+		if err != nil {
+			return err
+		}
+	}
+
+	if prefixCodes {
+		alphabetSizes := make([]int32, len(es.dists))
+		for i := 0; i < len(es.dists); i++ {
+			var readBits bool
+			if readBits, err = reader.ReadBool(); err != nil {
+				return err
+			}
+			if readBits {
+				var n uint64
+				if n, err = reader.ReadBits(4); err != nil {
+					return err
+				}
+
+				if alphaSize, err := reader.ReadBits(uint32(n)); err != nil {
+					return err
+				} else {
+					alphabetSizes[i] = 1 + int32(1<<n+alphaSize)
+				}
+			} else {
+				alphabetSizes[i] = 1
+			}
+		}
+		for i := 0; i < len(es.dists); i++ {
+			es.dists[i], err = NewPrefixSymbolDistributionWithReader(reader, alphabetSizes[i])
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		for i := 0; i < len(es.dists); i++ {
+			d, err := NewANSSymbolDistribution(reader, es.logAlphabetSize)
+			if err != nil {
+				return err
+			}
+			es.dists[i] = d
+		}
+	}
+
+	for i := 0; i < len(es.dists); i++ {
+		es.dists[i].SetConfig(configs[i])
+	}
+
+	return nil
+}
+
 func (es *EntropyStream) GetState() *ANSState {
 	return es.ansState
 }
@@ -292,7 +332,7 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader jxlio.BitReader, contex
 
 	if es.usesLZ77 && token >= es.lz77MinSymbol {
 		lz77dist := es.dists[es.clusterMap[len(es.clusterMap)-1]]
-		hi, err := es.readHybridInteger(reader, es.lzLengthConfig, token-es.lz77MinSymbol)
+		hi, err := es.ReadHybridInteger(reader, es.lzLengthConfig, token-es.lz77MinSymbol)
 		if err != nil {
 			return 0, err
 		}
@@ -301,7 +341,7 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader jxlio.BitReader, contex
 		if err != nil {
 			return 0, err
 		}
-		distance, err := es.readHybridInteger(reader, lz77dist.GetConfig(), token)
+		distance, err := es.ReadHybridInteger(reader, lz77dist.GetConfig(), token)
 		if err != nil {
 			return 0, err
 		}
@@ -322,7 +362,7 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader jxlio.BitReader, contex
 		return es.ReadSymbolWithMultiplier(reader, context, distanceMultiplier)
 
 	}
-	hybridInt, err := es.readHybridInteger(reader, dist.GetConfig(), token)
+	hybridInt, err := es.ReadHybridInteger(reader, dist.GetConfig(), token)
 	if err != nil {
 		return 0, err
 	}
@@ -333,7 +373,7 @@ func (es *EntropyStream) ReadSymbolWithMultiplier(reader jxlio.BitReader, contex
 	return hybridInt, nil
 }
 
-func (es *EntropyStream) readHybridInteger(reader jxlio.BitReader, config *HybridIntegerConfig, token int32) (int32, error) {
+func (es *EntropyStream) ReadHybridInteger(reader jxlio.BitReader, config *HybridIntegerConfig, token int32) (int32, error) {
 	split := 1 << config.SplitExponent
 	if token < int32(split) {
 		return token, nil

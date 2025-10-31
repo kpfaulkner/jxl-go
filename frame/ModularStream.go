@@ -175,7 +175,7 @@ type ModularStream struct {
 	transforms     []TransformInfo
 	distMultiplier int32
 	nbMetaChannels int
-	stream         *entropy.EntropyStream
+	stream         entropy.EntropyStreamer
 	transformed    bool
 	squeezeMap     map[int][]SqueezeParam
 }
@@ -343,7 +343,7 @@ func NewModularStreamWithChannels(reader jxlio.BitReader, frame Framer, streamIn
 	}
 
 	if !useGlobalTree {
-		tree, err := NewMATreeWithReader(reader)
+		tree, err := NewMATreeWithReader(reader, entropy.NewEntropyStreamWithReaderAndNumDists, entropy.NewEntropyStreamWithReader)
 		if err != nil {
 			return nil, err
 		}

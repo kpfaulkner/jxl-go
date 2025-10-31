@@ -31,7 +31,7 @@ type HFCoefficients struct {
 	frame           Framer
 	hfctx           *HFBlockContext
 	lfg             *LFGroup
-	stream          *entropy.EntropyStream
+	stream          entropy.EntropyStreamer
 	quantizedCoeffs [][][]int32
 	dequantHFCoeff  [][][]float32
 	groupPos        util.Point

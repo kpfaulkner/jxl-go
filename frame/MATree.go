@@ -9,7 +9,7 @@ import (
 
 type MATree struct {
 	parent          *MATree
-	stream          *entropy.EntropyStream
+	stream          entropy.EntropyStreamer
 	leftChildNode   *MATree
 	rightChildNode  *MATree
 	property        int32
@@ -22,12 +22,12 @@ type MATree struct {
 	multiplier      int32
 }
 
-func NewMATreeWithReader(reader jxlio.BitReader) (*MATree, error) {
+func NewMATreeWithReader(reader jxlio.BitReader, newEntropyStreamAndNumDistsFunc entropy.EntropyStreamWithReaderAndNumDistsFunc, newEntropyStreamFunc entropy.EntropyStreamWithReaderFunc) (*MATree, error) {
 	mt := &MATree{}
 	mt.parent = nil
 	var nodes []*MATree
 
-	stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 6, entropy.ReadClusterMap)
+	stream, err := newEntropyStreamAndNumDistsFunc(reader, 6, entropy.ReadClusterMap)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func NewMATreeWithReader(reader jxlio.BitReader) (*MATree, error) {
 	if !stream.ValidateFinalState() {
 		return nil, errors.New("illegal MA Tree Entropy Stream")
 	}
-	mt.stream, err = entropy.NewEntropyStreamWithReader(reader, (len(nodes)+1)/2, false, entropy.ReadClusterMap)
+	mt.stream, err = newEntropyStreamFunc(reader, (len(nodes)+1)/2, false, entropy.ReadClusterMap)
 	if err != nil {
 		return nil, err
 	}

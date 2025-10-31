@@ -33,7 +33,7 @@ var (
 		{X: 0, Y: -2}, {X: 0, Y: 2}, {X: 2, Y: 0}, {X: -2, Y: 0}}
 )
 
-type ReadPermutationFunc func(reader jxlio.BitReader, stream *entropy.EntropyStream, size uint32, skip uint32) ([]uint32, error)
+type ReadPermutationFunc func(reader jxlio.BitReader, stream entropy.EntropyStreamer, size uint32, skip uint32) ([]uint32, error)
 type Inp struct {
 	iPass  int
 	iGroup int
@@ -189,7 +189,7 @@ func ctxFunc(x int64) int {
 	return min(7, util.CeilLog1p(x))
 }
 
-func readPermutation(reader jxlio.BitReader, stream *entropy.EntropyStream, size uint32, skip uint32) ([]uint32, error) {
+func readPermutation(reader jxlio.BitReader, stream entropy.EntropyStreamer, size uint32, skip uint32) ([]uint32, error) {
 	end, err := stream.ReadSymbol(reader, ctxFunc(int64(size)))
 	if err != nil {
 		return nil, err

@@ -71,10 +71,10 @@ func TestNewEntropyStreamWithReaderAndNumDists(t *testing.T) {
 	}
 }
 
-func generateVLCTableSignature(es *EntropyStream) []byte {
+func generateVLCTableSignature(es EntropyStreamer) []byte {
 	buf := new(bytes.Buffer)
 
-	if pre, ok := es.dists[0].(*PrefixSymbolDistribution); ok {
+	if pre, ok := es.GetDists()[0].(*PrefixSymbolDistribution); ok {
 		for _, row := range pre.table.table {
 			for _, val := range row {
 				err := binary.Write(buf, binary.LittleEndian, val)

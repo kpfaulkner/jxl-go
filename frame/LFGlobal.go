@@ -133,7 +133,7 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent Framer, hfBlockContext
 	}
 	var globalTree *MATree
 	if hasGlobalTree {
-		globalTree, err = NewMATreeWithReader(reader)
+		globalTree, err = NewMATreeWithReader(reader, entropy.NewEntropyStreamWithReaderAndNumDists, entropy.NewEntropyStreamWithReader)
 		if err != nil {
 			return nil, err
 		}

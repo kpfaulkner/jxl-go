@@ -38,10 +38,10 @@ func TestNewHFPassWithReader(t *testing.T) {
 				},
 			},
 			readClusterMapFunc: fakeReadClusterMap,
-			entropyStreamFunc: func(reader jxlio.BitReader, numDists int, readClusterMapFunc entropy.ReadClusterMapFunc) (*entropy.EntropyStream, error) {
+			entropyStreamFunc: func(reader jxlio.BitReader, numDists int, readClusterMapFunc entropy.ReadClusterMapFunc) (entropy.EntropyStreamer, error) {
 				return nil, nil
 			},
-			readPermutationFunc: func(reader jxlio.BitReader, stream *entropy.EntropyStream, n, numClusters uint32) ([]uint32, error) {
+			readPermutationFunc: func(reader jxlio.BitReader, stream entropy.EntropyStreamer, n, numClusters uint32) ([]uint32, error) {
 				return util.MakeSliceWithDefault[uint32](64, 0), nil
 
 			},

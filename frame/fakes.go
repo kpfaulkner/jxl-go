@@ -1,7 +1,10 @@
 package frame
 
 import (
+	"errors"
+
 	"github.com/kpfaulkner/jxl-go/bundle"
+	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -97,4 +100,58 @@ func NewFakeHFMetadataFunc(reader jxlio.BitReader, parent *LFGroup, frame Framer
 
 func NewFakeLFCoeffientsFunc(reader jxlio.BitReader, parent *LFGroup, frame Framer, lfBuffer []image.ImageBuffer, modularStreamFunc NewModularStreamFunc) (*LFCoefficients, error) {
 	return &LFCoefficients{}, nil
+}
+
+type FakeEntropyStreamer struct {
+	FakeSymbols []int32
+}
+
+func (f FakeEntropyStreamer) GetDists() []entropy.SymbolDistribution {
+	return nil
+}
+
+func (f FakeEntropyStreamer) GetState() *entropy.ANSState {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f *FakeEntropyStreamer) ReadSymbol(reader jxlio.BitReader, context int) (int32, error) {
+
+	if len(f.FakeSymbols) == 0 {
+		return 0, errors.New("no more symbols")
+	}
+
+	symbol := f.FakeSymbols[0]
+	f.FakeSymbols = f.FakeSymbols[1:]
+	return symbol, nil
+}
+
+func (f FakeEntropyStreamer) TryReadSymbol(reader jxlio.BitReader, context int) int32 {
+	return 0
+}
+
+func (f FakeEntropyStreamer) ReadSymbolWithMultiplier(reader jxlio.BitReader, context int, distanceMultiplier int32) (int32, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FakeEntropyStreamer) ReadHybridInteger(reader jxlio.BitReader, config *entropy.HybridIntegerConfig, token int32) (int32, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FakeEntropyStreamer) ValidateFinalState() bool {
+	return true
+}
+
+func NewFakeEntropyStreamer() entropy.EntropyStreamer {
+	return &FakeEntropyStreamer{}
+}
+
+func NewFakeEntropyStreamerFunc(reader jxlio.BitReader, numDists int, readClusterMapFunc entropy.ReadClusterMapFunc) (entropy.EntropyStreamer, error) {
+	return &FakeEntropyStreamer{}, nil
+}
+
+func NewFakeEntropyWithReaderFunc(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (entropy.EntropyStreamer, error) {
+	return &FakeEntropyStreamer{}, nil
 }

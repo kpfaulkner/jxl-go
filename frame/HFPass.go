@@ -80,7 +80,7 @@ func filterByOrderID(orderID int32) (TransformType, error) {
 type HFPass struct {
 	order         [][][]util.Point
 	naturalOrder  [][]util.Point
-	contextStream *entropy.EntropyStream
+	contextStream entropy.EntropyStreamer
 	usedOrders    uint32
 }
 
@@ -96,7 +96,7 @@ func NewHFPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32,
 		return nil, err
 	}
 	hfp.usedOrders = usedOrders
-	var stream *entropy.EntropyStream
+	var stream entropy.EntropyStreamer
 	if usedOrders != 0 {
 		if stream, err = newEntropyStreamWithReader(reader, 8, readClusterMapFunc); err != nil {
 			return nil, err
