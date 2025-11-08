@@ -219,22 +219,6 @@ func (mc *ModularChannel) northWest(x int32, y int32) int32 {
 	return buf[y][x-1]
 }
 
-func (mc *ModularChannel) northWestOrig(x int32, y int32) int32 {
-
-	buf := mc.buffer
-	if x > 0 {
-		if y > 0 {
-			return buf[y-1][x-1]
-		}
-		return buf[y][x-1]
-	}
-
-	if y > 0 {
-		return buf[y-1][x]
-	}
-	return 0
-}
-
 func (mc *ModularChannel) northEast(x int32, y int32) int32 {
 	if y > 0 && x+1 < int32(mc.size.Width) {
 		return mc.buffer[y-1][x+1]
@@ -271,13 +255,6 @@ func (mc *ModularChannel) errorNorth(x int32, y int32, e int32) int32 {
 
 }
 
-func (mc *ModularChannel) errorNorthOrig(x int32, y int32, e int32) int32 {
-	if y > 0 {
-		return mc.err[e][y-1][x]
-	}
-	return 0
-}
-
 func (mc *ModularChannel) errorWest(x int32, y int32, e int32) int32 {
 	if x <= 0 {
 		return 0
@@ -294,20 +271,6 @@ func (mc *ModularChannel) errorWestWest(x int32, y int32, e int32) int32 {
 	return mc.err[e][y][x-2]
 }
 
-func (mc *ModularChannel) errorWestWestOrig(x int32, y int32, e int32) int32 {
-	if x > 1 {
-		return mc.err[e][y][x-2]
-	}
-	return 0
-}
-
-func (mc *ModularChannel) errorNorthWestOrig(x int32, y int32, e int32) int32 {
-	if x > 0 && y > 0 {
-		return mc.err[e][y-1][x-1]
-	}
-	return mc.errorNorth(x, y, e)
-}
-
 func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 	if x > 0 && y > 0 {
 		return mc.err[e][y-1][x-1]
@@ -316,15 +279,6 @@ func (mc *ModularChannel) errorNorthWest(x int32, y int32, e int32) int32 {
 }
 
 func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
-	if x+1 < int32(mc.size.Width) && y > 0 {
-
-		return mc.err[e][y-1][x+1]
-	}
-
-	return mc.errorNorth(x, y, e)
-}
-
-func (mc *ModularChannel) errorNorthEastOrig(x int32, y int32, e int32) int32 {
 	if x+1 < int32(mc.size.Width) && y > 0 {
 
 		return mc.err[e][y-1][x+1]
