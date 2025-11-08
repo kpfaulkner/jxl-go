@@ -396,7 +396,7 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 	}
 }
 
-func (mc *ModularChannel) getLeafNode(refinedTree *MATree, channelIndex int32, streamIndex int32, x int32, y int32, maxError int32, parent *ModularStream) (*MATree, error) {
+func (mc *ModularChannel) getLeafNode(refinedTree *MATreeNode, channelIndex int32, streamIndex int32, x int32, y int32, maxError int32, parent *ModularStream) (*MATreeNode, error) {
 
 	walkerFunc := mc.getWalkerFunc(channelIndex, streamIndex, x, y, maxError, parent)
 	leafNode, err := refinedTree.walk(walkerFunc)
@@ -408,7 +408,7 @@ func (mc *ModularChannel) getLeafNode(refinedTree *MATree, channelIndex int32, s
 }
 
 func (mc *ModularChannel) decode(reader jxlio.BitReader, stream entropy.EntropyStreamer,
-	wpParams *WPParams, tree *MATree, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int32) error {
+	wpParams *WPParams, tree *MATreeNode, parent *ModularStream, channelIndex int32, streamIndex int32, distMultiplier int32) error {
 
 	if mc.decoded {
 		return nil

@@ -49,8 +49,8 @@ type Framer interface {
 	groupPosInLFGroup(lfGroupID int32, groupID uint32) util.Point
 	getGlobalMetadata() *bundle.ImageHeader
 	getLFGroupLocation(lfGroupID int32) *util.Point
-	getGlobalTree() *MATree
-	setGlobalTree(tree *MATree)
+	getGlobalTree() *MATreeNode
+	setGlobalTree(tree *MATreeNode)
 	getLFGroupSize(lfGroupID int32) (util.Dimension, error)
 	getNumLFGroups() uint32
 }
@@ -67,7 +67,7 @@ type Frame struct {
 	options        *options.JXLOptions
 	reader         jxlio.BitReader
 	Header         *FrameHeader
-	globalTree     *MATree
+	globalTree     *MATreeNode
 	hfGlobal       *HFGlobal
 	LfGlobal       *LFGlobal
 	width          uint32
@@ -82,10 +82,10 @@ type Frame struct {
 	decoded bool
 }
 
-func (f *Frame) getGlobalTree() *MATree {
+func (f *Frame) getGlobalTree() *MATreeNode {
 	return f.globalTree
 }
-func (f *Frame) setGlobalTree(tree *MATree) {
+func (f *Frame) setGlobalTree(tree *MATreeNode) {
 	f.globalTree = tree
 }
 

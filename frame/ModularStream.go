@@ -170,7 +170,7 @@ type ModularStream struct {
 
 	channels []*ModularChannel
 
-	tree           *MATree
+	tree           *MATreeNode
 	wpParams       *WPParams
 	transforms     []TransformInfo
 	distMultiplier int32

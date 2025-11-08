@@ -2,6 +2,6 @@ package frame
 
 type GlobalModular struct {
 	frame      *Frame
-	globalTree *MATree
+	globalTree *MATreeNode
 	Stream     *ModularStream
 }

@@ -7,11 +7,11 @@ import (
 	"github.com/kpfaulkner/jxl-go/jxlio"
 )
 
-type MATree struct {
-	parent          *MATree
+type MATreeNode struct {
+	parent          *MATreeNode
 	stream          entropy.EntropyStreamer
-	leftChildNode   *MATree
-	rightChildNode  *MATree
+	leftChildNode   *MATreeNode
+	rightChildNode  *MATreeNode
 	property        int32
 	context         int32
 	value           int32
@@ -22,10 +22,10 @@ type MATree struct {
 	multiplier      int32
 }
 
-func NewMATreeWithReader(reader jxlio.BitReader, newEntropyStreamAndNumDistsFunc entropy.EntropyStreamWithReaderAndNumDistsFunc, newEntropyStreamFunc entropy.EntropyStreamWithReaderFunc) (*MATree, error) {
-	mt := &MATree{}
+func NewMATreeWithReader(reader jxlio.BitReader, newEntropyStreamAndNumDistsFunc entropy.EntropyStreamWithReaderAndNumDistsFunc, newEntropyStreamFunc entropy.EntropyStreamWithReaderFunc) (*MATreeNode, error) {
+	mt := &MATreeNode{}
 	mt.parent = nil
-	var nodes []*MATree
+	var nodes []*MATreeNode
 
 	stream, err := newEntropyStreamAndNumDistsFunc(reader, 6, entropy.ReadClusterMap)
 	if err != nil {
@@ -47,11 +47,11 @@ func NewMATreeWithReader(reader jxlio.BitReader, newEntropyStreamAndNumDistsFunc
 		}
 		property--
 
-		var node *MATree
+		var node *MATreeNode
 		if len(nodes) == 0 {
 			node = mt
 		} else {
-			node = &MATree{}
+			node = &MATreeNode{}
 		}
 
 		if property >= 0 {
@@ -122,11 +122,11 @@ func NewMATreeWithReader(reader jxlio.BitReader, newEntropyStreamAndNumDistsFunc
 	return mt, nil
 }
 
-func (t *MATree) isLeafNode() bool {
+func (t *MATreeNode) isLeafNode() bool {
 	return t.property < 0
 }
 
-func (t *MATree) compactifyWithY(channelIndex int32, streamIndex int32, y int32) *MATree {
+func (t *MATreeNode) compactifyWithY(channelIndex int32, streamIndex int32, y int32) *MATreeNode {
 	var prop int32
 	switch t.property {
 	case 0:
@@ -142,7 +142,7 @@ func (t *MATree) compactifyWithY(channelIndex int32, streamIndex int32, y int32)
 		return t
 	}
 
-	var branch *MATree
+	var branch *MATreeNode
 	if prop > t.value {
 		branch = t.leftChildNode
 	} else {
@@ -151,7 +151,7 @@ func (t *MATree) compactifyWithY(channelIndex int32, streamIndex int32, y int32)
 	return branch.compactifyWithY(channelIndex, streamIndex, y)
 }
 
-func (t *MATree) compactify(channelIndex int32, streamIndex int32) *MATree {
+func (t *MATreeNode) compactify(channelIndex int32, streamIndex int32) *MATreeNode {
 
 	var prop int32
 	switch t.property {
@@ -165,7 +165,7 @@ func (t *MATree) compactify(channelIndex int32, streamIndex int32) *MATree {
 		return t
 	}
 
-	var branch *MATree
+	var branch *MATreeNode
 	if prop > t.value {
 		branch = t.leftChildNode
 	} else {
@@ -174,7 +174,7 @@ func (t *MATree) compactify(channelIndex int32, streamIndex int32) *MATree {
 	return branch.compactify(channelIndex, streamIndex)
 }
 
-func (t *MATree) useWeightedPredictor() bool {
+func (t *MATreeNode) useWeightedPredictor() bool {
 	if t.isLeafNode() {
 		return t.predictor == 6
 	}
@@ -184,7 +184,7 @@ func (t *MATree) useWeightedPredictor() bool {
 		t.rightChildNode.useWeightedPredictor()
 }
 
-func (t *MATree) walk(walkerFunc func(inp int32) (int32, error)) (*MATree, error) {
+func (t *MATreeNode) walk(walkerFunc func(inp int32) (int32, error)) (*MATreeNode, error) {
 
 	if t.isLeafNode() {
 		return t, nil
@@ -201,7 +201,7 @@ func (t *MATree) walk(walkerFunc func(inp int32) (int32, error)) (*MATree, error
 	return t.rightChildNode.walk(walkerFunc)
 }
 
-func (t *MATree) getSize() int {
+func (t *MATreeNode) getSize() int {
 	size := 1
 	if !t.isLeafNode() {
 		size += t.leftChildNode.getSize()
@@ -211,7 +211,7 @@ func (t *MATree) getSize() int {
 }
 
 // Prints the tree to the console. Used for comparing implementations
-func DisplayTree(node *MATree, depth int) {
+func DisplayTree(node *MATreeNode, depth int) {
 	if !node.leftChildNode.isLeafNode() {
 		DisplayTree(node.leftChildNode, depth+1)
 	}

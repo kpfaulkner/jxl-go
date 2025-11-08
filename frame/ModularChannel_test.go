@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kpfaulkner/jxl-go/testcommon"
 	"github.com/kpfaulkner/jxl-go/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -447,6 +448,21 @@ func TestGetWalkerFunc(t *testing.T) {
 	}
 }
 
+func TestDecode(t *testing.T) {
+	mc := makeFakeModularChannel()
+
+	bitReader := testcommon.NewFakeBitReader()
+	entropyStreamer := NewFakeEntropyStreamer()
+	parent := makeFakeModularStream()
+
+	tree := NewFakeTree()
+	wpParams := &WPParams{}
+	err := mc.decode(bitReader, entropyStreamer, wpParams, tree, parent, 1, 1, 1)
+	if err != nil {
+		t.Errorf("got error when none was expected : %v", err)
+	}
+}
+
 func TestPrePredictWP(t *testing.T) {
 	mc := makeFakeModularChannel()
 
@@ -497,4 +513,16 @@ func makeFakeModularChannel() *ModularChannel {
 	mc.subpred = []int32{0, 0, 0, 0}
 	mc.weight = []int32{0, 0, 0, 0}
 	return mc
+}
+
+// Makes a real tree with fake data.
+// Due to the way the tree is structured (each node being of same type), making an interface
+// and mocking this is rather awkward. So will just make a REAL tree with controlled data.
+func NewFakeTree() *MATreeNode {
+
+	var tree = &MATreeNode{
+		leftChildNode:  &MATreeNode{property: -1},
+		rightChildNode: &MATreeNode{property: -1},
+	}
+	return tree
 }

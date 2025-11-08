@@ -38,11 +38,11 @@ func (f *FakeFramer) getLFGroupLocation(lfGroupID int32) *util.Point {
 	panic("implement me")
 }
 
-func (f *FakeFramer) getGlobalTree() *MATree {
+func (f *FakeFramer) getGlobalTree() *MATreeNode {
 	//TODO implement me
 	panic("implement me")
 }
-func (f *FakeFramer) setGlobalTree(tree *MATree) {}
+func (f *FakeFramer) setGlobalTree(tree *MATreeNode) {}
 
 func (f *FakeFramer) getLFGroupForGroup(groupID int32) *LFGroup {
 	return f.lfGroup
@@ -131,8 +131,7 @@ func (f FakeEntropyStreamer) TryReadSymbol(reader jxlio.BitReader, context int) 
 }
 
 func (f FakeEntropyStreamer) ReadSymbolWithMultiplier(reader jxlio.BitReader, context int, distanceMultiplier int32) (int32, error) {
-	//TODO implement me
-	panic("implement me")
+	return 0, nil
 }
 
 func (f FakeEntropyStreamer) ReadHybridInteger(reader jxlio.BitReader, config *entropy.HybridIntegerConfig, token int32) (int32, error) {

@@ -76,7 +76,7 @@ func TestNewMATreeWithReader(t *testing.T) {
 			}
 
 			if tree == nil {
-				t.Errorf("nil MATree")
+				t.Errorf("nil MATreeNode")
 			}
 
 			if tc.displayTree {
@@ -88,12 +88,12 @@ func TestNewMATreeWithReader(t *testing.T) {
 
 func TestMATreeDisplay(t *testing.T) {
 
-	tree := &MATree{}
-	tree.leftChildNode = &MATree{
+	tree := &MATreeNode{}
+	tree.leftChildNode = &MATreeNode{
 		parent:   tree,
 		property: -1,
 	}
-	tree.rightChildNode = &MATree{
+	tree.rightChildNode = &MATreeNode{
 		parent:   tree,
 		property: -1,
 	}
