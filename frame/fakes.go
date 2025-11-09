@@ -39,8 +39,8 @@ func (f *FakeFramer) getLFGroupLocation(lfGroupID int32) *util.Point {
 }
 
 func (f *FakeFramer) getGlobalTree() *MATreeNode {
-	//TODO implement me
-	panic("implement me")
+	t := &MATreeNode{stream: &entropy.EntropyStream{}}
+	return t
 }
 func (f *FakeFramer) setGlobalTree(tree *MATreeNode) {}
 
@@ -81,9 +81,17 @@ func NewFakeFramer() Framer {
 		header: &FrameHeader{
 			jpegUpsamplingX: []int32{0, 0, 0},
 			jpegUpsamplingY: []int32{0, 0, 0},
+			Bounds: &util.Rectangle{
+				Origin: util.Point{},
+				Size:   util.Dimension{5, 5},
+			},
 		},
-		lfGlobal:    NewLFGlobal(),
-		imageHeader: &bundle.ImageHeader{},
+		lfGlobal: NewLFGlobal(),
+		imageHeader: &bundle.ImageHeader{
+			ExtraChannelInfo: []bundle.ExtraChannelInfo{{
+				DimShift: 0,
+			}},
+		},
 	}
 	ff.lfGlobal.scaledDequant = []float32{1, 1, 1}
 	return ff

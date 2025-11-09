@@ -60,7 +60,7 @@ func main() {
 	//memStats(frame.Pass{})
 	//memStats(frame.PassesInfo{})
 	//memStats(frame.FrameHeader{})
-	//memStats(frame.MATree{})
+	//memStats(frame.MATreeNode{})
 	//memStats(jxlio.Bitreader{})
 	//memStats(frame.Frame{})
 	//memStats(frame.PassGroup{})
