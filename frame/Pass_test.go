@@ -14,6 +14,14 @@ func TestNewPassWithReader(t *testing.T) {
 	fakeFrame.getLFGlobal().globalModular = &ModularStream{channels: []*ModularChannel{{}}}
 	res, err := NewPassWithReader(bitReader, fakeFrame, 0, 0)
 	assert.Nil(t, err)
-
 	assert.NotNil(t, res)
+
+	bitReader = testcommon.NewFakeBitReader()
+	bitReader.ReadU32Data = []uint32{0, 0, 0}
+	fakeFrame = NewFakeFramer(VARDCT)
+	fakeFrame.getLFGlobal().globalModular = &ModularStream{channels: []*ModularChannel{{}}}
+	res, err = NewPassWithReader(bitReader, fakeFrame, 0, 0)
+	assert.Nil(t, err)
+	assert.NotNil(t, res)
+
 }
