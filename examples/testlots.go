@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"image/png"
-	//"image/png"
 	"os"
 	"path"
 	"strings"
-	//"path"
 	"time"
 
-	//"github.com/pkg/profile"
 	"github.com/kpfaulkner/jxl-go/core"
 	log "github.com/sirupsen/logrus"
 )
@@ -50,15 +47,20 @@ func main() {
 		`..\testdata\ants.jxl|ants.png`,
 		`..\testdata\blendmodes_5.jxl|blendmodes_5.png`,
 		`..\testdata\lossless.jxl|lossless.png`,
-		`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
+
+		// not working. Haven't implemented PEAK_DETECT
+		//`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
+
 		`..\testdata\white.jxl|white.png`,
 		`..\testdata\art.jxl|art.png`,
 		`..\testdata\church.jxl|church.png`,
-		`..\testdata\patches-lossless.jxl|patches-lossless.png`,
+		//`..\testdata\patches-lossless.jxl|patches-lossless.png`,
 		`..\testdata\tiny2.jxl|tiny2.png`,
 	}
 
+	// hardcoded output dir for now
 	destinationDir := `c:\temp\jxlresults\`
+	
 	for _, file := range filePaths {
 		fileDetails := strings.Split(file, "|")
 		orig := fileDetails[0]
@@ -71,55 +73,50 @@ func main() {
 		}
 
 		start := time.Now()
-		//var img image.Image
-		for count := 0; count < 1; count++ {
-			r := bytes.NewReader(f)
-			jxl := core.NewJXLDecoder(r, nil)
-			start := time.Now()
-			//p := profile.Start(profile.CPUProfile, profile.ProfilePath("."))
-			var jxlImage *core.JXLImage
-			if jxlImage, err = jxl.Decode(); err != nil {
-				fmt.Printf("Error decoding: %v\n", err)
-				return
+		r := bytes.NewReader(f)
+		jxl := core.NewJXLDecoder(r, nil)
+		//p := profile.Start(profile.CPUProfile, profile.ProfilePath("."))
+		var jxlImage *core.JXLImage
+		if jxlImage, err = jxl.Decode(); err != nil {
+			fmt.Printf("Error decoding: %v\n", err)
+			continue
+		}
+		//p.Stop()
+		fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
+		fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
+		fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
+
+		if ct, err := jxlImage.GetExtraChannelType(0); err == nil {
+			fmt.Printf("channel 3 type %d\n", ct)
+		}
+
+		pngFileName := path.Join(destinationDir, newFile)
+
+		// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
+		if jxlImage.HasICCProfile() {
+			f, err := os.Create(pngFileName)
+			if err != nil {
+				log.Fatalf("boomage %v", err)
 			}
-			//p.Stop()
-			fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
-			fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
-			fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
+			defer f.Close()
+			core.WritePNG(jxlImage, f)
+		} else {
 
-			if ct, err := jxlImage.GetExtraChannelType(0); err == nil {
-				fmt.Printf("channel 3 type %d\n", ct)
-			}
-
-			pngFileName := path.Join(destinationDir, newFile)
-
-			// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
-			if jxlImage.HasICCProfile() {
-				f, err := os.Create(pngFileName)
-				if err != nil {
-					log.Fatalf("boomage %v", err)
-				}
-				defer f.Close()
-				core.WritePNG(jxlImage, f)
-			} else {
-
-				// convert to regular Go image.Image
-				img, err := jxlImage.ToImage()
-				if err != nil {
-					fmt.Printf("error when making image %v\n", err)
-				}
-
-				buf := new(bytes.Buffer)
-				if err := png.Encode(buf, img); err != nil {
-					log.Fatalf("boomage %v", err)
-				}
-
-				err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
-				if err != nil {
-					log.Fatalf("boomage %v", err)
-				}
+			// convert to regular Go image.Image
+			img, err := jxlImage.ToImage()
+			if err != nil {
+				fmt.Printf("error when making image %v\n", err)
 			}
 
+			buf := new(bytes.Buffer)
+			if err := png.Encode(buf, img); err != nil {
+				log.Fatalf("boomage %v", err)
+			}
+
+			err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+			if err != nil {
+				log.Fatalf("boomage %v", err)
+			}
 		}
 
 		end := time.Now()
