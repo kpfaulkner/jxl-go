@@ -24,4 +24,10 @@ func TestNewPassWithReader(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, res)
 
+	// cherry pick a few values to make sure lengths are correct.
+	// TODO(kpfaulkner) write some proper tests!!!
+	assert.Equal(t, uint32(3), res.minShift)
+	assert.Equal(t, uint32(3), res.maxShift)
+	assert.Equal(t, 13, len(res.hfPass.order))
+
 }
