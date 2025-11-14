@@ -85,12 +85,8 @@ func (br *BitStreamReader) Reset() error {
 }
 
 func (br *BitStreamReader) AtEnd() bool {
-
 	_, err := br.ShowBits(1)
-	if err != nil {
-		return true
-	}
-	return false
+	return err != nil
 }
 
 // ReadBytesToBuffer
@@ -228,10 +224,6 @@ func (br *BitStreamReader) ReadICCVarint() (int32, error) {
 		if b <= 127 {
 			break
 		}
-	}
-	if value > math.MaxInt32 {
-		return 0, errors.New("ICC varint overflow")
-
 	}
 	return value, nil
 }

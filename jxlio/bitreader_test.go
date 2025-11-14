@@ -3,6 +3,8 @@ package jxlio
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestReadbit tests the reading a single bit.
@@ -277,7 +279,9 @@ func TestReadU32(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
 			br := NewBitStreamReader(data)
-			br.SkipBits(6)
+			if err := br.SkipBits(6); err != nil {
+				t.Errorf("error skipping bits : %v", err)
+			}
 
 			resp, err := br.ReadU32(1, 9, 1, 13, 1, 18, 1, 30)
 			if err != nil && !tc.expectErr {
@@ -377,7 +381,8 @@ func TestReadF16(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
 			br := NewBitStreamReader(data)
-			br.SkipBits(6)
+			err := br.SkipBits(6)
+			assert.NoErrorf(t, err, "error skipping bits : %v", err)
 
 			resp, err := br.ReadF16()
 			if err != nil && !tc.expectErr {
@@ -423,7 +428,8 @@ func TestReadEnum(t *testing.T) {
 
 			data := bytes.NewReader(tc.data)
 			br := NewBitStreamReader(data)
-			br.SkipBits(6)
+			err := br.SkipBits(6)
+			assert.NoErrorf(t, err, "error skipping bits : %v", err)
 
 			resp, err := br.ReadEnum()
 			if err != nil && !tc.expectErr {
@@ -468,6 +474,7 @@ func TestReadU8(t *testing.T) {
 			data := bytes.NewReader(tc.data)
 			br := NewBitStreamReader(data)
 			err := br.SkipBits(4)
+			assert.NoErrorf(t, err, "error skipping bits : %v", err)
 
 			resp, err := br.ReadU8()
 			if err != nil && !tc.expectErr {

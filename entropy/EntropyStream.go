@@ -64,7 +64,10 @@ type EntropyStreamWithReaderFunc func(reader jxlio.BitReader, numDists int, disa
 // increase test coverage. Unsure if good or bad idea yet.
 func NewEntropyStreamWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) (EntropyStreamer, error) {
 	es := &EntropyStream{}
-	es.LoadWithReaderAndNumDists(reader, numDists, readClusterMapFunc)
+	err := es.LoadWithReaderAndNumDists(reader, numDists, readClusterMapFunc)
+	if err != nil {
+		return nil, err
+	}
 	return es, nil
 }
 
@@ -162,7 +165,7 @@ func (es *EntropyStream) GetDists() []SymbolDistribution {
 	return es.dists
 }
 
-func (es *EntropyStream) LoadWithStream(stream EntropyStreamer) error {
+func (es *EntropyStream) LoadWithStream(stream EntropyStreamer) {
 	inputStream := stream.(*EntropyStream)
 	es.usesLZ77 = inputStream.usesLZ77
 	es.lz77MinLength = inputStream.lz77MinLength
@@ -175,7 +178,6 @@ func (es *EntropyStream) LoadWithStream(stream EntropyStreamer) error {
 		es.window = make([]int32, 1<<20)
 	}
 	es.ansState = &ANSState{State: -1, HasState: false}
-	return nil
 }
 
 func (es *EntropyStream) LoadWithReaderAndNumDists(reader jxlio.BitReader, numDists int, readClusterMapFunc ReadClusterMapFunc) error {

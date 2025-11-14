@@ -336,30 +336,6 @@ func Matrix3Equal[T comparable](a [][][]T, b [][][]T) bool {
 	return true
 }
 
-func DeepCopy3[T comparable](a [][][]T) [][][]T {
-
-	if a == nil {
-		return nil
-	}
-	matrixCopy := make([][][]T, len(a))
-	for i := 0; i < len(a); i++ {
-		if a[i] == nil {
-			continue
-		}
-		matrixCopy[i] = make([][]T, len(a[i]))
-		for j := 0; j < len(a[i]); j++ {
-			if a[i][j] == nil {
-				continue
-			}
-			matrixCopy[i][j] = make([]T, len(a[i][j]))
-			for k := 0; k < len(a[i][j]); k++ {
-				matrixCopy[i][j][k] = a[i][j][k]
-			}
-		}
-	}
-	return matrixCopy
-}
-
 func InverseDCT2D(src [][]float32, dest [][]float32, startIn Point, startOut Point, size Dimension, scratchSpace0 [][]float32, scratchSpace1 [][]float32, transposed bool) error {
 
 	logHeight := CeilLog2(size.Height)

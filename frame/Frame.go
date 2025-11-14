@@ -59,7 +59,6 @@ type Frame struct {
 	tocPermutation []uint32
 	tocLengths     []uint32
 	lfGroups       []*LFGroup
-	buffers        [][]uint8
 	Buffer         []image.ImageBuffer
 	passes         []Pass
 	bitreaders     []jxlio.BitReader
@@ -70,8 +69,6 @@ type Frame struct {
 	globalTree     *MATreeNode
 	hfGlobal       *HFGlobal
 	LfGlobal       *LFGlobal
-	width          uint32
-	height         uint32
 
 	groupRowStride   uint32
 	lfGroupRowStride uint32
@@ -103,8 +100,10 @@ func (f *Frame) getFrameHeader() *FrameHeader {
 
 func (f *Frame) ReadFrameHeader() (FrameHeader, error) {
 
-	f.reader.ZeroPadToByte()
-	var err error
+	err := f.reader.ZeroPadToByte()
+	if err != nil {
+		return FrameHeader{}, fmt.Errorf("error zero padding to byte: %v", err)
+	}
 	f.Header, err = NewFrameHeaderWithReader(f.reader, f.GlobalMetadata)
 	if err != nil {
 		return FrameHeader{}, err
@@ -156,7 +155,9 @@ func (f *Frame) ReadTOC() error {
 		//	f.tocPermutation[i] = a
 		//}
 	}
-	f.reader.ZeroPadToByte()
+	if err = f.reader.ZeroPadToByte(); err != nil {
+		return err
+	}
 	f.tocLengths = make([]uint32, tocEntries)
 
 	for i := 0; i < int(tocEntries); i++ {
@@ -167,7 +168,9 @@ func (f *Frame) ReadTOC() error {
 		}
 	}
 
-	f.reader.ZeroPadToByte()
+	if err = f.reader.ZeroPadToByte(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -259,9 +262,6 @@ func (f *Frame) getBitreader(index int) (jxlio.BitReader, error) {
 	if len(f.tocLengths) <= 1 {
 		i = 0
 	} else {
-		if f.tocPermutation != nil {
-			i = f.tocPermutation[index]
-		}
 		i = uint32(index)
 	}
 
@@ -424,11 +424,15 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 	}
 
 	if f.Header.restorationFilter.gab {
-		f.performGabConvolution()
+		if err := f.performGabConvolution(); err != nil {
+			return err
+		}
 	}
 
 	if f.Header.restorationFilter.epfIterations > 0 {
-		f.performEdgePreservingFilter()
+		if err = f.performEdgePreservingFilter(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -658,7 +662,9 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		// get floating point version of frame buffer
 		buffers := util.MakeMatrix3D[float32](3, 0, 0)
 		for c := 0; c < 3; c++ {
-			f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
+			if err := f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
+				return err
+			}
 			buffers[c] = f.Buffer[c].FloatBuffer
 		}
 
@@ -681,6 +687,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	return nil
 }
 
+// nolint
 func displayBuffers(text string, frameBuffer [][][]float32) {
 	total := 0.0
 	for c := 0; c < len(frameBuffer); c++ {
@@ -692,6 +699,7 @@ func displayBuffers(text string, frameBuffer [][][]float32) {
 	}
 }
 
+// nolint
 func displayBuffer(text string, frameBuffer [][]float32) {
 	total := 0.0
 
@@ -713,7 +721,10 @@ func (f *Frame) invertSubsampling() error {
 		for xShift > 0 {
 			xShift--
 			oldBuffer := f.Buffer[c]
-			oldBuffer.CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
+			if err := oldBuffer.CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
+				log.Errorf("Error casting buffer to float %v", err)
+				return err
+			}
 			oldChannel := oldBuffer.FloatBuffer
 			newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height, oldBuffer.Width*2)
 			if err != nil {
@@ -745,7 +756,10 @@ func (f *Frame) invertSubsampling() error {
 		for yShift > 0 {
 			yShift--
 			oldBuffer := f.Buffer[c]
-			oldBuffer.CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
+			if err := oldBuffer.CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
+				log.Errorf("Error casting buffer to float %v", err)
+				return err
+			}
 			oldChannel := oldBuffer.FloatBuffer
 			newBuffer, err := image.NewImageBuffer(image.TYPE_FLOAT, oldBuffer.Height*2, oldBuffer.Width)
 			if err != nil {
@@ -796,7 +810,9 @@ func (f *Frame) performGabConvolution() error {
 	}
 
 	for c := int32(0); c < colours; c++ {
-		f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
+		if err := f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
+			return err
+		}
 		height := f.Buffer[c].Height
 		width := f.Buffer[c].Width
 		buffC := f.Buffer[c].FloatBuffer
@@ -890,7 +906,9 @@ func (f *Frame) performEdgePreservingFilter() error {
 
 	outputBuffer := make([]image.ImageBuffer, colours)
 	for c := int32(0); c < colours; c++ {
-		f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample))
+		if err = f.Buffer[c].CastToFloatIfInt(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
+			return err
+		}
 		outBuf, err := image.NewImageBuffer(image.TYPE_FLOAT, int32(paddedSize.Height), int32(paddedSize.Width))
 		if err != nil {
 			return err
@@ -934,7 +952,7 @@ func (f *Frame) performEdgePreservingFilter() error {
 					continue
 				}
 				sumWeights := float32(0)
-				for ff, _ := range sumChannels {
+				for ff := range sumChannels {
 					sumChannels[ff] = 0
 				}
 				for _, cross := range crossList {
@@ -1027,7 +1045,7 @@ func (f *Frame) getNumLFGroups() uint32 {
 }
 
 func (f *Frame) InitializeNoise(seed0 int64) error {
-	if f.LfGlobal.noiseParameters == nil || len(f.LfGlobal.noiseParameters) == 0 {
+	if len(f.LfGlobal.noiseParameters) == 0 {
 		return nil
 	}
 
@@ -1220,6 +1238,7 @@ func (f *Frame) getColourChannelCount() int32 {
 // generate a total (signature?) for each row of each channel in the buffer.
 // This is just to see if we can compare Go and Java
 // Assume float buffer
+// nolint   (skip linting for now... will be used later)
 func (f *Frame) generateSignaturesForBuffer(idx int) []string {
 	sigs := []string{}
 	var c = f.Buffer[idx]

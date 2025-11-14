@@ -52,7 +52,10 @@ func main() {
 			log.Fatalf("boomage %v", err)
 		}
 		defer f.Close()
-		core.WritePNG(jxlImage, f)
+		err = core.WritePNG(jxlImage, f)
+		if err != nil {
+			log.Fatalf("boomage %v", err)
+		}
 	} else {
 		startEncodingToImg := time.Now()
 		// convert to regular Go image.Image
