@@ -31,7 +31,7 @@ func TestNewLFGroupWithReader(t *testing.T) {
 		//},
 		{
 			name:               "success",
-			parent:             NewFakeFramer(),
+			parent:             NewFakeFramer(VARDCT),
 			lfCoefficientsFunc: NewFakeLFCoeffientsFunc,
 			hfMetadataFunc:     NewFakeHFMetadataFunc,
 			boolData:           []bool{true, true, false},

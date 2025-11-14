@@ -32,12 +32,12 @@ func TestNewLFCoefficientsWithReader(t *testing.T) {
 					Height: 5,
 				},
 			},
-			frame:     NewFakeFramer(),
+			frame:     NewFakeFramer(VARDCT),
 			expectErr: true,
 		},
 		{
 			name:  "success",
-			frame: NewFakeFramer(),
+			frame: NewFakeFramer(VARDCT),
 			parent: &LFGroup{
 				size: util.Dimension{
 					Width:  5,

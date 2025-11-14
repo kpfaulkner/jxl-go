@@ -95,15 +95,37 @@ func TestNewModularStreamWithChannels(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			name:         "success 1 channel",
+			name:         "success 1 channel, PALETTE",
 			channelCount: 1,
-			frame:        NewFakeFramer(),
+			frame:        NewFakeFramer(VARDCT),
 			boolData: []bool{
 				true,
 				true, // wpparams default
 			},
 			bitsData: []uint64{
 				1, // pallette
+				0, // dPred
+
+			},
+			u32Data: []uint32{
+				1, // nbTransforms
+				0, //
+				0, // numC
+				0, // nbColours
+				0, // nbDeltas
+			},
+			expectErr: false,
+		},
+		{
+			name:         "success 1 channel, SQUEEZE",
+			channelCount: 1,
+			frame:        NewFakeFramer(VARDCT),
+			boolData: []bool{
+				true,
+				true, // wpparams default
+			},
+			bitsData: []uint64{
+				2, // pallette
 				0, // dPred
 
 			},

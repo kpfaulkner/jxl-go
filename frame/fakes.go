@@ -76,7 +76,7 @@ func (f *FakeFramer) getGlobalMetadata() *bundle.ImageHeader {
 	return f.imageHeader
 }
 
-func NewFakeFramer() Framer {
+func NewFakeFramer(encoding uint32) Framer {
 	ff := &FakeFramer{
 		header: &FrameHeader{
 			jpegUpsamplingX: []int32{0, 0, 0},
@@ -85,6 +85,8 @@ func NewFakeFramer() Framer {
 				Origin: util.Point{},
 				Size:   util.Dimension{5, 5},
 			},
+			passes:   NewPassesInfo(),
+			Encoding: encoding,
 		},
 		lfGlobal: NewLFGlobal(),
 		imageHeader: &bundle.ImageHeader{

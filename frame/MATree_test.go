@@ -39,7 +39,7 @@ func TestNewMATreeWithReader(t *testing.T) {
 		//},
 		{
 			name:     "success, property == 0",
-			parent:   NewFakeFramer(),
+			parent:   NewFakeFramer(VARDCT),
 			boolData: []bool{},
 			enumData: nil,
 			u32Data:  []uint32{},

@@ -13,7 +13,7 @@ type Pass struct {
 	maxShift         uint32
 }
 
-func NewPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32, prevMinShift uint32) (Pass, error) {
+func NewPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32, prevMinShift uint32) (Pass, error) {
 	p := Pass{}
 
 	if passIndex > 0 {
@@ -23,7 +23,7 @@ func NewPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32, p
 	}
 
 	n := -1
-	passes := frame.Header.passes
+	passes := frame.getFrameHeader().passes
 	for i := 0; i < len(passes.lastPass); i++ {
 		if passes.lastPass[i] == passIndex {
 			n = i
@@ -37,7 +37,7 @@ func NewPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32, p
 		p.minShift = p.maxShift
 	}
 
-	stream := frame.LfGlobal.globalModular
+	stream := frame.getLFGlobal().globalModular
 	p.replacedChannels = make([]*ModularChannel, len(stream.getChannels()))
 	for i := 0; i < len(p.replacedChannels); i++ {
 		ch := stream.getChannels()[i]
@@ -49,7 +49,7 @@ func NewPassWithReader(reader jxlio.BitReader, frame *Frame, passIndex uint32, p
 		}
 	}
 	var err error
-	if frame.Header.Encoding == VARDCT {
+	if frame.getFrameHeader().Encoding == VARDCT {
 		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex, entropy.ReadClusterMap, entropy.NewEntropyStreamWithReaderAndNumDists, readPermutation)
 		if err != nil {
 			return Pass{}, err
