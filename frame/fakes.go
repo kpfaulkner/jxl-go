@@ -89,7 +89,9 @@ func NewFakeFramer(encoding uint32) Framer {
 			Encoding: encoding,
 		},
 		lfGlobal: NewLFGlobal(),
-		hfGlobal: &HFGlobal{},
+		hfGlobal: &HFGlobal{
+			numHFPresets: 1,
+		},
 		imageHeader: &bundle.ImageHeader{
 			ExtraChannelInfo: []bundle.ExtraChannelInfo{{
 				DimShift: 0,
