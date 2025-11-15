@@ -478,7 +478,7 @@ func makeFakeModularStream() *ModularStream {
 
 	ms := &ModularStream{
 		channels: []*ModularChannel{{
-			size:   util.Dimension{5, 5},
+			size:   util.Dimension{Width: 5, Height: 5},
 			hshift: 1,
 			vshift: 1,
 			buffer: util.MakeMatrix2D[int32](5, 5),

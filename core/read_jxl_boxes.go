@@ -2,7 +2,6 @@ package core
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"io"
 
@@ -101,9 +100,6 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 		if boxSize > 0 {
 			boxSize -= 8
 		}
-		if boxSize < 0 {
-			return nil, errors.New("invalid box size")
-		}
 
 		err = br.reader.ReadBytesToBuffer(boxTag, 4)
 		if err != nil {
@@ -189,13 +185,6 @@ func (br *BoxReader) readAllBoxes() ([]ContainerBoxHeader, error) {
 			}
 		}
 	}
-
-	return boxHeaders, nil
-}
-
-func (br *BoxReader) readBox() error {
-
-	return nil
 }
 
 // returns number of bytes that were NOT skipped.
@@ -210,8 +199,4 @@ func makeTag(bytes []uint8, offset int, length int) uint64 {
 		tag = (tag << 8) | uint64(bytes[i])&0xFF
 	}
 	return tag
-}
-
-func fromBeToLe(le uint32) uint32 {
-	return uint32(binary.BigEndian.Uint32([]byte{byte(le), byte(le >> 8), byte(le >> 16), byte(le >> 24)}))
 }

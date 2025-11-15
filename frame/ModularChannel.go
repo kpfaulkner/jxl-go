@@ -61,7 +61,7 @@ func NewModularChannelWithAllParams(height int32, width int32, vshift int32, hsh
 }
 
 func (mc *ModularChannel) allocate() {
-	if mc.buffer != nil && len(mc.buffer) != 0 {
+	if len(mc.buffer) != 0 {
 		return
 	}
 
@@ -287,10 +287,6 @@ func (mc *ModularChannel) errorNorthEast(x int32, y int32, e int32) int32 {
 	return mc.errorNorth(x, y, e)
 }
 
-func (mc *ModularChannel) walkerFunc(k int32) int32 {
-	return 0
-}
-
 func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x int32, y int32, maxError int32, parent *ModularStream) func(int32) (int32, error) {
 
 	return func(k int32) (int32, error) {
@@ -347,13 +343,10 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 				}
 				rC := channel.buffer[y][x]
 				if k2 == k {
-
-					k2++
 					return util.Abs(rC), nil
 				}
 				k2++
 				if k2 == k {
-					k2++
 					return rC, nil
 				}
 				k2++
@@ -379,13 +372,10 @@ func (mc *ModularChannel) getWalkerFunc(channelIndex int32, streamIndex int32, x
 				}
 				rG = rC - util.Clamp3(rW+rN-rNW, rN, rW)
 				if k2 == k {
-
-					k2++
 					return util.Abs(rG), nil
 				}
 				k2++
 				if k2 == k {
-					k2++
 					return rG, nil
 				}
 				k2++

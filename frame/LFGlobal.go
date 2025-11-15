@@ -45,6 +45,8 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent Framer, hfBlockContext
 	lf := NewLFGlobal()
 	lf.frame = parent
 	extra := len(lf.frame.getGlobalMetadata().ExtraChannelInfo)
+
+	// nolint
 	if lf.frame.getFrameHeader().Flags&PATCHES != 0 {
 
 		return nil, errors.New("Patches not implemented yet")

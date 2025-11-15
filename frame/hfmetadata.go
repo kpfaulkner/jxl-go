@@ -55,7 +55,7 @@ func NewHFMetadataWithReader(reader jxlio.BitReader, parent *LFGroup, frame Fram
 	for i := uint64(0); i < hf.nbBlocks; i++ {
 		t := blockInfoBuffer[0][i]
 		if t > 26 || t < 0 {
-			return nil, errors.New(fmt.Sprintf("Invalid transform Type %d", t))
+			return nil, fmt.Errorf("Invalid transform Type %d", t)
 		}
 		tt := tta[t]
 		pos, err := hf.placeBlock(lastBlock, tt, 1+blockInfoBuffer[1][i])
@@ -73,8 +73,7 @@ func NewHFMetadataWithReader(reader jxlio.BitReader, parent *LFGroup, frame Fram
 
 // FIXME(kpfaulkner) 20241102 think somethings wrong in here...  llfScale is bad
 func (m *HFMetadata) placeBlock(lastBlock util.Point, block TransformType, mul int32) (util.Point, error) {
-
-	x := lastBlock.X
+	var x int32
 outerY:
 
 	for y := lastBlock.Y; y < int32(len(m.dctSelect)); y++ {
@@ -84,7 +83,6 @@ outerY:
 		for ; x < int32(len(dctY)); x++ {
 
 			if block.dctSelectWidth+x > int32(len(dctY)) {
-				x = lastBlock.X
 				continue outerY
 			}
 

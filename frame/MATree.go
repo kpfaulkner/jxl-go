@@ -131,13 +131,10 @@ func (t *MATreeNode) compactifyWithY(channelIndex int32, streamIndex int32, y in
 	switch t.property {
 	case 0:
 		prop = channelIndex
-		break
 	case 1:
 		prop = streamIndex
-		break
 	case 2:
 		prop = y
-		break
 	default:
 		return t
 	}
@@ -157,10 +154,8 @@ func (t *MATreeNode) compactify(channelIndex int32, streamIndex int32) *MATreeNo
 	switch t.property {
 	case 0:
 		prop = channelIndex
-		break
 	case 1:
 		prop = streamIndex
-		break
 	default:
 		return t
 	}
@@ -201,6 +196,7 @@ func (t *MATreeNode) walk(walkerFunc func(inp int32) (int32, error)) (*MATreeNod
 	return t.rightChildNode.walk(walkerFunc)
 }
 
+// nolint
 func (t *MATreeNode) getSize() int {
 	size := 1
 	if !t.isLeafNode() {
@@ -218,5 +214,4 @@ func DisplayTree(node *MATreeNode, depth int) {
 	if !node.rightChildNode.isLeafNode() {
 		DisplayTree(node.rightChildNode, depth+1)
 	}
-	return
 }

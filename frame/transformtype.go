@@ -158,7 +158,7 @@ func validateIndex(index int32, mode int32) (bool, error) {
 		return true, nil
 	}
 
-	return false, errors.New(fmt.Sprintf("Invalid index %d for mode %d", index, mode))
+	return false, fmt.Errorf("Invalid index %d for mode %d", index, mode)
 
 }
 

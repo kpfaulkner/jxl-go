@@ -57,17 +57,10 @@ func WritePNG(jxlImage *JXLImage, output io.Writer) error {
 func writeICCP(image *JXLImage, output io.Writer) error {
 
 	var buf bytes.Buffer
-	//output.Write([]byte{0x69, 0x43, 0x43, 0x50})
 	buf.Write([]byte{0x69, 0x43, 0x43, 0x50})
-	buf.Write([]byte("jxlatte")) // using jxlatte just to compare files
+	buf.Write([]byte("jxl-go"))
 	buf.WriteByte(0x00)
 	buf.WriteByte(0x00)
-
-	var iccProfile []int8
-	for i := 0; i < len(image.iccProfile); i++ {
-		iccProfile = append(iccProfile, int8(i))
-	}
-
 	var compressedICC bytes.Buffer
 	w, err := zlib.NewWriterLevel(&compressedICC, 1)
 	if err != nil {
@@ -136,9 +129,7 @@ func writeSRGB(image *JXLImage, output io.Writer) error {
 }
 
 func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
-
-	// colourmode is 6 if include alpha...  otherwise 2
-	colourMode := byte(2)
+	var colourMode byte
 
 	if jxlImage.ColorEncoding == colour.CE_GRAY {
 		if jxlImage.alphaIndex >= 0 {
@@ -286,15 +277,23 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 	}
 	w.Close()
 
-	buf.Write(compressedBytes.Bytes())
+	if _, err := buf.Write(compressedBytes.Bytes()); err != nil {
+		return err
+	}
 	bb := buf.Bytes()
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, uint32(len(bb))-4)
-	output.Write(b)
-	output.Write(bb)
+	if _, err := output.Write(b); err != nil {
+		return err
+	}
+	if _, err := output.Write(bb); err != nil {
+		return err
+	}
 	checksum := crc32.ChecksumIEEE(bb)
 	binary.BigEndian.PutUint32(b, checksum)
-	output.Write(b)
+	if _, err := output.Write(b); err != nil {
+		return err
+	}
 
 	return nil
 }

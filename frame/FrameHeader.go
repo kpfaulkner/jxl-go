@@ -116,7 +116,6 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 			case 1:
 				fh.jpegUpsamplingY[i] = 1
 				fh.jpegUpsamplingX[i] = 1
-				break
 			case 2:
 				fh.jpegUpsamplingY[i] = 0
 				fh.jpegUpsamplingX[i] = 1
@@ -294,6 +293,7 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 		}
 	}
 
+	// nolint
 	if normalFrame && parent.AnimationHeader != nil {
 		// dont care about animation
 		panic("animation")

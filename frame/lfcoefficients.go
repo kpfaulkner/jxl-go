@@ -115,6 +115,9 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 	}
 
 	err = lf.populatedLFIndex(parent, lfQuant)
+	if err != nil {
+		return nil, err
+	}
 	return lf, nil
 }
 

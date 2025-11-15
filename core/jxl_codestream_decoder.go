@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
@@ -13,13 +12,6 @@ import (
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
 )
-
-// Box information (not sure what this is yet)
-type BoxInfo struct {
-	boxSize   uint32
-	posInBox  uint32
-	container bool
-}
 
 // JXLCodestreamDecoder decodes the JXL image
 type JXLCodestreamDecoder struct {
@@ -66,25 +58,27 @@ func (jxl *JXLCodestreamDecoder) GetImageHeader() (*bundle.ImageHeader, error) {
 		return nil, err
 	}
 
-	for _, box := range jxl.boxHeaders {
-		_, err := jxl.bitReader.Seek(box.Offset, io.SeekStart)
-		if err != nil {
-			return nil, err
-		}
-
-		if jxl.atEnd() {
-			return nil, nil
-		}
-
-		level := int32(jxl.level)
-		imageHeader, err := bundle.ParseImageHeader(jxl.bitReader, level)
-		if err != nil {
-			return nil, err
-		}
-
-		return imageHeader, nil
+	if len(jxl.boxHeaders) > 1 {
+		return nil, errors.New("multiple boxes found, cannot get image header alone")
 	}
-	return nil, errors.New("unable to find image header")
+
+	box := jxl.boxHeaders[0]
+	_, err = jxl.bitReader.Seek(box.Offset, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	if jxl.atEnd() {
+		return nil, nil
+	}
+
+	level := int32(jxl.level)
+	imageHeader, err := bundle.ParseImageHeader(jxl.bitReader, level)
+	if err != nil {
+		return nil, err
+	}
+
+	return imageHeader, nil
 }
 
 func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
@@ -170,7 +164,6 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 			}
 			frameCount++
 
-			//showNextNBytes(jxl.bitReader, 4)
 			if jxl.lfBuffer[header.LfLevel] == nil && header.Flags&frame.USE_LF_FRAME != 0 {
 				return nil, errors.New("LF level too large")
 			}
@@ -261,16 +254,15 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 					}
 				}
 
+				// FIXME(kpfaulkner) need to figure out new copies of canvas... why?
+				// nolint
 				if found {
-					//FIXME(kpfaulkner)
-					// dumb copy of canvas?
-
 					canvas2 := make([]image2.ImageBuffer, len(jxl.canvas))
 					for _, ib := range jxl.canvas {
 						ib2 := image2.NewImageBufferFromImageBuffer(&ib)
 						canvas2 = append(canvas2, *ib2)
 					}
-
+					//jxl.canvas = canvas2
 				}
 				err = jxl.blendFrame(jxl.canvas, imgFrame)
 				if err != nil {
@@ -315,18 +307,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 		return img, nil
 	}
 
-	panic("make JXL image here?")
 	return nil, nil
-}
-
-func showNextNBytes(reader jxlio.BitReader, prefix string, n int) {
-	b, _ := reader.ShowBits(8 * n)
-	fmt.Printf(prefix + " ")
-	for i := 0; i < n; i++ {
-		fmt.Printf("%02x ", b&0xFF)
-		b >>= 8
-	}
-	fmt.Printf("\n")
 }
 
 // Read signature
@@ -887,7 +868,6 @@ func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer,
 				}
 			}
 		}
-		break
 	case frame.BLEND_MULT:
 		for y := int32(0); y < frameHeight; y++ {
 			cy := y + frameStartY
@@ -906,7 +886,6 @@ func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer,
 				cf[cy][cx] = newSample * rf[cy][cx]
 			}
 		}
-		break
 	case frame.BLEND_BLEND:
 		if hasAlpha {
 			oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
@@ -953,7 +932,6 @@ func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer,
 				}
 			}
 		}
-		break
 	case frame.BLEND_MULADD:
 		if hasAlpha {
 			oaf = refBuffer[imageColours+int(info.AlphaChannel)].FloatBuffer
@@ -996,7 +974,6 @@ func (jxl *JXLCodestreamDecoder) performBlending(canvas []image2.ImageBuffer,
 				cf[cy][cx] = alpha
 			}
 		}
-		break
 	default:
 		return errors.New("Illegal blend Mode")
 	}
@@ -1128,8 +1105,6 @@ func (jxl *JXLCodestreamDecoder) transposeBuffer(src image2.ImageBuffer, orienta
 		}
 		return *image2.NewImageBufferFromFloats(floats), nil
 	}
-
-	return image2.ImageBuffer{}, errors.New("unable to transpose buffer")
 }
 
 func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation uint32) ([][]int32, error) {
@@ -1202,7 +1177,6 @@ func (jxl *JXLCodestreamDecoder) transposeBufferInt(src [][]int32, orientation u
 		return nil, errors.New("Invalid orientation")
 
 	}
-	return nil, nil
 }
 
 func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientation uint32) ([][]float32, error) {
@@ -1275,5 +1249,4 @@ func (jxl *JXLCodestreamDecoder) transposeBufferFloat(src [][]float32, orientati
 		return nil, errors.New("Invalid orientation")
 
 	}
-	return nil, nil
 }

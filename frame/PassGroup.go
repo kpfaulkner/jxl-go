@@ -60,13 +60,12 @@ var (
 )
 
 type PassGroup struct {
-	modularPassGroupBuffer [][][]int32
-	modularStream          ModularStreamer
-	frame                  *Frame
-	groupID                uint32
-	passID                 uint32
-	hfCoefficients         *HFCoefficients
-	lfg                    *LFGroup
+	modularStream  ModularStreamer
+	frame          *Frame
+	groupID        uint32
+	passID         uint32
+	hfCoefficients *HFCoefficients
+	lfg            *LFGroup
 }
 
 func NewPassGroupWithReader(reader jxlio.BitReader, frame *Frame, pass uint32, group uint32, replacedChannels []ModularChannel) (*PassGroup, error) {
@@ -154,7 +153,6 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				if err := util.InverseDCT2D(coeffs[c], frameBuffer[c], ppg, ppf, tt.getPixelSize(), scratchBlock[0], scratchBlock[1], false); err != nil {
 					return err
 				}
-				break
 			case METHOD_DCT8_4:
 				coeff0 = coeffs[c][ppg.Y][ppg.X]
 				coeff1 = coeffs[c][ppg.Y+1][ppg.X]
@@ -181,7 +179,6 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 						return err
 					}
 				}
-				break
 
 			case METHOD_DCT4_8:
 				coeff0 = coeffs[c][ppg.Y][ppg.X]
@@ -209,7 +206,6 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 						return err
 					}
 				}
-				break
 
 			case METHOD_AFV:
 				//displayBuffer("before", frameBuffer[c])
@@ -219,12 +215,10 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 					return err
 				}
 				//displayBuffer("after", frameBuffer[c])
-				break
 			case METHOD_DCT2:
 				g.auxDCT2(coeffs[c], scratchBlock[0], ppg, util.ZERO, 2)
 				g.auxDCT2(scratchBlock[0], scratchBlock[1], util.ZERO, util.ZERO, 4)
 				g.auxDCT2(scratchBlock[1], frameBuffer[c], util.ZERO, ppf, 8)
-				break
 			case METHOD_HORNUSS:
 				g.auxDCT2(coeffs[c], scratchBlock[1], ppg, util.ZERO, 2)
 				for y := int32(0); y < 2; y++ {
@@ -354,7 +348,7 @@ func (g *PassGroup) invertAFV(coeffs [][]float32, buffer [][]float32, tt *Transf
 	}
 
 	if err := util.InverseDCT2D(scratchBlock[0], scratchBlock[1], util.ZERO, util.ZERO,
-		util.Dimension{4, 4}, scratchBlock[2], scratchBlock[3], false); err != nil {
+		util.Dimension{Width: 4, Height: 4}, scratchBlock[2], scratchBlock[3], false); err != nil {
 		return err
 	}
 

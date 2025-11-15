@@ -26,7 +26,7 @@ type RestorationFilter struct {
 
 func NewRestorationFilter() *RestorationFilter {
 	rf := &RestorationFilter{}
-	rf.epfSharpLut = []float32{0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7, 1}
+	rf.epfSharpLut = []float32{0.0, 1.0 / 7.0, 2.0 / 7.0, 3.0 / 7.0, 4.0 / 7.0, 5.0 / 7.0, 6.0 / 7.0, 1.0}
 	rf.epfChannelScale = []float32{40.0, 5.0, 3.5}
 	rf.gab1Weights = []float32{0.115169525, 0.115169525, 0.115169525}
 	rf.gab2Weights = []float32{0.061248592, 0.061248592, 0.061248592}

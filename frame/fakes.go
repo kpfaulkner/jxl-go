@@ -83,7 +83,7 @@ func NewFakeFramer(encoding uint32) Framer {
 			jpegUpsamplingY: []int32{0, 0, 0},
 			Bounds: &util.Rectangle{
 				Origin: util.Point{},
-				Size:   util.Dimension{5, 5},
+				Size:   util.Dimension{Width: 5, Height: 5},
 			},
 			passes:   NewPassesInfo(),
 			Encoding: encoding,

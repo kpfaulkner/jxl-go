@@ -252,10 +252,12 @@ func NewHFGlobalWithReader(reader jxlio.BitReader, frame *Frame) (*HFGlobal, err
 	return hf, nil
 }
 
+// nolint
 func (hfg *HFGlobal) getHFPresets() int32 {
 	return hfg.numHFPresets
 }
 
+// nolint
 func (hfg *HFGlobal) totalWeights() {
 
 	var total float32 = 0
@@ -271,6 +273,7 @@ func (hfg *HFGlobal) totalWeights() {
 	fmt.Printf("total weight %f\n", total)
 }
 
+// nolint
 func (hfg *HFGlobal) displayWeights() {
 	for index := 0; index < 17; index++ {
 		for c := 0; c < len(hfg.weights[index]); c++ {
@@ -285,6 +288,7 @@ func (hfg *HFGlobal) displayWeights() {
 	}
 }
 
+// nolint
 func (hfg *HFGlobal) displaySpecificWeights(index int, c int, y int) {
 	for x := 0; x < len(hfg.weights[index][c][y]); x++ {
 		fmt.Printf("%f ", hfg.weights[index][c][y][x])
@@ -306,7 +310,6 @@ func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index i
 	switch encodingMode {
 	case MODE_LIBRARY:
 		hfg.params[index] = defaultParams[index]
-		break
 	case MODE_HORNUSS:
 		m := util.MakeMatrix2D[float32](3, 3)
 		for y := int32(0); y < 3; y++ {
@@ -319,7 +322,6 @@ func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index i
 			}
 		}
 		hfg.params[index] = DCTParam{dctParam: nil, param: m, mode: MODE_HORNUSS, denominator: 1, params4x4: nil}
-		break
 	case MODE_DCT2:
 		m := util.MakeMatrix2D[float32](3, 6)
 		for y := int32(0); y < 3; y++ {
@@ -332,8 +334,6 @@ func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index i
 			}
 		}
 		hfg.params[index] = DCTParam{dctParam: nil, param: m, mode: MODE_DCT2, denominator: 1, params4x4: nil}
-		break
-
 	case MODE_DCT4:
 		m := util.MakeMatrix2D[float32](3, 2)
 		for y := int32(0); y < 3; y++ {
@@ -350,15 +350,12 @@ func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index i
 			return err
 		}
 		hfg.params[index] = DCTParam{dctParam: dctParam, param: m, mode: MODE_DCT4, denominator: 1, params4x4: nil}
-		break
-
 	case MODE_DCT:
 		dctParam, err := hfg.readDCTParams(reader)
 		if err != nil {
 			return err
 		}
 		hfg.params[index] = DCTParam{dctParam: dctParam, param: nil, mode: MODE_DCT, denominator: 1, params4x4: nil}
-		break
 	case MODE_RAW:
 		den, err := reader.ReadF16()
 		if err != nil {
@@ -391,7 +388,6 @@ func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index i
 			}
 		}
 		hfg.params[index] = DCTParam{dctParam: nil, param: m, mode: MODE_RAW, denominator: den, params4x4: nil}
-		break
 	case MODE_AFV:
 		m := util.MakeMatrix2D[float32](3, 9)
 		for y := int32(0); y < 3; y++ {
@@ -415,7 +411,6 @@ func (hfg *HFGlobal) setupDCTParam(reader jxlio.BitReader, frame *Frame, index i
 			return err
 		}
 		hfg.params[index] = DCTParam{dctParam: d, param: m, mode: MODE_AFV, denominator: 1, params4x4: f}
-		break
 	default:
 		return errors.New("Invalid encoding mode")
 	}
@@ -458,7 +453,6 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 		switch hfg.params[index].mode {
 		case MODE_DCT:
 			hfg.weights[index][c] = hfg.getDCTQuantWeights(tt.matrixHeight, tt.matrixWidth, hfg.params[index].dctParam[c])
-			break
 		case MODE_DCT4:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
 			w = hfg.getDCTQuantWeights(4, 4, hfg.params[index].dctParam[c])
@@ -470,7 +464,6 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
 			hfg.weights[index][c][0][1] /= hfg.params[index].param[c][0]
 			hfg.weights[index][c][1][1] /= hfg.params[index].param[c][1]
-			break
 		case MODE_DCT2:
 			w = util.MakeMatrix2D[float32](8, 8)
 			w[0][0] = 1
@@ -492,7 +485,6 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 				}
 			}
 			hfg.weights[index][c] = w
-			break
 		case MODE_HORNUSS:
 			w = util.MakeMatrix2D[float32](8, 8)
 			for y := 0; y < 8; y++ {
@@ -505,7 +497,6 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			w[1][0] = hfg.params[index].param[c][1]
 			w[0][0] = 1.0
 			hfg.weights[index][c] = w
-			break
 		case MODE_DCT4_8:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
 			w = hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
@@ -515,14 +506,12 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 				}
 			}
 			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
-			break
 		case MODE_AFV:
 			afv, err := hfg.getAFVTransformWeights(index, c)
 			if err != nil {
 				return err
 			}
 			hfg.weights[index][c] = afv
-			break
 		case MODE_RAW:
 			hfg.weights[index][c] = util.MakeMatrix2D[float32](tt.matrixHeight, tt.matrixWidth)
 			for y := int32(0); y < tt.matrixHeight; y++ {
@@ -530,7 +519,6 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 					hfg.weights[index][c][y][x] = hfg.params[index].param[c][y*tt.matrixWidth+x] * hfg.params[index].denominator
 				}
 			}
-			break
 		default:
 			return errors.New("Invalid mode")
 		}

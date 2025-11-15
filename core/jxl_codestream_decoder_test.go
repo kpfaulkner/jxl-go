@@ -13,6 +13,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func GenerateTestBitReader(t *testing.T, filename string) jxlio.BitReader {
@@ -253,6 +254,7 @@ func TestBlendFrame(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			jxl, canvas, err, frame := tc.dataGenFunc(t)
+			assert.NoError(t, err)
 
 			err = jxl.blendFrame([]image.ImageBuffer{*canvas}, &frame)
 			if err != nil {

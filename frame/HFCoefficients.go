@@ -169,7 +169,7 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint
 
 	}
 	if !hf.stream.ValidateFinalState() {
-		return nil, errors.New(fmt.Sprintf("Illegal final state in passgroup pass %d : group %d", pass, group))
+		return nil, fmt.Errorf("Illegal final state in passgroup pass %d : group %d", pass, group)
 	}
 	return hf, nil
 }

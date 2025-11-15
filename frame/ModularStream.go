@@ -163,12 +163,9 @@ type ModularStreamer interface {
 }
 
 type ModularStream struct {
-	frame        Framer
-	streamIndex  int
-	channelCount int
-	ecStart      int
-
-	channels []*ModularChannel
+	frame       Framer
+	streamIndex int
+	channels    []*ModularChannel
 
 	tree           *MATreeNode
 	wpParams       *WPParams
@@ -222,7 +219,7 @@ func NewModularStreamWithChannels(reader jxlio.BitReader, frame Framer, streamIn
 		}
 	}
 
-	if channelArray == nil || len(channelArray) == 0 {
+	if len(channelArray) == 0 {
 		for i := 0; i < channelCount; i++ {
 			size := frame.getFrameHeader().Bounds.Size
 			var dimShift int32
@@ -459,7 +456,6 @@ func (ms *ModularStream) applyTransforms() error {
 				rct = func(x int32, y int32) error {
 					return nil
 				}
-				break
 
 			case 1:
 				rct = func(x int32, y int32) error {
@@ -471,7 +467,6 @@ func (ms *ModularStream) applyTransforms() error {
 					v[1].buffer[y][x] += v[0].buffer[y][x]
 					return nil
 				}
-				break
 			case 3:
 				rct = func(x int32, y int32) error {
 					a := v[0].buffer[y][x]
@@ -479,13 +474,11 @@ func (ms *ModularStream) applyTransforms() error {
 					v[1].buffer[y][x] += a
 					return nil
 				}
-				break
 			case 4:
 				rct = func(x int32, y int32) error {
 					v[1].buffer[y][x] += (v[0].buffer[y][x] + v[2].buffer[y][x]) >> 1
 					return nil
 				}
-				break
 			case 5:
 				rct = func(x int32, y int32) error {
 					a := v[0].buffer[y][x]
@@ -494,7 +487,6 @@ func (ms *ModularStream) applyTransforms() error {
 					v[2].buffer[y][x] = ac
 					return nil
 				}
-				break
 			case 6:
 				rct = func(x int32, y int32) error {
 					b := v[1].buffer[y][x]
@@ -506,7 +498,6 @@ func (ms *ModularStream) applyTransforms() error {
 					v[2].buffer[y][x] = f
 					return nil
 				}
-				break
 			default:
 				return errors.New("illegal RCT type")
 			}

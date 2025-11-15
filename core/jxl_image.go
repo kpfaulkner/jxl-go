@@ -140,7 +140,7 @@ func (jxl *JXLImage) HasAlpha() bool {
 	return jxl.imageHeader.HasAlpha()
 }
 func (jxl *JXLImage) HasICCProfile() bool {
-	return jxl.iccProfile != nil && len(jxl.iccProfile) > 0
+	return len(jxl.iccProfile) > 0
 }
 
 func (jxl *JXLImage) NumExtraChannels() int {
