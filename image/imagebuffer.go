@@ -64,13 +64,20 @@ func NewImageBufferFromFloats(buffer [][]float32) *ImageBuffer {
 	return ib
 }
 
-func NewImageBufferFromImageBuffer(imageBuffer *ImageBuffer) *ImageBuffer {
+func NewImageBufferFromImageBuffer(imageBuffer *ImageBuffer, copyBuffer bool) *ImageBuffer {
 	ib := &ImageBuffer{}
-	ib.IntBuffer = copyInt32Matrix2D(imageBuffer.IntBuffer)
-	ib.FloatBuffer = copyFloat32Matrix2D(imageBuffer.FloatBuffer)
 	ib.BufferType = imageBuffer.BufferType
 	ib.Height = imageBuffer.Height
 	ib.Width = imageBuffer.Width
+
+	if copyBuffer {
+		ib.IntBuffer = copyInt32Matrix2D(imageBuffer.IntBuffer)
+		ib.FloatBuffer = copyFloat32Matrix2D(imageBuffer.FloatBuffer)
+	} else {
+		ib.IntBuffer = util.MakeMatrix2D[int32](ib.Height, ib.Width)
+		ib.FloatBuffer = util.MakeMatrix2D[float32](ib.Height, ib.Width)
+	}
+
 	return ib
 }
 
@@ -90,6 +97,31 @@ func copyFloat32Matrix2D(src [][]float32) [][]float32 {
 		copy(duplicate[i], src[i])
 	}
 	return duplicate
+}
+
+// return maximum int32 from int buffer.
+func (ib *ImageBuffer) MaxInt() int32 {
+	m := int32(0)
+	for y := 0; y < len(ib.IntBuffer); y++ {
+		for x := 0; x < len(ib.IntBuffer[y]); x++ {
+			if ib.IntBuffer[y][x] > m {
+				m = ib.IntBuffer[y][x]
+			}
+		}
+	}
+	return m
+}
+
+func (ib *ImageBuffer) MaxFloat() float32 {
+	m := float32(0)
+	for y := 0; y < len(ib.FloatBuffer); y++ {
+		for x := 0; x < len(ib.FloatBuffer[y]); x++ {
+			if ib.FloatBuffer[y][x] > m {
+				m = ib.FloatBuffer[y][x]
+			}
+		}
+	}
+	return m
 }
 
 // Equals compares two ImageBuffers and returns true if they are equal.

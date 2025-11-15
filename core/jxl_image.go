@@ -81,6 +81,34 @@ func NewJXLImageWithBuffer(buffer []image2.ImageBuffer, header bundle.ImageHeade
 	return jxl, nil
 }
 
+func NewJXLImageFromJXLImage(img *JXLImage, copyBuffer bool) (*JXLImage, error) {
+	jxl := &JXLImage{}
+
+	jxl.imageHeader = img.imageHeader
+	jxl.ColorEncoding = img.ColorEncoding
+	jxl.alphaIndex = img.alphaIndex
+	jxl.primaries = img.primaries
+	jxl.whitePoint = img.whitePoint
+	jxl.transfer = img.transfer
+	jxl.taggedTransfer = img.taggedTransfer
+	jxl.whiteXY = img.whiteXY
+	jxl.primariesXY = img.primariesXY
+	jxl.iccProfile = img.iccProfile
+	jxl.Width = img.Width
+	jxl.Height = img.Height
+	jxl.alphaIsPremultiplied = img.alphaIsPremultiplied
+
+	jxl.bitDepths = make([]uint32, len(img.bitDepths))
+	copy(jxl.bitDepths, img.bitDepths)
+
+	for _, ib := range jxl.Buffer {
+		buf := image2.NewImageBufferFromImageBuffer(&ib, copyBuffer)
+		jxl.Buffer = append(jxl.Buffer, *buf)
+	}
+
+	return jxl, nil
+}
+
 // GetFloatChannelData will return the floating point image data for a channel.
 // The underlying image MAY not have any floating point data (this is all image dependant).
 func (jxl *JXLImage) GetFloatChannelData(c int) ([][]float32, error) {
@@ -207,10 +235,11 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 	if iccProfile == nil {
 
 		// transforms in place
-		err = jxl.transform(primaries, whitePoint, tf, PEAK_DETECT_AUTO)
+		img, err := jxl.transform(primaries, whitePoint, tf, PEAK_DETECT_AUTO)
 		if err != nil {
 			return nil, err
 		}
+		jxl = img
 	}
 	maxValue := int32(^(^0 << bitDepth))
 	coerce := jxl.alphaIsPremultiplied
@@ -349,25 +378,27 @@ func (jxl *JXLImage) isHDR() bool {
 		!col.Prim.Matches(colour.CM_PRI_P3)
 }
 
-func (jxl *JXLImage) transform(primaries *colour.CIEPrimaries, whitePoint *colour.CIEXY, transfer int32, peakDetect int32) error {
+func (jxl *JXLImage) transform(primaries *colour.CIEPrimaries, whitePoint *colour.CIEXY, transfer int32, peakDetect int32) (*JXLImage, error) {
 
 	if primaries.Matches(jxl.primariesXY) && whitePoint.Matches(jxl.whiteXY) {
 		return jxl.transferImage(transfer, peakDetect)
 	}
 
-	if err := jxl.linearize(); err != nil {
-		return err
+	var img *JXLImage
+	var err error
+	if img, err = jxl.linearize(); err != nil {
+		return nil, err
 	}
 
-	if err := jxl.toneMapLinear(); err != nil {
-		return err
+	if err := img.toneMapLinear(); err != nil {
+		return nil, err
 	}
 
-	if err := jxl.transferImage(transfer, peakDetect); err != nil {
-		return err
+	if img, err = img.transferImage(transfer, peakDetect); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return img, nil
 }
 
 // getBuffer gets a copy of the buffer... making a copy if required
@@ -402,33 +433,104 @@ func (jxl *JXLImage) getBuffer(makeCopy bool) ([]image2.ImageBuffer, error) {
 	return buffer, nil
 }
 
-func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) error {
+func (jxl *JXLImage) determinePeak() (float32, error) {
+
+	if jxl.transfer != colour.TF_LINEAR {
+		lin, err := jxl.linearize()
+		if err != nil {
+			return 0, err
+		}
+		peak, err := lin.determinePeak()
+		return peak, err
+	}
+
+	c := 0
+	if jxl.ColorEncoding != colour.CE_GRAY {
+		c = 1
+	}
+
+	if jxl.Buffer[c].IsInt() {
+		maxValue := float32(jxl.Buffer[c].MaxInt())
+		return maxValue / float32(^(^int(0) << jxl.bitDepths[c])), nil
+	} else {
+		maxValue := jxl.Buffer[c].MaxFloat()
+		return maxValue, nil
+	}
+}
+
+func (jxl *JXLImage) transferWithOp(f func(v float32) float32) (*JXLImage, error) {
+
+	colours := util.IfThenElse(jxl.ColorEncoding == colour.CE_GRAY, 1, 3)
+	buffers := util.MakeMatrix3D[float32](colours, 0, 0)
+	for c := 0; c < colours; c++ {
+		if err := jxl.Buffer[c].CastToFloatIfInt(^(^0 << jxl.bitDepths[c])); err != nil {
+			return nil, err
+		}
+		buffers[c] = jxl.Buffer[c].FloatBuffer
+	}
+
+	img, err := NewJXLImageFromJXLImage(jxl, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for c := 0; c < colours; c++ {
+		b := img.Buffer[c].FloatBuffer
+		for y := 0; y < int(jxl.Height); y++ {
+			for x := 0; x < int(jxl.Width); x++ {
+				b[y][x] = f(buffers[c][y][x])
+			}
+		}
+	}
+	return img, nil
+
+}
+
+func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) (*JXLImage, error) {
 	if transfer == jxl.transfer {
-		return nil
+		return jxl, nil
 	}
-	if err := jxl.linearize(); err != nil {
-		return err
+
+	var err error
+	var img *JXLImage
+	if img, err = jxl.linearize(); err != nil {
+		return nil, err
 	}
+
 	if jxl.taggedTransfer == colour.TF_PQ &&
 		(peakDetect == PEAK_DETECT_AUTO || peakDetect == PEAK_DETECT_ON) {
-		panic("not implemented")
+		toPQ := transfer == colour.TF_PQ || transfer == colour.TF_LINEAR
+		fromPQ := jxl.transfer == colour.TF_PQ || jxl.transfer == colour.TF_LINEAR
+		if fromPQ && !toPQ {
+			peak, err := img.determinePeak()
+			if err != nil {
+				return nil, err
+			}
+			scale := 1.0 / peak
+			if scale > 1.0 || peakDetect == PEAK_DETECT_ON {
+				img, err = img.transferWithOp(func(v float32) float32 { return v * scale })
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 
 	transferFunction, err := colour.GetTransferFunction(transfer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := jxl.transferInPlace(transferFunction.FromLinear); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return img, nil
 }
 
-func (jxl *JXLImage) linearize() error {
+func (jxl *JXLImage) linearize() (*JXLImage, error) {
 
 	if jxl.transfer == colour.TF_LINEAR {
-		return nil
+		return jxl, nil
 	}
 
 	panic("not implemented")

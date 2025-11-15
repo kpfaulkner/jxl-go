@@ -259,7 +259,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				if found {
 					canvas2 := make([]image2.ImageBuffer, len(jxl.canvas))
 					for _, ib := range jxl.canvas {
-						ib2 := image2.NewImageBufferFromImageBuffer(&ib)
+						ib2 := image2.NewImageBufferFromImageBuffer(&ib, true)
 						canvas2 = append(canvas2, *ib2)
 					}
 					//jxl.canvas = canvas2
