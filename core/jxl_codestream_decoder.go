@@ -118,10 +118,10 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 	}
 
 	if imageHeader.PreviewSize != nil {
-		previewOptions := options.NewJXLOptions(&jxl.options)
-		previewOptions.ParseOnly = true
-		frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
-		frame.ReadFrameHeader()
+		//previewOptions := options.NewJXLOptions(&jxl.options)
+		//previewOptions.ParseOnly = true
+		//frame := frame.NewFrameWithReader(jxl.bitReader, jxl.imageHeader, previewOptions)
+		//frame.ReadFrameHeader()
 		return nil, errors.New("not implemented preview yet")
 	}
 
@@ -181,7 +181,9 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 			}
 
 			if jxl.options.ParseOnly {
-				imgFrame.SkipFrameData()
+				if err := imgFrame.SkipFrameData(); err != nil {
+					return nil, err
+				}
 				continue
 			}
 			err = imgFrame.DecodeFrame(jxl.lfBuffer[header.LfLevel])
@@ -799,8 +801,10 @@ func (jxl *JXLCodestreamDecoder) blendFrame(canvas []image2.ImageBuffer, imgFram
 		if info.Mode == frame.BLEND_REPLACE || refBuffer == nil && info.Mode == frame.BLEND_ADD {
 			offY := frameStartY - header.Bounds.Origin.Y
 			offX := frameStartX - header.Bounds.Origin.X
-			jxl.copyToCanvas(&canvas[c], util.Point{Y: frameStartY, X: frameStartX}, util.Point{X: offX, Y: offY},
-				util.Dimension{Width: uint32(frameWidth), Height: uint32(frameHeight)}, frameBuffer)
+			if err := jxl.copyToCanvas(&canvas[c], util.Point{Y: frameStartY, X: frameStartX}, util.Point{X: offX, Y: offY},
+				util.Dimension{Width: uint32(frameWidth), Height: uint32(frameHeight)}, frameBuffer); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -1046,10 +1050,14 @@ func (jxl *JXLCodestreamDecoder) blendAlpha(canvas image2.ImageBuffer, hasAlpha 
 			refBuffer[alphaIdx] = *refBuf
 		}
 		if !refBuffer[alphaIdx].IsFloat() {
-			refBuffer[alphaIdx].CastToFloatIfInt(^(^0 << depth))
+			if err := refBuffer[alphaIdx].CastToFloatIfInt(^(^0 << depth)); err != nil {
+				return err
+			}
 		}
 		if !frameBuffers[alphaIdx].IsFloat() {
-			frameBuffers[alphaIdx].CastToFloatIfInt(^(^0 << depth))
+			if err := frameBuffers[alphaIdx].CastToFloatIfInt(^(^0 << depth)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

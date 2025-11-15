@@ -95,7 +95,7 @@ func GetWhitePoint(whitePoint int32) *CIEXY {
 	case WP_D65:
 		return NewCIEXY(0.3127, 0.3290)
 	case WP_E:
-		return NewCIEXY(1/3, 1/3)
+		return NewCIEXY(1.0/3.0, 1.0/3.0)
 	case WP_DCI:
 		return NewCIEXY(0.314, 0.351)
 	case WP_D50:

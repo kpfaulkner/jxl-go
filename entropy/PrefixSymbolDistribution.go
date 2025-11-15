@@ -36,9 +36,13 @@ func NewPrefixSymbolDistributionWithReader(reader jxlio.BitReader, alphabetSize 
 	}
 
 	if hskip == 1 {
-		rcvr.populateSimplePrefix(reader)
+		if err := rcvr.populateSimplePrefix(reader); err != nil {
+			return nil, err
+		}
 	} else {
-		rcvr.populateComplexPrefix(reader, int32(hskip))
+		if err := rcvr.populateComplexPrefix(reader, int32(hskip)); err != nil {
+			return nil, err
+		}
 	}
 	return rcvr, nil
 }

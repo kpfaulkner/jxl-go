@@ -16,7 +16,10 @@ func WritePNG(jxlImage *JXLImage, output io.Writer) error {
 
 	// PNG header
 	header := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
-	output.Write(header)
+	_, err := output.Write(header)
+	if err != nil {
+		return err
+	}
 
 	if err := writeIHDR(jxlImage, output); err != nil {
 		return err
@@ -36,9 +39,18 @@ func WritePNG(jxlImage *JXLImage, output io.Writer) error {
 	if err := writeIDAT(jxlImage, output); err != nil {
 		return err
 	}
-	output.Write([]byte{0, 0, 0, 0})
-	output.Write([]byte{0x49, 0x45, 0x4E, 0x44})
-	output.Write([]byte{0xAE, 0x42, 0x60, 0x82})
+	_, err = output.Write([]byte{0, 0, 0, 0})
+	if err != nil {
+		return err
+	}
+	_, err = output.Write([]byte{0x49, 0x45, 0x4E, 0x44})
+	if err != nil {
+		return err
+	}
+	_, err = output.Write([]byte{0xAE, 0x42, 0x60, 0x82})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -61,9 +73,16 @@ func writeICCP(image *JXLImage, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-	w.Write(image.iccProfile)
-	w.Flush()
-	w.Close()
+	if _, err = w.Write(image.iccProfile); err != nil {
+		return err
+	}
+
+	if err = w.Flush(); err != nil {
+		return err
+	}
+	if err = w.Close(); err != nil {
+		return err
+	}
 
 	b := compressedICC.Bytes()
 	buf.Write(b)
@@ -71,12 +90,18 @@ func writeICCP(image *JXLImage, output io.Writer) error {
 	rawBytes := buf.Bytes()
 	buf2 := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf2, uint32(len(rawBytes))-4)
-	output.Write(buf2)
-	output.Write(rawBytes)
+	if _, err = output.Write(buf2); err != nil {
+		return err
+	}
+	if _, err = output.Write(rawBytes); err != nil {
+		return err
+	}
 
 	checksum := crc32.ChecksumIEEE(rawBytes)
 	binary.BigEndian.PutUint32(buf2, checksum)
-	output.Write(buf2)
+	if _, err = output.Write(buf2); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -84,16 +109,28 @@ func writeSRGB(image *JXLImage, output io.Writer) error {
 
 	var buf bytes.Buffer
 	//output.Write([]byte{0x69, 0x43, 0x43, 0x50})
-	buf.Write([]byte{0x00, 0x00, 0x00, 0x01})
-	buf.Write([]byte{0x73, 0x52, 0x47, 0x42}) // using jxlatte just to compare files
-	buf.WriteByte(0x01)
-	buf.Write([]byte{0xD9, 0xC9, 0x2C, 0x7F})
+	if _, err := buf.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
+		return err
+	}
+
+	// using jxlatte just to compare files
+	if _, err := buf.Write([]byte{0x73, 0x52, 0x47, 0x42}); err != nil {
+		return err
+	}
+	if err := buf.WriteByte(0x01); err != nil {
+		return err
+	}
+	if _, err := buf.Write([]byte{0xD9, 0xC9, 0x2C, 0x7F}); err != nil {
+		return err
+	}
 
 	rawBytes := buf.Bytes()
 	//buf2 := make([]byte, 4)
 	//binary.BigEndian.PutUint32(buf2, uint32(len(rawBytes))-4)
 	//output.Write(buf2)
-	output.Write(rawBytes)
+	if _, err := output.Write(rawBytes); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -207,32 +244,42 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 		}
 	}
 	for y := uint32(0); y < jxlImage.Height; y++ {
-		w.Write([]byte{0})
+		if _, err := w.Write([]byte{0}); err != nil {
+			return err
+		}
 		for x := uint32(0); x < jxlImage.Width; x++ {
 
 			// FIXME(kpfaulkner) remove 3 assumption
 			for c := 0; c < jxlImage.imageHeader.GetColourChannelCount(); c++ {
 				dat := jxlImage.Buffer[c].IntBuffer[y][x]
 				if jxlImage.bitDepths[c] == 8 {
-					w.Write([]byte{byte(dat)})
+					if _, err := w.Write([]byte{byte(dat)}); err != nil {
+						return err
+					}
 				} else {
 					byte1 := dat & 0xFF
 					byte2 := dat & 0xFF00
 					byte2 >>= 8
-					w.Write([]byte{byte(byte2), byte(byte1)})
+					if _, err := w.Write([]byte{byte(byte2), byte(byte1)}); err != nil {
+						return err
+					}
 				}
 
 			}
 			if jxlImage.HasAlpha() {
 				dat := jxlImage.Buffer[3].IntBuffer[y][x]
 				if jxlImage.bitDepths[3] == 8 {
-					w.Write([]byte{byte(dat)})
+					if _, err := w.Write([]byte{byte(dat)}); err != nil {
+						return err
+					}
 				} else {
 					byte1 := dat & 0xFF
 					byte2 := dat & 0xFF00
 					byte2 >>= 8
 
-					w.Write([]byte{byte(byte2), byte(byte1)})
+					if _, err := w.Write([]byte{byte(byte2), byte(byte1)}); err != nil {
+						return err
+					}
 				}
 			}
 		}

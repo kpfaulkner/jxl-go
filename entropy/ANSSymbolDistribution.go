@@ -10,11 +10,6 @@ import (
 
 var distPrefixTable = NewVLCTable(7, [][]int32{{10, 3}, {12, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {13, 7}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {11, 6}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}, {10, 3}, {0, 5}, {7, 3}, {3, 4}, {6, 3}, {8, 3}, {9, 3}, {5, 4}, {10, 3}, {4, 4}, {7, 3}, {1, 4}, {6, 3}, {8, 3}, {9, 3}, {2, 4}})
 
-var (
-	// just for some debugging
-	lastStateObj int32
-)
-
 type ANSSymbolDistribution struct {
 	SymbolDistributionBase
 	frequencies []int32
@@ -55,7 +50,7 @@ func NewANSSymbolDistribution(reader jxlio.BitReader, logAlphabetSize int32) (*A
 			}
 			asd.alphabetSize = 1 + util.Max[int32](int32(v1), int32(v2))
 			if asd.alphabetSize > (1 << asd.logAlphabetSize) {
-				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
+				return nil, fmt.Errorf("Illegal Alphabet size : %d", asd.alphabetSize)
 			}
 			asd.frequencies = make([]int32, asd.alphabetSize)
 			if freq, err := reader.ReadBits(12); err != nil {
@@ -90,7 +85,7 @@ func NewANSSymbolDistribution(reader jxlio.BitReader, logAlphabetSize int32) (*A
 			}
 			asd.alphabetSize = 1 + int32(r)
 			if asd.alphabetSize > (1 << asd.logAlphabetSize) {
-				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
+				return nil, fmt.Errorf("Illegal Alphabet size : %d", asd.alphabetSize)
 			}
 			if asd.alphabetSize == 1 {
 				uniqPos = 0
@@ -130,7 +125,7 @@ func NewANSSymbolDistribution(reader jxlio.BitReader, logAlphabetSize int32) (*A
 			}
 			asd.alphabetSize = 3 + int32(r)
 			if asd.alphabetSize > (1 << asd.logAlphabetSize) {
-				return nil, errors.New(fmt.Sprintf("Illegal Alphabet size : %d", asd.alphabetSize))
+				return nil, fmt.Errorf("Illegal Alphabet size : %d", asd.alphabetSize)
 			}
 
 			asd.frequencies = make([]int32, asd.alphabetSize)

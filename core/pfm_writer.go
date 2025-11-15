@@ -21,7 +21,10 @@ func WritePFM(jxlImage *JXLImage, output io.Writer) error {
 		pf = "PF"
 	}
 	header := fmt.Sprintf("%s\n%d %d\n1.0\n", pf, width, height)
-	output.Write([]byte(header))
+	_, err := output.Write([]byte(header))
+	if err != nil {
+		return err
+	}
 	cCount := 1
 	if !gray {
 		cCount = 3
@@ -56,7 +59,10 @@ func WritePFM(jxlImage *JXLImage, output io.Writer) error {
 			}
 		}
 	}
-	output.Write(buf.Bytes())
+	_, err = output.Write(buf.Bytes())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

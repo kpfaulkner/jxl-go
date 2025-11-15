@@ -139,14 +139,13 @@ func TestInvertXYB(t *testing.T) {
 		t.Errorf("InvertXYB() unexpected error: %v", err)
 	}
 
-	if util.CompareMatrix3D[float32](expectedResult, buf, func(a, b float32) bool {
+	if !util.CompareMatrix3D[float32](expectedResult, buf, func(a, b float32) bool {
 
 		// just check they're close enough..
 		return math.Abs(float64(a-b)) < 0.00001
 	}) {
-
+		t.Errorf("InvertXYB() expected %v, got %v", expectedResult, matrix)
 	}
-
 }
 
 func TestGetMatrix(t *testing.T) {

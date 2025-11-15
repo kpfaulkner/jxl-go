@@ -446,7 +446,9 @@ func (jxl *JXLImage) transferInPlace(transferFunction func(float64) float64) err
 
 	buffers := util.MakeMatrix3D[float32](colours, 0, 0)
 	for c := 0; c < colours; c++ {
-		jxl.Buffer[c].CastToFloatIfInt(int32(jxl.bitDepths[c]))
+		if err := jxl.Buffer[c].CastToFloatIfInt(int32(jxl.bitDepths[c])); err != nil {
+			return err
+		}
 		buffers[c] = jxl.Buffer[c].FloatBuffer
 	}
 

@@ -355,7 +355,9 @@ func ParseImageHeader(reader jxlio.BitReader, level int32) (*ImageHeader, error)
 			return nil, errors.New("ICC Stream")
 		}
 	}
-	reader.ZeroPadToByte()
+	if err := reader.ZeroPadToByte(); err != nil {
+		return nil, fmt.Errorf("error zero padding to byte: %v", err)
+	}
 	return header, nil
 }
 

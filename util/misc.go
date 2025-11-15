@@ -30,11 +30,11 @@ func MakeMatrix3D[T any](a int, b int, c int) [][][]T {
 
 func MakeMatrix4D[T any](a int, b int, c int, d int) [][][][]T {
 	matrix := make([][][][]T, a)
-	for i, _ := range matrix {
+	for i := range matrix {
 		matrix[i] = make([][][]T, b)
-		for j, _ := range matrix[i] {
+		for j := range matrix[i] {
 			matrix[i][j] = make([][]T, c)
-			for k, _ := range matrix[i][j] {
+			for k := range matrix[i][j] {
 				matrix[i][j][k] = make([]T, d)
 			}
 		}

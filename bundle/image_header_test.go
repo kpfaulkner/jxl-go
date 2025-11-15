@@ -231,7 +231,9 @@ func TestParseImageHeader(t *testing.T) {
 			if tc.readData {
 				bitReader = testcommon.GenerateTestBitReader(t, tc.jxlFilePath)
 				// skip first 40 bytes due to box headers.
-				bitReader.Skip(tc.skipBytes)
+				if err := bitReader.Skip(tc.skipBytes); err != nil {
+					t.Fatalf("failed to skip bytes: %v", err)
+				}
 			} else {
 				bitReader = jxlio.NewBitStreamReader(bytes.NewReader(tc.data))
 			}

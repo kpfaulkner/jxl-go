@@ -162,15 +162,11 @@ func Clamp(v int32, a int32, b int32, c int32) int32 {
 		lower = b
 	}
 	upper := lower ^ a ^ b
-	if lower < c {
-		lower = lower
-	} else {
+	if lower >= c {
 		lower = c
 	}
 
-	if upper > c {
-		upper = upper
-	} else {
+	if upper <= c {
 		upper = c
 	}
 
