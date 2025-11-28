@@ -233,7 +233,6 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 	iccProfile := jxl.iccProfile
 	var err error
 	if iccProfile == nil {
-
 		// transforms in place
 		img, err := jxl.transform(primaries, whitePoint, tf, PEAK_DETECT_AUTO)
 		if err != nil {
@@ -257,7 +256,7 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 	}
 	if coerce {
 		for c := 0; c < len(buffer); c++ {
-			if err := buffer[c].CastToFloatIfInt(^(^0 << jxl.bitDepths[c])); err != nil {
+			if err := buffer[c].CastToFloatIfMax(^(^0 << jxl.bitDepths[c])); err != nil {
 				return nil, err
 			}
 		}
@@ -271,7 +270,7 @@ func (jxl *JXLImage) ToImage() (image.Image, error) {
 				return nil, err
 			}
 		} else {
-			if err := buffer[c].CastToIntIfFloat(maxValue); err != nil {
+			if err := buffer[c].CastToIntIfMax(maxValue); err != nil {
 				return nil, err
 			}
 		}
@@ -463,7 +462,7 @@ func (jxl *JXLImage) transferWithOp(f func(v float32) float32) (*JXLImage, error
 	colours := util.IfThenElse(jxl.ColorEncoding == colour.CE_GRAY, 1, 3)
 	buffers := util.MakeMatrix3D[float32](colours, 0, 0)
 	for c := 0; c < colours; c++ {
-		if err := jxl.Buffer[c].CastToFloatIfInt(^(^0 << jxl.bitDepths[c])); err != nil {
+		if err := jxl.Buffer[c].CastToFloatIfMax(^(^0 << jxl.bitDepths[c])); err != nil {
 			return nil, err
 		}
 		buffers[c] = jxl.Buffer[c].FloatBuffer
@@ -497,10 +496,10 @@ func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) (*JXLImage,
 		return nil, err
 	}
 
-	if jxl.taggedTransfer == colour.TF_PQ &&
+	if img.taggedTransfer == colour.TF_PQ &&
 		(peakDetect == PEAK_DETECT_AUTO || peakDetect == PEAK_DETECT_ON) {
 		toPQ := transfer == colour.TF_PQ || transfer == colour.TF_LINEAR
-		fromPQ := jxl.transfer == colour.TF_PQ || jxl.transfer == colour.TF_LINEAR
+		fromPQ := img.transfer == colour.TF_PQ || img.transfer == colour.TF_LINEAR
 		if fromPQ && !toPQ {
 			peak, err := img.determinePeak()
 			if err != nil {
@@ -520,7 +519,7 @@ func (jxl *JXLImage) transferImage(transfer int32, peakDetect int32) (*JXLImage,
 	if err != nil {
 		return nil, err
 	}
-	if err := jxl.transferInPlace(transferFunction.FromLinear); err != nil {
+	if err := img.transferInPlace(transferFunction.FromLinear); err != nil {
 		return nil, err
 	}
 
@@ -548,7 +547,7 @@ func (jxl *JXLImage) transferInPlace(transferFunction func(float64) float64) err
 
 	buffers := util.MakeMatrix3D[float32](colours, 0, 0)
 	for c := 0; c < colours; c++ {
-		if err := jxl.Buffer[c].CastToFloatIfInt(int32(jxl.bitDepths[c])); err != nil {
+		if err := jxl.Buffer[c].CastToFloatIfMax(int32(jxl.bitDepths[c])); err != nil {
 			return err
 		}
 		buffers[c] = jxl.Buffer[c].FloatBuffer

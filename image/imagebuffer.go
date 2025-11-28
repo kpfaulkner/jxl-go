@@ -158,7 +158,7 @@ func (ib *ImageBuffer) IsInt() bool {
 	return ib.BufferType == TYPE_INT
 }
 
-func (ib *ImageBuffer) CastToFloatIfInt(maxValue int32) error {
+func (ib *ImageBuffer) CastToFloatIfMax(maxValue int32) error {
 	if ib.BufferType == TYPE_FLOAT {
 		return nil
 	}
@@ -186,7 +186,7 @@ func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
 	return nil
 }
 
-func (ib *ImageBuffer) CastToIntIfFloat(maxValue int32) error {
+func (ib *ImageBuffer) CastToIntIfMax(maxValue int32) error {
 	if ib.BufferType == TYPE_INT {
 		return nil
 	}

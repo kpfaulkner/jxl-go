@@ -416,8 +416,8 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 	//					depth = jxl.imageHeader.ExtraChannelInfo[c-1].BitDepth.BitsPerSample
 	//				}
 	//				max := ^(^int32(0) << depth)
-	//				refBuffer[d].CastToFloatIfInt(max)
-	//				frameBuffer[d].CastToFloatIfInt(max)
+	//				refBuffer[d].CastToFloatIfMax(max)
+	//				frameBuffer[d].CastToFloatIfMax(max)
 	//			}
 	//			var refBufferF [][]float32
 	//			var frameBufferF [][]float32
@@ -432,10 +432,10 @@ func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
 	//			var alphaBufferNew [][]float32
 	//			if info.Mode > 3 && hasAlpha {
 	//				depth := jxl.imageHeader.ExtraChannelInfo[info.AlphaChannel].BitDepth.BitsPerSample
-	//				if err := frameBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfInt(^(^0 << depth)); err != nil {
+	//				if err := frameBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfMax(^(^0 << depth)); err != nil {
 	//					return err
 	//				}
-	//				if err := refBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfInt(^(^0 << depth)); err != nil {
+	//				if err := refBuffer[colourChannels+int(info.AlphaChannel)].CastToFloatIfMax(^(^0 << depth)); err != nil {
 	//					return err
 	//				}
 	//				alphaBufferOld = frameBuffer[colourChannels+int(info.AlphaChannel)].FloatBuffer
@@ -698,7 +698,7 @@ func (jxl *JXLCodestreamDecoder) performColourTransforms(matrix *colour.OpsinInv
 	depth := jxl.imageHeader.BitDepth.BitsPerSample
 	for c := 0; c < 3; c++ {
 		if buffer[c].IsInt() {
-			if err := buffer[c].CastToFloatIfInt(^(^0 << depth)); err != nil {
+			if err := buffer[c].CastToFloatIfMax(^(^0 << depth)); err != nil {
 				return err
 			}
 		}
@@ -1002,13 +1002,13 @@ func (jxl *JXLCodestreamDecoder) convertReferenceWithDifferentBufferType(
 		} else {
 			depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
 		}
-		if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
+		if err := frameBuffer.CastToFloatIfMax(^(^0 << depthFrame)); err != nil {
 			return err
 		}
-		if err := canvas[canvasIdx].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+		if err := canvas[canvasIdx].CastToFloatIfMax(^(^0 << depthCanvas)); err != nil {
 			return err
 		}
-		if err := ref.CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+		if err := ref.CastToFloatIfMax(^(^0 << depthCanvas)); err != nil {
 			return err
 		}
 	}
@@ -1027,12 +1027,12 @@ func (jxl *JXLCodestreamDecoder) blendAlpha(canvas image2.ImageBuffer, hasAlpha 
 			refBuffer[alphaIdx] = *refBuf
 		}
 		if !refBuffer[alphaIdx].IsFloat() {
-			if err := refBuffer[alphaIdx].CastToFloatIfInt(^(^0 << depth)); err != nil {
+			if err := refBuffer[alphaIdx].CastToFloatIfMax(^(^0 << depth)); err != nil {
 				return err
 			}
 		}
 		if !frameBuffers[alphaIdx].IsFloat() {
-			if err := frameBuffers[alphaIdx].CastToFloatIfInt(^(^0 << depth)); err != nil {
+			if err := frameBuffers[alphaIdx].CastToFloatIfMax(^(^0 << depth)); err != nil {
 				return err
 			}
 		}
@@ -1060,10 +1060,10 @@ func (jxl *JXLCodestreamDecoder) convertCanvasWithDifferentBufferType(
 		} else {
 			depthFrame = int32(jxl.imageHeader.BitDepth.BitsPerSample)
 		}
-		if err := frameBuffer.CastToFloatIfInt(^(^0 << depthFrame)); err != nil {
+		if err := frameBuffer.CastToFloatIfMax(^(^0 << depthFrame)); err != nil {
 			return err
 		}
-		if err := canvas[channelNo].CastToFloatIfInt(^(^0 << depthCanvas)); err != nil {
+		if err := canvas[channelNo].CastToFloatIfMax(^(^0 << depthCanvas)); err != nil {
 			return err
 		}
 	}

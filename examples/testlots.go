@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image/png"
 	"os"
 	"path"
 	"strings"
@@ -16,6 +15,10 @@ import (
 func main() {
 
 	filePaths := []string{
+
+		`..\testdata\test-benchmark.jxl|test-benchmark.png`,
+		// not working. Haven't implemented PEAK_DETECT
+		`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
 
 		`..\testdata\ants-lossless.jxl|ants-lossless.png`,
 
@@ -48,9 +51,6 @@ func main() {
 		`..\testdata\blendmodes_5.jxl|blendmodes_5.png`,
 		`..\testdata\lossless.jxl|lossless.png`,
 
-		// not working. Haven't implemented PEAK_DETECT
-		//`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
-
 		`..\testdata\white.jxl|white.png`,
 		`..\testdata\art.jxl|art.png`,
 		`..\testdata\church.jxl|church.png`,
@@ -60,7 +60,7 @@ func main() {
 
 	// hardcoded output dir for now
 	destinationDir := `c:\temp\jxlresults\`
-	
+
 	for _, file := range filePaths {
 		fileDetails := strings.Split(file, "|")
 		orig := fileDetails[0]
@@ -92,32 +92,40 @@ func main() {
 
 		pngFileName := path.Join(destinationDir, newFile)
 
-		// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
-		if jxlImage.HasICCProfile() {
-			f, err := os.Create(pngFileName)
-			if err != nil {
-				log.Fatalf("boomage %v", err)
-			}
-			defer f.Close()
-			core.WritePNG(jxlImage, f)
-		} else {
-
-			// convert to regular Go image.Image
-			img, err := jxlImage.ToImage()
-			if err != nil {
-				fmt.Printf("error when making image %v\n", err)
-			}
-
-			buf := new(bytes.Buffer)
-			if err := png.Encode(buf, img); err != nil {
-				log.Fatalf("boomage %v", err)
-			}
-
-			err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
-			if err != nil {
-				log.Fatalf("boomage %v", err)
-			}
+		ff, err := os.Create(pngFileName)
+		if err != nil {
+			log.Fatalf("boomage %v", err)
 		}
+		defer ff.Close()
+		pngWriter := core.PNGWriter{}
+		pngWriter.WritePNG(jxlImage, ff)
+
+		//// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
+		//if jxlImage.HasICCProfile() {
+		//	f, err := os.Create(pngFileName)
+		//	if err != nil {
+		//		log.Fatalf("boomage %v", err)
+		//	}
+		//	defer f.Close()
+		//	core.WritePNG(jxlImage, f)
+		//} else {
+		//
+		//	// convert to regular Go image.Image
+		//	img, err := jxlImage.ToImage()
+		//	if err != nil {
+		//		fmt.Printf("error when making image %v\n", err)
+		//	}
+		//
+		//	buf := new(bytes.Buffer)
+		//	if err := png.Encode(buf, img); err != nil {
+		//		log.Fatalf("boomage %v", err)
+		//	}
+		//
+		//	err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+		//	if err != nil {
+		//		log.Fatalf("boomage %v", err)
+		//	}
+		//}
 
 		end := time.Now()
 		fmt.Printf("decoding total time %d ms\n", end.Sub(start).Milliseconds())
