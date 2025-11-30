@@ -77,7 +77,7 @@ func (w *PNGWriter) WritePNG(jxlImage *JXLImage, output io.Writer) error {
 	w.colourMode = colourMode
 
 	coerce := jxlImage.alphaIsPremultiplied
-	buffer, err := jxlImage.getBuffer(true)
+	buffer, err := jxlImage.getBuffer(false)
 	if err != nil {
 		return err
 	}
@@ -111,6 +111,19 @@ func (w *PNGWriter) WritePNG(jxlImage *JXLImage, output io.Writer) error {
 			}
 		}
 	}
+
+	//newImg := jxlImage.create24BitImage(buffer)
+	//buf := new(bytes.Buffer)
+	//if err := png.Encode(buf, newImg); err != nil {
+	//	panic(err)
+	//}
+	//
+	//pngFileName := `c:\temp\test-image.png`
+	//err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//return nil
 
 	// PNG header
 	header := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
@@ -156,7 +169,7 @@ func (w *PNGWriter) writeICCP(image *JXLImage, output io.Writer) error {
 
 	var buf bytes.Buffer
 	buf.Write([]byte{0x69, 0x43, 0x43, 0x50})
-	buf.Write([]byte("jxl-go"))
+	buf.Write([]byte("jxlatte"))
 	buf.WriteByte(0x00)
 	buf.WriteByte(0x00)
 	var compressedICC bytes.Buffer
@@ -198,6 +211,9 @@ func (w *PNGWriter) writeICCP(image *JXLImage, output io.Writer) error {
 
 func (w *PNGWriter) writeSRGB(image *JXLImage, output io.Writer) error {
 
+	if w.hdr {
+		return nil
+	}
 	var buf bytes.Buffer
 	//output.Write([]byte{0x69, 0x43, 0x43, 0x50})
 	if _, err := buf.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
@@ -264,7 +280,7 @@ func (w *PNGWriter) writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 	buf.Write([]byte("IDAT"))
 
 	var compressedBytes bytes.Buffer
-	wr, err := zlib.NewWriterLevel(&compressedBytes, zlib.DefaultCompression)
+	wr, err := zlib.NewWriterLevel(&compressedBytes, zlib.NoCompression)
 	if err != nil {
 		return err
 	}

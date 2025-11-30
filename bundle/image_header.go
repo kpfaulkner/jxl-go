@@ -394,8 +394,7 @@ func (h *ImageHeader) GetTotalChannelCount() int {
 }
 
 func (h *ImageHeader) GetDecodedICC() ([]byte, error) {
-
-	if h.DecodedICC != nil && len(h.DecodedICC) > 0 {
+	if len(h.DecodedICC) > 0 {
 		return h.DecodedICC, nil
 	}
 

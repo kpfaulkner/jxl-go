@@ -176,6 +176,7 @@ func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
 	oldBuffer := ib.IntBuffer
 	newBuffer := util.MakeMatrix2D[float32](ib.Height, ib.Width)
 	scaleFactor := 1.0 / float32(maxValue)
+
 	for y := 0; y < int(ib.Height); y++ {
 		for x := 0; x < int(ib.Width); x++ {
 			newBuffer[y][x] = float32(oldBuffer[y][x]) * scaleFactor
@@ -208,6 +209,7 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 	oldBuffer := ib.FloatBuffer
 	newBuffer := util.MakeMatrix2D[int32](ib.Height, ib.Width)
 	scaleFactor := float32(maxValue)
+
 	for y := 0; y < int(ib.Height); y++ {
 		for x := 0; x < int(ib.Width); x++ {
 			v := int32(oldBuffer[y][x]*scaleFactor + 0.5)

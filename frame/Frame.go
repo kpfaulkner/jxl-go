@@ -414,7 +414,10 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		} else {
 			outBuffer := f.Buffer[cOut].IntBuffer
 			for y := uint32(0); y < f.Header.Bounds.Size.Height; y++ {
-				copy(outBuffer[y], modularBuffer[cIn][y])
+				//copy(outBuffer[y], modularBuffer[cIn][y])
+				for x := uint32(0); x < f.Header.Bounds.Size.Width; x++ {
+					outBuffer[y][x] = int32(scaleFactor * float32(modularBuffer[cIn][y][x]))
+				}
 			}
 		}
 	}
@@ -718,8 +721,9 @@ func (f *Frame) invertSubsampling() error {
 	for c := 0; c < 3; c++ {
 		xShift := f.Header.jpegUpsamplingX[c]
 		yShift := f.Header.jpegUpsamplingY[c]
-		for xShift > 0 {
-			xShift--
+
+		xShift--
+		for xShift+1 > 0 {
 			oldBuffer := f.Buffer[c]
 			if err := oldBuffer.CastToFloatIfMax(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
 				log.Errorf("Error casting buffer to float %v", err)
@@ -752,9 +756,10 @@ func (f *Frame) invertSubsampling() error {
 				newChannel[y] = newRow
 			}
 			f.Buffer[c] = *newBuffer
+			xShift--
 		}
-		for yShift > 0 {
-			yShift--
+		yShift--
+		for yShift+1 > 0 {
 			oldBuffer := f.Buffer[c]
 			if err := oldBuffer.CastToFloatIfMax(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
 				log.Errorf("Error casting buffer to float %v", err)
@@ -788,6 +793,7 @@ func (f *Frame) invertSubsampling() error {
 				}
 			}
 			f.Buffer[c] = *newBuffer
+			yShift--
 		}
 	}
 	return nil
