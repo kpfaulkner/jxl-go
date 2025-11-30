@@ -29,7 +29,7 @@ func TestNewImageBufferFromImageBuffer(t *testing.T) {
 	origBuf := [][]int32{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}
 	buf := NewImageBufferFromInts(origBuf)
 
-	buf2 := NewImageBufferFromImageBuffer(buf)
+	buf2 := NewImageBufferFromImageBuffer(buf, false)
 	assert.NotNil(t, buf2)
 }
 
@@ -79,7 +79,7 @@ func TestCastToIntIfFloat(t *testing.T) {
 	origBuf := [][]float32{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}
 	buf := NewImageBufferFromFloats(origBuf)
 
-	err := buf.CastToIntIfFloat(10)
+	err := buf.CastToIntIfMax(10)
 	assert.Nil(t, err)
 }
 
@@ -87,7 +87,7 @@ func TestCastToFloatIfInt(t *testing.T) {
 	origBuf := [][]int32{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}
 	buf := NewImageBufferFromInts(origBuf)
 
-	err := buf.CastToFloatIfInt(10)
+	err := buf.CastToFloatIfMax(10)
 	assert.Nil(t, err)
 }
 

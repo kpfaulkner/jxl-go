@@ -64,7 +64,8 @@ func doProcessing(filename string) error {
 			return err
 		}
 		defer f.Close()
-		core.WritePNG(jxlImage, f)
+		pngWriter := core.PNGWriter{}
+		pngWriter.WritePNG(jxlImage, f)
 	} else {
 
 		// convert to regular Go image.Image

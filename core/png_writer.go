@@ -10,33 +10,144 @@ import (
 	"github.com/kpfaulkner/jxl-go/colour"
 )
 
+type PNGWriter struct {
+	bitDepth     int32
+	colourMode   byte
+	width        uint32
+	height       uint32
+	alphaIndex   int32
+	hdr          bool
+	writeSRGBICC bool
+}
+
 // WritePNG instead of using standard golang image/png package since we need
 // to write out ICC Profile which doesn't seem to be supported by the standard package.
-func WritePNG(jxlImage *JXLImage, output io.Writer) error {
+func (w *PNGWriter) WritePNG(jxlImage *JXLImage, output io.Writer) error {
+
+	w.hdr = jxlImage.isHDR()
+	var bitDepth int32
+	if w.hdr {
+		bitDepth = 16
+	} else {
+		if jxlImage.imageHeader.BitDepth.BitsPerSample > 8 {
+			bitDepth = 16
+		} else {
+			bitDepth = 8
+		}
+	}
+
+	w.bitDepth = bitDepth
+	gray := jxlImage.ColorEncoding == colour.CE_GRAY
+
+	primaries := colour.CM_PRI_SRGB
+	tf := colour.TF_SRGB
+	if jxlImage.isHDR() {
+		primaries = colour.CM_PRI_BT2100
+		tf = colour.TF_PQ
+	}
+	whitePoint := colour.CM_WP_D65
+
+	if jxlImage.iccProfile == nil {
+		// transforms in place
+		img, err := jxlImage.transform(primaries, whitePoint, tf, PEAK_DETECT_AUTO)
+		if err != nil {
+			return err
+		}
+		jxlImage = img
+	}
+	maxValue := int32(^(^0 << bitDepth))
+	w.width = jxlImage.Width
+	w.height = jxlImage.Height
+	w.alphaIndex = jxlImage.alphaIndex
+
+	var colourMode byte
+	if gray {
+		if jxlImage.alphaIndex >= 0 {
+			colourMode = 4
+		} else {
+			colourMode = 0
+		}
+	} else {
+		if jxlImage.alphaIndex >= 0 {
+			colourMode = 6
+		} else {
+			colourMode = 2
+		}
+	}
+	w.colourMode = colourMode
+
+	coerce := jxlImage.alphaIsPremultiplied
+	buffer, err := jxlImage.getBuffer(false)
+	if err != nil {
+		return err
+	}
+	if !coerce {
+		for c := 0; c < len(buffer); c++ {
+			if buffer[c].IsInt() && jxlImage.bitDepths[c] != uint32(bitDepth) {
+				coerce = true
+				break
+			}
+		}
+	}
+	if coerce {
+		for c := 0; c < len(buffer); c++ {
+			if err := buffer[c].CastToFloatIfMax(^(^0 << jxlImage.bitDepths[c])); err != nil {
+				return err
+			}
+		}
+	}
+
+	if jxlImage.alphaIsPremultiplied {
+		panic("not implemented")
+	}
+	for c := 0; c < len(buffer); c++ {
+		if buffer[c].IsInt() && jxlImage.bitDepths[c] == uint32(bitDepth) {
+			if err := buffer[c].Clamp(maxValue); err != nil {
+				return err
+			}
+		} else {
+			if err := buffer[c].CastToIntIfMax(maxValue); err != nil {
+				return err
+			}
+		}
+	}
+
+	//newImg := jxlImage.create24BitImage(buffer)
+	//buf := new(bytes.Buffer)
+	//if err := png.Encode(buf, newImg); err != nil {
+	//	panic(err)
+	//}
+	//
+	//pngFileName := `c:\temp\test-image.png`
+	//err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//return nil
 
 	// PNG header
 	header := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
-	_, err := output.Write(header)
+	_, err = output.Write(header)
 	if err != nil {
 		return err
 	}
 
-	if err := writeIHDR(jxlImage, output); err != nil {
+	if err := w.writeIHDR(jxlImage, output); err != nil {
 		return err
 	}
 
-	if jxlImage.iccProfile != nil || len(jxlImage.iccProfile) != 0 {
-		if err := writeICCP(jxlImage, output); err != nil {
+	if w.hdr || len(jxlImage.iccProfile) != 0 || w.writeSRGBICC {
+		if err := w.writeICCP(jxlImage, output); err != nil {
 			return err
 		}
 	} else {
 		// if we have an ICC profile then write it out
-		if err := writeSRGB(jxlImage, output); err != nil {
+		if err := w.writeSRGB(jxlImage, output); err != nil {
 			return err
 		}
 	}
 
-	if err := writeIDAT(jxlImage, output); err != nil {
+	if err := w.writeIDAT(jxlImage, output); err != nil {
 		return err
 	}
 	_, err = output.Write([]byte{0, 0, 0, 0})
@@ -54,26 +165,26 @@ func WritePNG(jxlImage *JXLImage, output io.Writer) error {
 	return nil
 }
 
-func writeICCP(image *JXLImage, output io.Writer) error {
+func (w *PNGWriter) writeICCP(image *JXLImage, output io.Writer) error {
 
 	var buf bytes.Buffer
 	buf.Write([]byte{0x69, 0x43, 0x43, 0x50})
-	buf.Write([]byte("jxl-go"))
+	buf.Write([]byte("jxlatte"))
 	buf.WriteByte(0x00)
 	buf.WriteByte(0x00)
 	var compressedICC bytes.Buffer
-	w, err := zlib.NewWriterLevel(&compressedICC, 1)
+	wr, err := zlib.NewWriterLevel(&compressedICC, 1)
 	if err != nil {
 		return err
 	}
-	if _, err = w.Write(image.iccProfile); err != nil {
+	if _, err = wr.Write(image.iccProfile); err != nil {
 		return err
 	}
 
-	if err = w.Flush(); err != nil {
+	if err = wr.Flush(); err != nil {
 		return err
 	}
-	if err = w.Close(); err != nil {
+	if err = wr.Close(); err != nil {
 		return err
 	}
 
@@ -98,8 +209,11 @@ func writeICCP(image *JXLImage, output io.Writer) error {
 	return nil
 }
 
-func writeSRGB(image *JXLImage, output io.Writer) error {
+func (w *PNGWriter) writeSRGB(image *JXLImage, output io.Writer) error {
 
+	if w.hdr {
+		return nil
+	}
 	var buf bytes.Buffer
 	//output.Write([]byte{0x69, 0x43, 0x43, 0x50})
 	if _, err := buf.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
@@ -128,35 +242,14 @@ func writeSRGB(image *JXLImage, output io.Writer) error {
 	return nil
 }
 
-func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
-	var colourMode byte
-
-	if jxlImage.ColorEncoding == colour.CE_GRAY {
-		if jxlImage.alphaIndex >= 0 {
-			colourMode = 4
-		} else {
-			colourMode = 0
-		}
-	} else {
-		if jxlImage.alphaIndex >= 0 {
-			colourMode = 6
-		} else {
-			colourMode = 2
-		}
-	}
-	var bitDepth int32
-	if jxlImage.imageHeader.BitDepth.BitsPerSample > 8 {
-		bitDepth = 16
-	} else {
-		bitDepth = 8
-	}
+func (w *PNGWriter) writeIHDR(jxlImage *JXLImage, output io.Writer) error {
 
 	ihdr := make([]byte, 17)
 	copy(ihdr[:4], []byte{'I', 'H', 'D', 'R'})
 	binary.BigEndian.PutUint32(ihdr[4:], jxlImage.Width)
 	binary.BigEndian.PutUint32(ihdr[8:], jxlImage.Height)
-	ihdr[12] = byte(bitDepth)
-	ihdr[13] = colourMode
+	ihdr[12] = byte(w.bitDepth)
+	ihdr[13] = w.colourMode
 	ihdr[14] = 0
 	ihdr[15] = 0
 	ihdr[16] = 0
@@ -181,13 +274,13 @@ func writeIHDR(jxlImage *JXLImage, output io.Writer) error {
 	return nil
 }
 
-func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
+func (w *PNGWriter) writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 
 	var buf bytes.Buffer
 	buf.Write([]byte("IDAT"))
 
 	var compressedBytes bytes.Buffer
-	w, err := zlib.NewWriterLevel(&compressedBytes, zlib.DefaultCompression)
+	wr, err := zlib.NewWriterLevel(&compressedBytes, zlib.NoCompression)
 	if err != nil {
 		return err
 	}
@@ -201,24 +294,24 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 
 	maxValue := int32(^(^0 << bitDepth))
 
-	if err = jxlImage.Buffer[0].CastToIntIfFloat(maxValue); err != nil {
+	if err = jxlImage.Buffer[0].CastToIntIfMax(maxValue); err != nil {
 		return err
 	}
 
 	if len(jxlImage.Buffer) > 1 {
-		if err = jxlImage.Buffer[1].CastToIntIfFloat(maxValue); err != nil {
+		if err = jxlImage.Buffer[1].CastToIntIfMax(maxValue); err != nil {
 			return err
 		}
 	}
 
 	if len(jxlImage.Buffer) > 2 {
-		if err = jxlImage.Buffer[2].CastToIntIfFloat(maxValue); err != nil {
+		if err = jxlImage.Buffer[2].CastToIntIfMax(maxValue); err != nil {
 			return err
 		}
 	}
 
 	if jxlImage.HasAlpha() {
-		if err = jxlImage.Buffer[3].CastToIntIfFloat(maxValue); err != nil {
+		if err = jxlImage.Buffer[3].CastToIntIfMax(maxValue); err != nil {
 			return err
 		}
 	}
@@ -229,13 +322,13 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 				return err
 			}
 		} else {
-			if err := jxlImage.Buffer[c].CastToIntIfFloat(maxValue); err != nil {
+			if err := jxlImage.Buffer[c].CastToIntIfMax(maxValue); err != nil {
 				return err
 			}
 		}
 	}
 	for y := uint32(0); y < jxlImage.Height; y++ {
-		if _, err := w.Write([]byte{0}); err != nil {
+		if _, err := wr.Write([]byte{0}); err != nil {
 			return err
 		}
 		for x := uint32(0); x < jxlImage.Width; x++ {
@@ -244,14 +337,14 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 			for c := 0; c < jxlImage.imageHeader.GetColourChannelCount(); c++ {
 				dat := jxlImage.Buffer[c].IntBuffer[y][x]
 				if jxlImage.bitDepths[c] == 8 {
-					if _, err := w.Write([]byte{byte(dat)}); err != nil {
+					if _, err := wr.Write([]byte{byte(dat)}); err != nil {
 						return err
 					}
 				} else {
 					byte1 := dat & 0xFF
 					byte2 := dat & 0xFF00
 					byte2 >>= 8
-					if _, err := w.Write([]byte{byte(byte2), byte(byte1)}); err != nil {
+					if _, err := wr.Write([]byte{byte(byte2), byte(byte1)}); err != nil {
 						return err
 					}
 				}
@@ -260,7 +353,7 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 			if jxlImage.HasAlpha() {
 				dat := jxlImage.Buffer[3].IntBuffer[y][x]
 				if jxlImage.bitDepths[3] == 8 {
-					if _, err := w.Write([]byte{byte(dat)}); err != nil {
+					if _, err := wr.Write([]byte{byte(dat)}); err != nil {
 						return err
 					}
 				} else {
@@ -268,14 +361,14 @@ func writeIDAT(jxlImage *JXLImage, output io.Writer) error {
 					byte2 := dat & 0xFF00
 					byte2 >>= 8
 
-					if _, err := w.Write([]byte{byte(byte2), byte(byte1)}); err != nil {
+					if _, err := wr.Write([]byte{byte(byte2), byte(byte1)}); err != nil {
 						return err
 					}
 				}
 			}
 		}
 	}
-	w.Close()
+	wr.Close()
 
 	if _, err := buf.Write(compressedBytes.Bytes()); err != nil {
 		return err

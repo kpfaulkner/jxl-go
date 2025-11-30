@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image/png"
 	"os"
 	"path"
 	"strings"
@@ -16,51 +15,35 @@ import (
 func main() {
 
 	filePaths := []string{
-
+		`..\testdata\test-benchmark.jxl|test-benchmark.png`,
+		`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
 		`..\testdata\ants-lossless.jxl|ants-lossless.png`,
-
-		// bbb.jxl still has some issues...  95% good.. but somethings wrong :/
 		`..\testdata\bbb.jxl|bbb.png`,
-
 		`..\testdata\bench.jxl|bench.png`,
-
-		// not looking like ref.png but same as jxlatte output
-		`C:\Users\kenfa\projects\conformance\testcases\spot\input.jxl|spot.png`,
-		`C:\Users\kenfa\projects\conformance\testcases\upsampling\input.jxl|upsampling.png`,
-		`C:\Users\kenfa\projects\conformance\testcases\sunset_logo\input.jxl|sunset_logo.png`,
-		`C:\Users\kenfa\projects\conformance\testcases\cafe\input.jxl|cafe.png`,
-
-		// looking good.
-		`C:\Users\kenfa\projects\conformance\testcases\delta_palette\input.jxl|delta_palette.png`,
-
-		`C:\Users\kenfa\projects\conformance\testcases\grayscale\input.jxl|grayscale.png`,
-
-
-		//`c:\temp\ken-0-4.jxl|ken-0-4.png`,
+		`..\testdata\spot.jxl|spot.png`,
+		`..\testdata\upsampling.jxl|upsampling.png`,
+		`..\testdata\sunset_logo.jxl|sunset_logo.png`,
+		`..\testdata\cafe.jxl|cafe.png`,
+		`..\testdata\delta_palette.jxl|delta_palette.png`,
+		`..\testdata\grayscale.jxl|grayscale.png`,
 		`..\testdata\unittest.jxl|unittest.png`,
 		`..\testdata\bench.jxl|bench.png`,
 		`..\testdata\alpha-triangles.jxl|alpha-triangles.png`,
-
 		`..\testdata\lenna.jxl|lenna.png`,
 		`..\testdata\quilt.jxl|quilt.png`,
 		`..\testdata\wb-rainbow.jxl|wb-rainbow.png`,
 		`..\testdata\ants.jxl|ants.png`,
 		`..\testdata\blendmodes_5.jxl|blendmodes_5.png`,
 		`..\testdata\lossless.jxl|lossless.png`,
-
-		// not working. Haven't implemented PEAK_DETECT
-		//`..\testdata\sollevante-hdr.jxl|sollevante-hdr.png`,
-
 		`..\testdata\white.jxl|white.png`,
 		`..\testdata\art.jxl|art.png`,
 		`..\testdata\church.jxl|church.png`,
-		//`..\testdata\patches-lossless.jxl|patches-lossless.png`,
 		`..\testdata\tiny2.jxl|tiny2.png`,
 	}
 
 	// hardcoded output dir for now
 	destinationDir := `c:\temp\jxlresults\`
-	
+
 	for _, file := range filePaths {
 		fileDetails := strings.Split(file, "|")
 		orig := fileDetails[0]
@@ -92,32 +75,42 @@ func main() {
 
 		pngFileName := path.Join(destinationDir, newFile)
 
-		// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
-		if jxlImage.HasICCProfile() {
-			f, err := os.Create(pngFileName)
-			if err != nil {
-				log.Fatalf("boomage %v", err)
-			}
-			defer f.Close()
-			core.WritePNG(jxlImage, f)
-		} else {
-
-			// convert to regular Go image.Image
-			img, err := jxlImage.ToImage()
-			if err != nil {
-				fmt.Printf("error when making image %v\n", err)
-			}
-
-			buf := new(bytes.Buffer)
-			if err := png.Encode(buf, img); err != nil {
-				log.Fatalf("boomage %v", err)
-			}
-
-			err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
-			if err != nil {
-				log.Fatalf("boomage %v", err)
-			}
+		ff, err := os.Create(pngFileName)
+		if err != nil {
+			log.Fatalf("boomage %v", err)
 		}
+		defer ff.Close()
+		pngWriter := core.PNGWriter{}
+		pngWriter.WritePNG(jxlImage, ff)
+
+		// produces some recognisable output for alpha-triangles but is NOT correct. (stripes)
+		//// if ICC profile then use custom PNG writer... otherwise use default Go encoder.
+		//if jxlImage.HasICCProfile() {
+		//	//f, err := os.Create(pngFileName)
+		//	//if err != nil {
+		//	//	log.Fatalf("boomage %v", err)
+		//	//}
+		//	//defer f.Close()
+		//	//core.WritePNG(jxlImage, f)
+		//} else {
+		//
+		//	// convert to regular Go image.Image
+		//	img, err := jxlImage.ToImage()
+		//	if err != nil {
+		//		fmt.Printf("error when making image %v\n", err)
+		//	}
+		//
+		//	buf := new(bytes.Buffer)
+		//	if err := png.Encode(buf, img); err != nil {
+		//		log.Fatalf("boomage %v", err)
+		//	}
+		//
+		//	pngFileName = `c:\temp\testold.png`
+		//	err = os.WriteFile(pngFileName, buf.Bytes(), 0666)
+		//	if err != nil {
+		//		log.Fatalf("boomage %v", err)
+		//	}
+		//}
 
 		end := time.Now()
 		fmt.Printf("decoding total time %d ms\n", end.Sub(start).Milliseconds())

@@ -52,7 +52,8 @@ func main() {
 			log.Fatalf("boomage %v", err)
 		}
 		defer f.Close()
-		err = core.WritePNG(jxlImage, f)
+		pngWriter := core.PNGWriter{}
+		err = pngWriter.WritePNG(jxlImage, f)
 		if err != nil {
 			log.Fatalf("boomage %v", err)
 		}

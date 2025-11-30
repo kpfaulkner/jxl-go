@@ -46,7 +46,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 		pX := pos.X << 8
 		lf.dequantLFCoeff = dequantLFCoeff
 		for c := 0; c < 3; c++ {
-			if err := lfBuffer[c].CastToFloatIfInt(^(^0 << frame.getGlobalMetadata().BitDepth.BitsPerSample)); err != nil {
+			if err := lfBuffer[c].CastToFloatIfMax(^(^0 << frame.getGlobalMetadata().BitDepth.BitsPerSample)); err != nil {
 				return nil, err
 			}
 			b := lfBuffer[c].FloatBuffer

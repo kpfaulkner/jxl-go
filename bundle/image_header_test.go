@@ -377,7 +377,10 @@ func TestGetUpWeights(t *testing.T) {
 			if tc.readData {
 				bitReader = testcommon.GenerateTestBitReader(t, `../testdata/unittest.jxl`)
 				// skip first 40 bytes due to box headers.
-				bitReader.Skip(40)
+				_, err := bitReader.Skip(40)
+				if err != nil {
+					t.Fatalf("failed to skip bytes: %v", err)
+				}
 			} else {
 				bitReader = jxlio.NewBitStreamReader(bytes.NewReader(tc.data))
 			}
@@ -473,7 +476,7 @@ func TestGetDecodedICC(t *testing.T) {
 				return
 			}
 
-			if bytes.Compare(decodedICC, tc.expectedDecodedICCProfile) != 0 {
+			if !bytes.Equal(decodedICC, tc.expectedDecodedICCProfile) {
 				t.Errorf("decoded ICC profile does not match expected")
 			}
 		})

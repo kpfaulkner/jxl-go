@@ -64,13 +64,20 @@ func NewImageBufferFromFloats(buffer [][]float32) *ImageBuffer {
 	return ib
 }
 
-func NewImageBufferFromImageBuffer(imageBuffer *ImageBuffer) *ImageBuffer {
+func NewImageBufferFromImageBuffer(imageBuffer *ImageBuffer, copyBuffer bool) *ImageBuffer {
 	ib := &ImageBuffer{}
-	ib.IntBuffer = copyInt32Matrix2D(imageBuffer.IntBuffer)
-	ib.FloatBuffer = copyFloat32Matrix2D(imageBuffer.FloatBuffer)
 	ib.BufferType = imageBuffer.BufferType
 	ib.Height = imageBuffer.Height
 	ib.Width = imageBuffer.Width
+
+	if copyBuffer {
+		ib.IntBuffer = copyInt32Matrix2D(imageBuffer.IntBuffer)
+		ib.FloatBuffer = copyFloat32Matrix2D(imageBuffer.FloatBuffer)
+	} else {
+		ib.IntBuffer = util.MakeMatrix2D[int32](ib.Height, ib.Width)
+		ib.FloatBuffer = util.MakeMatrix2D[float32](ib.Height, ib.Width)
+	}
+
 	return ib
 }
 
@@ -90,6 +97,31 @@ func copyFloat32Matrix2D(src [][]float32) [][]float32 {
 		copy(duplicate[i], src[i])
 	}
 	return duplicate
+}
+
+// return maximum int32 from int buffer.
+func (ib *ImageBuffer) MaxInt() int32 {
+	m := int32(0)
+	for y := 0; y < len(ib.IntBuffer); y++ {
+		for x := 0; x < len(ib.IntBuffer[y]); x++ {
+			if ib.IntBuffer[y][x] > m {
+				m = ib.IntBuffer[y][x]
+			}
+		}
+	}
+	return m
+}
+
+func (ib *ImageBuffer) MaxFloat() float32 {
+	m := float32(0)
+	for y := 0; y < len(ib.FloatBuffer); y++ {
+		for x := 0; x < len(ib.FloatBuffer[y]); x++ {
+			if ib.FloatBuffer[y][x] > m {
+				m = ib.FloatBuffer[y][x]
+			}
+		}
+	}
+	return m
 }
 
 // Equals compares two ImageBuffers and returns true if they are equal.
@@ -126,7 +158,7 @@ func (ib *ImageBuffer) IsInt() bool {
 	return ib.BufferType == TYPE_INT
 }
 
-func (ib *ImageBuffer) CastToFloatIfInt(maxValue int32) error {
+func (ib *ImageBuffer) CastToFloatIfMax(maxValue int32) error {
 	if ib.BufferType == TYPE_FLOAT {
 		return nil
 	}
@@ -144,6 +176,7 @@ func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
 	oldBuffer := ib.IntBuffer
 	newBuffer := util.MakeMatrix2D[float32](ib.Height, ib.Width)
 	scaleFactor := 1.0 / float32(maxValue)
+
 	for y := 0; y < int(ib.Height); y++ {
 		for x := 0; x < int(ib.Width); x++ {
 			newBuffer[y][x] = float32(oldBuffer[y][x]) * scaleFactor
@@ -154,7 +187,7 @@ func (ib *ImageBuffer) castToFloatBuffer(maxValue int32) error {
 	return nil
 }
 
-func (ib *ImageBuffer) CastToIntIfFloat(maxValue int32) error {
+func (ib *ImageBuffer) CastToIntIfMax(maxValue int32) error {
 	if ib.BufferType == TYPE_INT {
 		return nil
 	}
@@ -176,6 +209,7 @@ func (ib *ImageBuffer) castToIntBuffer(maxValue int32) error {
 	oldBuffer := ib.FloatBuffer
 	newBuffer := util.MakeMatrix2D[int32](ib.Height, ib.Width)
 	scaleFactor := float32(maxValue)
+
 	for y := 0; y < int(ib.Height); y++ {
 		for x := 0; x < int(ib.Width); x++ {
 			v := int32(oldBuffer[y][x]*scaleFactor + 0.5)

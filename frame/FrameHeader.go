@@ -1,6 +1,8 @@
 package frame
 
 import (
+	"fmt"
+
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
@@ -165,8 +167,6 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 	fh.logLFGroupDIM = uint32(util.CeilLog2(int64(fh.lfGroupDim)))
 	if parent.XybEncoded && fh.Encoding == VARDCT {
 		if !allDefault {
-			// TODO(kpfaulkner) 20241026 getting 0's for xqmScale and bqmScale where as JXLatte gets 2 for both?!?
-			// REALLY confused how this is happening...
 			xqmScale, err := reader.ReadBits(3)
 			if err != nil {
 				return nil, err
@@ -391,4 +391,55 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 	}
 
 	return fh, nil
+}
+
+// DisplayDebug will output header information to stdout for debugging purposes.
+func (fh *FrameHeader) DisplayDebug() {
+	if fh == nil {
+		fmt.Println("FrameHeader: <nil>")
+		return
+	}
+
+	fmt.Printf("FrameHeader name=%q\n", fh.name)
+	fmt.Printf("  FrameType=%d Encoding=%d Flags=0x%x DoYCbCr=%v IsLast=%v\n", fh.FrameType, fh.Encoding, fh.Flags, fh.DoYCbCr, fh.IsLast)
+	fmt.Printf("  Width=%d Height=%d Upsampling=%d LfLevel=%d\n", fh.Width, fh.Height, fh.Upsampling, fh.LfLevel)
+	fmt.Printf("  groupDim=%d lfGroupDim=%d logGroupDim=%d logLFGroupDIM=%d\n", fh.groupDim, fh.lfGroupDim, fh.logGroupDim, fh.logLFGroupDIM)
+
+	if fh.Bounds != nil {
+		fmt.Printf("  Bounds Origin=(%d,%d) Size=(%d x %d)\n", fh.Bounds.Origin.X, fh.Bounds.Origin.Y, fh.Bounds.Size.Width, fh.Bounds.Size.Height)
+	} else {
+		fmt.Println("  Bounds: <nil>")
+	}
+
+	fmt.Printf("  jpegUpsamplingX=%v jpegUpsamplingY=%v\n", fh.jpegUpsamplingX, fh.jpegUpsamplingY)
+	fmt.Printf("  EcUpsampling=%v\n", fh.EcUpsampling)
+	fmt.Printf("  EcBlendingInfo count=%d\n", len(fh.EcBlendingInfo))
+
+	if fh.BlendingInfo != nil {
+		fmt.Printf("  BlendingInfo=%+v\n", *fh.BlendingInfo)
+	} else {
+		fmt.Println("  BlendingInfo: <nil>")
+	}
+
+	if fh.passes != nil {
+		fmt.Printf("  PassesInfo: %+v\n", *fh.passes)
+	} else {
+		fmt.Println("  PassesInfo: <nil>")
+	}
+
+	if fh.restorationFilter != nil {
+		fmt.Printf("  RestorationFilter: %+v\n", *fh.restorationFilter)
+	} else {
+		fmt.Println("  RestorationFilter: <nil>")
+	}
+
+	if fh.extensions != nil {
+		fmt.Printf("  Extensions: %+v\n", *fh.extensions)
+	} else {
+		fmt.Println("  Extensions: <nil>")
+	}
+
+	// Print a few useful flag tests
+	fmt.Printf("  Flags bits: USE_LF_FRAME=%v NOISE=%v PATCHES=%v SPLINES=%v\n",
+		fh.Flags&USE_LF_FRAME != 0, fh.Flags&NOISE != 0, fh.Flags&PATCHES != 0, fh.Flags&SPLINES != 0)
 }
