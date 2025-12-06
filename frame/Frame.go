@@ -663,7 +663,8 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	if f.Header.Encoding == VARDCT {
 
 		// get floating point version of frame buffer
-		buffers := util.MakeMatrix3D[float32](3, 0, 0)
+		buffers := util.MakeMatrix3DPooled[float32](3, 0, 0)
+		defer util.ReturnMatrix3DToPool(buffers)
 		for c := 0; c < 3; c++ {
 			if err := f.Buffer[c].CastToFloatIfMax(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
 				return err
@@ -673,7 +674,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 
 		for pass := 0; pass < numPasses; pass++ {
 			for group := 0; group < numGroups; group++ {
-				passGroup := passGroups[pass][group]
+				passGroup := &passGroups[pass][group]
 				var prev *PassGroup
 				if pass > 0 {
 					prev = &passGroups[pass-1][group]
@@ -683,6 +684,13 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
 					return err
 				}
+			}
+		}
+
+		// Release HFCoefficients buffers back to pool
+		for pass := 0; pass < numPasses; pass++ {
+			for group := 0; group < numGroups; group++ {
+				passGroups[pass][group].Release()
 			}
 		}
 	}
@@ -933,6 +941,8 @@ func (f *Frame) performEdgePreservingFilter() error {
 		// copy first 3 (well number of colours we have) buffers
 		inputBuffers := copyFloatBuffers(f.Buffer, colours)
 		outputBuffers := copyFloatBuffers(outputBuffer, colours)
+		defer util.ReturnMatrix3DToPool(inputBuffers)
+		// Note: Don't return outputBuffers to pool - they get swapped into f.Buffer at line 997
 		var sigmaScale float32
 		if i == 0 {
 			sigmaScale = stepMultiplier * f.Header.restorationFilter.epfPass0SigmaScale
@@ -983,13 +993,10 @@ func (f *Frame) performEdgePreservingFilter() error {
 		}
 
 		for c := 0; c < int(colours); c++ {
-			//f.Buffer[c], outputBuffer[c] = outputBuffer[c], f.Buffer[c]
 			tmp := f.Buffer[c]
 			f.Buffer[c].FloatBuffer = outputBuffers[c]
 			outputBuffer[c] = tmp
-
 		}
-
 	}
 	return nil
 }
@@ -1037,7 +1044,7 @@ func (f *Frame) epfDistance2(buffer [][][]float32, colours int32, basePosY int32
 }
 
 func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) [][][]float32 {
-	data := util.MakeMatrix3D[float32](int(colours), int(buffer[0].Height), int(buffer[0].Width))
+	data := util.MakeMatrix3DPooled[float32](int(colours), int(buffer[0].Height), int(buffer[0].Width))
 	for c := int32(0); c < colours; c++ {
 		for y := int32(0); y < buffer[c].Height; y++ {
 			copy(data[c][y], buffer[c].FloatBuffer[y])

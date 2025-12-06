@@ -62,16 +62,17 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint
 	if err != nil {
 		return nil, err
 	}
-	nonZeros := util.MakeMatrix3D[int32](3, 32, 32)
+	nonZeros := util.MakeMatrix3DPooled[int32](3, 32, 32)
+	defer util.ReturnMatrix3DToPool(nonZeros)
 	hf.stream = entropy.NewEntropyStreamWithStream(hfPass.contextStream)
-	hf.quantizedCoeffs = util.MakeMatrix3D[int32](3, 0, 0)
-	hf.dequantHFCoeff = util.MakeMatrix3D[float32](3, 0, 0)
+	hf.quantizedCoeffs = util.MakeMatrix3DPooled[int32](3, 0, 0)
+	hf.dequantHFCoeff = util.MakeMatrix3DPooled[float32](3, 0, 0)
 
 	for c := 0; c < 3; c++ {
 		sY := size.Height >> header.jpegUpsamplingY[c]
 		sX := size.Width >> header.jpegUpsamplingX[c]
-		hf.quantizedCoeffs[c] = util.MakeMatrix2D[int32](sY, sX)
-		hf.dequantHFCoeff[c] = util.MakeMatrix2D[float32](sY, sX)
+		hf.quantizedCoeffs[c] = util.MakeMatrix2DPooled[int32](int(sY), int(sX))
+		hf.dequantHFCoeff[c] = util.MakeMatrix2DPooled[float32](int(sY), int(sX))
 	}
 
 	hf.groupPos = hf.frame.groupPosInLFGroup(hf.lfg.lfGroupID, hf.groupID)
@@ -382,7 +383,8 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 
 func (hf *HFCoefficients) finalizeLLF() error {
 
-	scratchBlock := util.MakeMatrix3D[float32](2, 32, 32)
+	scratchBlock := util.MakeMatrix3DPooled[float32](2, 32, 32)
+	defer util.ReturnMatrix3DToPool(scratchBlock)
 	header := hf.frame.getFrameHeader()
 	for i := 0; i < len(hf.blocks); i++ {
 		posInLfg := hf.blocks[i]
@@ -424,6 +426,18 @@ func (hf *HFCoefficients) finalizeLLF() error {
 	}
 
 	return nil
+}
+
+// Release returns pooled buffers to the pool
+func (hf *HFCoefficients) Release() {
+	if hf.quantizedCoeffs != nil {
+		util.ReturnMatrix3DToPool(hf.quantizedCoeffs)
+		hf.quantizedCoeffs = nil
+	}
+	if hf.dequantHFCoeff != nil {
+		util.ReturnMatrix3DToPool(hf.dequantHFCoeff)
+		hf.dequantHFCoeff = nil
+	}
 }
 
 func getPredictedNonZeros(nonZeros [][][]int32, c int, y int32, x int32) int32 {

@@ -418,3 +418,11 @@ func (g *PassGroup) layBlock(block [][]float32, buffer [][]float32, inPos util.P
 		copy(buffer[y+outPos.Y][outPos.X:outPos.X+int32(inSize.Width)], block[y+inPos.Y][inPos.X:inPos.X+int32(inSize.Width)])
 	}
 }
+
+// Release returns pooled buffers to the pool
+func (g *PassGroup) Release() {
+	if g.hfCoefficients != nil {
+		g.hfCoefficients.Release()
+		g.hfCoefficients = nil
+	}
+}
