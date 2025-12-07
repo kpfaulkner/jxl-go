@@ -276,8 +276,7 @@ func NewFrameWithReader(reader jxlio.BitReader, imageHeader *bundle.ImageHeader,
 
 func (f *Frame) SkipFrameData() error {
 	for i := 0; i < len(f.tocLengths); i++ {
-		buffer := make([]byte, f.tocLengths[i])
-		err := f.reader.ReadBytesToBuffer(buffer, f.tocLengths[i])
+		_, err := f.reader.Skip(f.tocLengths[i])
 		if err != nil {
 			return err
 		}
