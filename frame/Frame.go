@@ -218,17 +218,46 @@ func readPermutation(reader jxlio.BitReader, stream entropy.EntropyStreamer, siz
 		}
 	}
 
-	var temp []uint32
+	// Convert Lehmer code to permutation using Fenwick tree for O(n log n)
+	// instead of O(n²) slice splicing
 	permutation := make([]uint32, size)
-	for i := 0; i < int(size); i++ {
-		temp = append(temp, uint32(i))
+
+	// Fenwick tree: tree[i] stores count of available elements in its range
+	// Initialize with all 1s (all elements available)
+	tree := make([]int, size+1)
+	for i := 1; i <= int(size); i++ {
+		tree[i] = i & (-i) // lowbit(i) = count of 1s in range for all-1s initialization
 	}
 
-	for i := 0; i < int(size); i++ {
-		index := lehmer[i]
-		val := temp[index]
-		temp = append(temp[:index], temp[index+1:]...)
-		permutation[i] = val
+	// Find k-th available element (1-indexed) using binary search on Fenwick tree
+	findKth := func(k int) int {
+		pos := 0
+		mask := 1
+		for mask <= int(size) {
+			mask <<= 1
+		}
+		for mask >>= 1; mask > 0; mask >>= 1 {
+			if pos+mask <= int(size) && tree[pos+mask] < k {
+				k -= tree[pos+mask]
+				pos += mask
+			}
+		}
+		return pos + 1
+	}
+
+	// Mark element at pos as used (subtract 1 from all ranges containing pos)
+	markUsed := func(pos int) {
+		for pos <= int(size) {
+			tree[pos]--
+			pos += pos & (-pos)
+		}
+	}
+
+	for i := uint32(0); i < size; i++ {
+		// Find the (lehmer[i]+1)-th available element
+		val := findKth(int(lehmer[i]) + 1)
+		permutation[i] = uint32(val - 1) // Convert to 0-indexed
+		markUsed(val)
 	}
 
 	return permutation, nil
