@@ -2,7 +2,6 @@ package frame
 
 import (
 	"errors"
-	"math"
 
 	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -179,7 +178,7 @@ func adaptiveSmooth(coeff [][][]float32, scaledDequant []float32) [][][]float32 
 				adjacent := coy[x-1] + coy[x+1] + coym[x] + coyp[x]
 				diag := coym[x-1] + coym[x+1] + coyp[x-1] + coyp[x+1]
 				wy[x] = 0.05226273532324128*sample + 0.20345139757231578*adjacent + 0.0334829185968739*diag
-				g := float32(math.Abs(float64(sample-wy[x])) * float64(sd))
+				g := absFloat32(sample-wy[x]) * sd
 				if g > gy[x] {
 					gy[x] = g
 				}
