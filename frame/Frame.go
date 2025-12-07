@@ -863,43 +863,78 @@ func (f *Frame) performGabConvolution() error {
 			return err
 		}
 		newBufferF := newBuffer.FloatBuffer
-		for y := int32(0); y < height; y++ {
-			var north int32
-			if y == 0 {
-				north = 0
-			} else {
-				north = y - 1
-			}
-			var south int32
-			if y+1 == height {
-				south = height - 1
-			} else {
-				south = y + 1
-			}
 
-			buffR := buffC[y]
-			buffN := buffC[north]
-			buffS := buffC[south]
-			newBuffR := newBufferF[y]
+		// Capture values for closures
+		gabBase := normGabBase[c]
+		gabAdj := normGabAdj[c]
+		gabDiag := normGabDiag[c]
 
-			for x := int32(0); x < width; x++ {
-				var west int32
-				if x == 0 {
-					west = 0
+		// Worker function to process a range of rows
+		processRows := func(startY, endY int32) {
+			for y := startY; y < endY; y++ {
+				var north int32
+				if y == 0 {
+					north = 0
 				} else {
-					west = x - 1
+					north = y - 1
 				}
-				var east int32
-				if x+1 == width {
-					east = width - 1
+				var south int32
+				if y+1 == height {
+					south = height - 1
 				} else {
-					east = x + 1
+					south = y + 1
 				}
-				adj := buffR[west] + buffR[east] + buffN[x] + buffS[x]
-				diag := buffN[west] + buffN[east] + buffS[west] + buffS[east]
-				newBuffR[x] = normGabBase[c]*buffR[x] + normGabAdj[c]*adj + normGabDiag[c]*diag
+
+				buffR := buffC[y]
+				buffN := buffC[north]
+				buffS := buffC[south]
+				newBuffR := newBufferF[y]
+
+				for x := int32(0); x < width; x++ {
+					var west int32
+					if x == 0 {
+						west = 0
+					} else {
+						west = x - 1
+					}
+					var east int32
+					if x+1 == width {
+						east = width - 1
+					} else {
+						east = x + 1
+					}
+					adj := buffR[west] + buffR[east] + buffN[x] + buffS[x]
+					diag := buffN[west] + buffN[east] + buffS[west] + buffS[east]
+					newBuffR[x] = gabBase*buffR[x] + gabAdj*adj + gabDiag*diag
+				}
 			}
 		}
+
+		// Divide work among goroutines
+		numWorkers := f.options.MaxGoroutines
+		if numWorkers < 1 {
+			numWorkers = 1
+		}
+		rowsPerWorker := (height + int32(numWorkers) - 1) / int32(numWorkers)
+
+		var wg sync.WaitGroup
+		for w := 0; w < numWorkers; w++ {
+			startY := int32(w) * rowsPerWorker
+			endY := startY + rowsPerWorker
+			if endY > height {
+				endY = height
+			}
+			if startY >= height {
+				break
+			}
+			wg.Add(1)
+			go func(sy, ey int32) {
+				defer wg.Done()
+				processRows(sy, ey)
+			}(startY, endY)
+		}
+		wg.Wait()
+
 		f.Buffer[c] = *newBuffer
 	}
 	return nil
