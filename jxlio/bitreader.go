@@ -37,7 +37,7 @@ type BitReader interface {
 
 // BitStreamReader is the key struct for reading bits from a byte "stream".
 type BitStreamReader struct {
-	//buffer []byte
+	buffer []byte
 	// stream/reader we're using most of the time
 	stream      io.ReadSeeker
 	bitsRead    uint64
@@ -50,14 +50,14 @@ func NewBitStreamReaderWithIndex(in io.ReadSeeker, index int) *BitStreamReader {
 
 	br := NewBitStreamReader(in)
 	br.tempIndex = index
-	//br.buffer = make([]byte, 1)
+	br.buffer = make([]byte, 1)
 	return br
 }
 
 func NewBitStreamReader(in io.ReadSeeker) *BitStreamReader {
 
 	br := &BitStreamReader{}
-	//br.buffer = make([]byte, 1)
+	br.buffer = make([]byte, 1)
 	br.stream = in
 	return br
 }
@@ -111,12 +111,12 @@ func (br *BitStreamReader) ReadBytesToBuffer(buffer []uint8, numBytes uint32) er
 // read single bit and will cache the current byte we're working on.
 func (br *BitStreamReader) readBit() (uint8, error) {
 	if br.index == 0 {
-		buffer := make([]byte, 1)
-		_, err := br.stream.Read(buffer)
+
+		_, err := br.stream.Read(br.buffer)
 		if err != nil {
 			return 0, err
 		}
-		br.currentByte = buffer[0]
+		br.currentByte = br.buffer[0]
 	}
 
 	v := (br.currentByte & (1 << br.index)) != 0
