@@ -985,40 +985,74 @@ func (f *Frame) performEdgePreservingFilter() error {
 		} else {
 			crossList = epfCross
 		}
-		sumChannels := make([]float32, colours)
-		for y := int32(0); y < int32(paddedSize.Height); y++ {
-			for x := int32(0); x < int32(paddedSize.Width); x++ {
-				s := inverseSigma[y>>3][x>>3]
-				if s > (1.0 / 0.3) {
+
+		// Parallelize the row processing
+		height := int32(paddedSize.Height)
+		width := int32(paddedSize.Width)
+		iteration := i // capture for closure
+
+		// Worker function to process a range of rows
+		processRows := func(startY, endY int32) {
+			sumChannels := make([]float32, colours) // each goroutine gets its own
+			for y := startY; y < endY; y++ {
+				for x := int32(0); x < width; x++ {
+					s := inverseSigma[y>>3][x>>3]
+					if s > (1.0 / 0.3) {
+						for c := 0; c < len(outputBuffers); c++ {
+							outputBuffers[c][y][x] = inputBuffers[c][y][x]
+						}
+						continue
+					}
+					sumWeights := float32(0)
+					for ff := range sumChannels {
+						sumChannels[ff] = 0
+					}
+					for _, cross := range crossList {
+						var dist float32
+						if iteration == 2 {
+							dist = f.epfDistance2(inputBuffers, colours, y, x, cross, paddedSize)
+						} else {
+							dist = f.epfDistance1(inputBuffers, colours, y, x, cross, paddedSize)
+						}
+						weight := f.epfWeight(sigmaScale, dist, s, y, x)
+						sumWeights += weight
+						mY := util.MirrorCoordinate(y+cross.Y, height)
+						mX := util.MirrorCoordinate(x+cross.X, width)
+						for c := int32(0); c < colours; c++ {
+							sumChannels[c] += inputBuffers[c][mY][mX] * weight
+						}
+					}
 					for c := 0; c < len(outputBuffers); c++ {
-						outputBuffers[c][y][x] = inputBuffers[c][y][x]
+						outputBuffers[c][y][x] = sumChannels[c] / sumWeights
 					}
-					continue
-				}
-				sumWeights := float32(0)
-				for ff := range sumChannels {
-					sumChannels[ff] = 0
-				}
-				for _, cross := range crossList {
-					var dist float32
-					if i == 2 {
-						dist = f.epfDistance2(inputBuffers, colours, y, x, cross, paddedSize)
-					} else {
-						dist = f.epfDistance1(inputBuffers, colours, y, x, cross, paddedSize)
-					}
-					weight := f.epfWeight(sigmaScale, dist, s, y, x)
-					sumWeights += weight
-					mY := util.MirrorCoordinate(y+cross.Y, int32(paddedSize.Height))
-					mX := util.MirrorCoordinate(x+cross.X, int32(paddedSize.Width))
-					for c := int32(0); c < colours; c++ {
-						sumChannels[c] += inputBuffers[c][mY][mX] * weight
-					}
-				}
-				for c := 0; c < len(outputBuffers); c++ {
-					outputBuffers[c][y][x] = sumChannels[c] / sumWeights
 				}
 			}
 		}
+
+		// Divide work among goroutines
+		numWorkers := f.options.MaxGoroutines
+		if numWorkers < 1 {
+			numWorkers = 1
+		}
+		rowsPerWorker := (height + int32(numWorkers) - 1) / int32(numWorkers)
+
+		var wg sync.WaitGroup
+		for w := 0; w < numWorkers; w++ {
+			startY := int32(w) * rowsPerWorker
+			endY := startY + rowsPerWorker
+			if endY > height {
+				endY = height
+			}
+			if startY >= height {
+				break
+			}
+			wg.Add(1)
+			go func(sy, ey int32) {
+				defer wg.Done()
+				processRows(sy, ey)
+			}(startY, endY)
+		}
+		wg.Wait()
 
 		for c := 0; c < int(colours); c++ {
 			tmp := f.Buffer[c]
