@@ -136,20 +136,58 @@ func (br *BitStreamReader) ReadBits(bits uint32) (uint64, error) {
 		return 0, nil
 	}
 
-	if bits < 1 || bits > 64 {
-
+	if bits > 64 {
 		return 0, errors.New("num bits must be between 1 and 64")
 	}
-	var v uint64
-	for i := uint32(0); i < bits; i++ {
-		bit, err := br.readBit()
+
+	var result uint64
+	bitsRead := uint32(0)
+
+	// If we have bits remaining in currentByte, consume them first
+	if br.index != 0 {
+		bitsAvailable := uint32(8 - br.index)
+		bitsToRead := bits
+		if bitsToRead > bitsAvailable {
+			bitsToRead = bitsAvailable
+		}
+
+		// Extract bits from currentByte
+		mask := uint8((1 << bitsToRead) - 1)
+		extracted := (br.currentByte >> br.index) & mask
+		result = uint64(extracted)
+		bitsRead = bitsToRead
+		br.bitsRead += uint64(bitsToRead)
+		br.index = (br.index + uint8(bitsToRead)) % 8
+	}
+
+	// Read full bytes directly while we need 8+ more bits
+	for bits-bitsRead >= 8 {
+		_, err := br.stream.Read(br.buffer)
 		if err != nil {
 			return 0, err
 		}
-		v |= uint64(bit) << i
-
+		result |= uint64(br.buffer[0]) << bitsRead
+		bitsRead += 8
+		br.bitsRead += 8
 	}
-	return v, nil
+
+	// Read remaining bits (less than 8)
+	remaining := bits - bitsRead
+	if remaining > 0 {
+		_, err := br.stream.Read(br.buffer)
+		if err != nil {
+			return 0, err
+		}
+		br.currentByte = br.buffer[0]
+
+		mask := uint8((1 << remaining) - 1)
+		extracted := br.currentByte & mask
+		result |= uint64(extracted) << bitsRead
+		br.index = uint8(remaining)
+		br.bitsRead += uint64(remaining)
+	}
+
+	return result, nil
 }
 
 func (br *BitStreamReader) ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error {
