@@ -580,11 +580,18 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 		}
 	}
 
+	// Allocate all replacement channels once BEFORE copying data from LF groups
+	// (previously was allocating redundantly for each LF group)
+	channels := f.LfGlobal.globalModular.getChannels()
+	for j := 0; j < len(lfReplacementChannelIndicies); j++ {
+		channels[lfReplacementChannelIndicies[j]].allocate()
+	}
+
+	// Copy data from each LF group into the pre-allocated channels
 	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
 		for j := 0; j < len(lfReplacementChannelIndicies); j++ {
 			index := lfReplacementChannelIndicies[j]
-			channel := f.LfGlobal.globalModular.getChannels()[index]
-			channel.allocate()
+			channel := channels[index]
 			newChannelInfo := f.lfGroups[lfGroupID].modularLFGroup.getChannels()[index]
 			newChannel := newChannelInfo.buffer
 			for y := 0; y < len(newChannel); y++ {
