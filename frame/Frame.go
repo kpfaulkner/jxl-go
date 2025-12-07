@@ -527,6 +527,25 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 
 	f.lfGroups = make([]*LFGroup, f.numLFGroups)
 
+	// Hoist invariant computation out of the loop
+	frameSize, err := f.GetPaddedFrameSize()
+	if err != nil {
+		return err
+	}
+
+	// Pre-compute lfHeight/lfWidth for each replacement channel (invariant per channel)
+	numReplacements := len(lfReplacementChannels)
+	lfHeights := make([]uint32, numReplacements)
+	lfWidths := make([]uint32, numReplacements)
+	templateHeights := make([]uint32, numReplacements)
+	templateWidths := make([]uint32, numReplacements)
+	for i, r := range lfReplacementChannels {
+		lfHeights[i] = frameSize.Height >> r.vshift
+		lfWidths[i] = frameSize.Width >> r.hshift
+		templateHeights[i] = r.size.Height
+		templateWidths[i] = r.size.Width
+	}
+
 	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
 		reader, err := f.getBitreader(1 + int(lfGroupID))
 		if err != nil {
@@ -534,23 +553,27 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 		}
 
 		lfGroupPos := f.getLFGroupLocation(int32(lfGroupID))
-		replaced := make([]ModularChannel, len(lfReplacementChannels))
-		for _, r := range lfReplacementChannels {
-			replaced = append(replaced, *NewModularChannelFromChannel(*r))
+
+		// Pre-allocate with correct capacity, use index assignment instead of append
+		replaced := make([]ModularChannel, numReplacements)
+		for i, r := range lfReplacementChannels {
+			// Copy the template channel directly instead of calling NewModularChannelFromChannel
+			replaced[i] = ModularChannel{
+				size:    r.size,
+				origin:  r.origin,
+				hshift:  r.hshift,
+				vshift:  r.vshift,
+				decoded: r.decoded,
+				// buffer is nil - will be allocated by NewLFGroupWithReader if needed
+			}
+
+			// Update origin and size for this specific LF group
+			replaced[i].origin.Y = lfGroupPos.Y * int32(templateHeights[i])
+			replaced[i].origin.X = lfGroupPos.X * int32(templateWidths[i])
+			replaced[i].size.Height = util.Min(templateHeights[i], lfHeights[i]-uint32(replaced[i].origin.Y))
+			replaced[i].size.Width = util.Min(templateWidths[i], lfWidths[i]-uint32(replaced[i].origin.X))
 		}
-		frameSize, err := f.GetPaddedFrameSize()
-		if err != nil {
-			return err
-		}
-		for i, info := range replaced {
-			lfHeight := frameSize.Height >> info.vshift
-			lfWidth := frameSize.Width >> info.hshift
-			info.origin.Y = lfGroupPos.Y * int32(info.size.Height)
-			info.origin.X = lfGroupPos.X * int32(info.size.Width)
-			info.size.Height = util.Min(info.size.Height, lfHeight-uint32(info.origin.Y))
-			info.size.Width = util.Min(info.size.Width, lfWidth-uint32(info.origin.X))
-			replaced[i] = info
-		}
+
 		f.lfGroups[lfGroupID], err = NewLFGroupWithReader(reader, f, int32(lfGroupID), replaced, lfBuffer, NewLFCoefficientsWithReader, NewHFMetadataWithReader)
 		if err != nil {
 			return err
