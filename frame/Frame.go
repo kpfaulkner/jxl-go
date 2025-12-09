@@ -988,12 +988,13 @@ func (f *Frame) performEdgePreservingFilter() error {
 	}
 	blockHeight := (paddedSize.Height + 7) >> 3
 	blockWidth := (paddedSize.Width + 7) >> 3
-	inverseSigma := util.MakeMatrix2D[float32](blockHeight, blockWidth)
+	inverseSigma := util.MakeMatrix2DPooled[float32](int(blockHeight), int(blockWidth))
+	defer util.ReturnMatrix2DToPool(inverseSigma)
 	colours := f.getColourChannelCount()
 	if f.Header.Encoding == MODULAR {
 		inv := 1.0 / f.Header.restorationFilter.epfSigmaForModular
 		for y := 0; y < int(blockHeight); y++ {
-			for i := 0; i < len(inverseSigma); i++ {
+			for i := 0; i < len(inverseSigma[y]); i++ {
 				inverseSigma[y][i] = inv
 			}
 		}
@@ -1012,10 +1013,8 @@ func (f *Frame) performEdgePreservingFilter() error {
 				if sharpness < 0 || sharpness > 7 {
 					return errors.New("sharpness value out of range")
 				}
-				for c := 0; c < 3; c++ {
-					sigma := globalScale * float32(f.Header.restorationFilter.epfSharpLut[sharpness]) / float32(hf)
-					inverseSigma[y][x] = 1.0 / sigma
-				}
+				sigma := globalScale * float32(f.Header.restorationFilter.epfSharpLut[sharpness]) / float32(hf)
+				inverseSigma[y][x] = 1.0 / sigma
 			}
 		}
 	}
@@ -1032,6 +1031,16 @@ func (f *Frame) performEdgePreservingFilter() error {
 		outputBuffer[c] = *outBuf
 	}
 
+	// Cache channel scales to avoid repeated field lookups
+	channelScales := f.Header.restorationFilter.epfChannelScale
+	borderSadMul := f.Header.restorationFilter.epfBorderSadMul
+
+	// Threshold for skipping EPF (1.0 / 0.3)
+	const skipThreshold = float32(1.0 / 0.3)
+
+	height := int32(paddedSize.Height)
+	width := int32(paddedSize.Width)
+
 	for i := 0; i < 3; i++ {
 		if i == 0 && f.Header.restorationFilter.epfIterations < 3 {
 			continue
@@ -1044,7 +1053,8 @@ func (f *Frame) performEdgePreservingFilter() error {
 		inputBuffers := copyFloatBuffers(f.Buffer, colours)
 		outputBuffers := copyFloatBuffers(outputBuffer, colours)
 		defer util.ReturnMatrix3DToPool(inputBuffers)
-		// Note: Don't return outputBuffers to pool - they get swapped into f.Buffer at line 997
+		// Note: Don't return outputBuffers to pool - they get swapped into f.Buffer
+
 		var sigmaScale float32
 		if i == 0 {
 			sigmaScale = stepMultiplier * f.Header.restorationFilter.epfPass0SigmaScale
@@ -1053,51 +1063,203 @@ func (f *Frame) performEdgePreservingFilter() error {
 		} else {
 			sigmaScale = stepMultiplier
 		}
-		var crossList []util.Point
-		if i == 0 {
-			crossList = epfDoubleCross
-		} else {
-			crossList = epfCross
-		}
 
-		// Parallelize the row processing
-		height := int32(paddedSize.Height)
-		width := int32(paddedSize.Width)
-		iteration := i // capture for closure
+		useDoubleCross := i == 0
+		useDistance2 := i == 2
 
 		// Worker function to process a range of rows
 		processRows := func(startY, endY int32) {
-			sumChannels := make([]float32, colours) // each goroutine gets its own
+			// Pre-allocate per-worker buffers
+			var sumChannels [3]float32 // Max 3 colour channels
+
 			for y := startY; y < endY; y++ {
+				// Check if we're on a block boundary row for border SAD multiplier
+				modY := y & 0b111
+				isBorderY := modY == 0 || modY == 7
+				invSigmaRow := inverseSigma[y>>3]
+
+				// Get row pointers for all channels to avoid repeated indexing
+				var inRows, outRows [3][]float32
+				for c := int32(0); c < colours; c++ {
+					inRows[c] = inputBuffers[c][y]
+					outRows[c] = outputBuffers[c][y]
+				}
+
 				for x := int32(0); x < width; x++ {
-					s := inverseSigma[y>>3][x>>3]
-					if s > (1.0 / 0.3) {
-						for c := 0; c < len(outputBuffers); c++ {
-							outputBuffers[c][y][x] = inputBuffers[c][y][x]
+					s := invSigmaRow[x>>3]
+					if s > skipThreshold {
+						for c := int32(0); c < colours; c++ {
+							outRows[c][x] = inRows[c][x]
 						}
 						continue
 					}
+
+					// Check if we're on a block boundary for border SAD multiplier
+					modX := x & 0b111
+					isBorder := isBorderY || modX == 0 || modX == 7
+					sigmaScaleS := sigmaScale * s
+
 					sumWeights := float32(0)
-					for ff := range sumChannels {
-						sumChannels[ff] = 0
+					for c := int32(0); c < colours; c++ {
+						sumChannels[c] = 0
 					}
-					for _, cross := range crossList {
-						var dist float32
-						if iteration == 2 {
-							dist = f.epfDistance2(inputBuffers, colours, y, x, cross, paddedSize)
-						} else {
-							dist = f.epfDistance1(inputBuffers, colours, y, x, cross, paddedSize)
+
+					if useDoubleCross {
+						// Process epfDoubleCross (13 points) with inlined distance1
+						for ci := 0; ci < 13; ci++ {
+							crossY := epfDoubleCross[ci].Y
+							crossX := epfDoubleCross[ci].X
+
+							// Inline epfDistance1: sum over epfCross (5 points)
+							dist := float32(0)
+							for c := int32(0); c < colours; c++ {
+								buffC := inputBuffers[c]
+								scale := channelScales[c]
+								// Unroll epfCross loop (5 iterations with known offsets)
+								// Point 0: (0, 0)
+								pY0 := y
+								pX0 := x
+								dY0 := mirrorCoord(y+crossY, height)
+								dX0 := mirrorCoord(x+crossX, width)
+								dist += absFloat32(buffC[pY0][pX0]-buffC[dY0][dX0]) * scale
+
+								// Point 1: (0, -1)
+								pY1 := y
+								pX1 := mirrorCoord(x-1, width)
+								dY1 := mirrorCoord(y+crossY, height)
+								dX1 := mirrorCoord(x+crossX-1, width)
+								dist += absFloat32(buffC[pY1][pX1]-buffC[dY1][dX1]) * scale
+
+								// Point 2: (0, 1)
+								pY2 := y
+								pX2 := mirrorCoord(x+1, width)
+								dY2 := mirrorCoord(y+crossY, height)
+								dX2 := mirrorCoord(x+crossX+1, width)
+								dist += absFloat32(buffC[pY2][pX2]-buffC[dY2][dX2]) * scale
+
+								// Point 3: (-1, 0)
+								pY3 := mirrorCoord(y-1, height)
+								pX3 := x
+								dY3 := mirrorCoord(y+crossY-1, height)
+								dX3 := mirrorCoord(x+crossX, width)
+								dist += absFloat32(buffC[pY3][pX3]-buffC[dY3][dX3]) * scale
+
+								// Point 4: (1, 0)
+								pY4 := mirrorCoord(y+1, height)
+								pX4 := x
+								dY4 := mirrorCoord(y+crossY+1, height)
+								dX4 := mirrorCoord(x+crossX, width)
+								dist += absFloat32(buffC[pY4][pX4]-buffC[dY4][dX4]) * scale
+							}
+
+							// Inline epfWeight
+							if isBorder {
+								dist *= borderSadMul
+							}
+							weight := 1.0 - dist*sigmaScaleS
+							if weight < 0 {
+								weight = 0
+							}
+							sumWeights += weight
+
+							mY := mirrorCoord(y+crossY, height)
+							mX := mirrorCoord(x+crossX, width)
+							for c := int32(0); c < colours; c++ {
+								sumChannels[c] += inputBuffers[c][mY][mX] * weight
+							}
 						}
-						weight := f.epfWeight(sigmaScale, dist, s, y, x)
-						sumWeights += weight
-						mY := util.MirrorCoordinate(y+cross.Y, height)
-						mX := util.MirrorCoordinate(x+cross.X, width)
-						for c := int32(0); c < colours; c++ {
-							sumChannels[c] += inputBuffers[c][mY][mX] * weight
+					} else if useDistance2 {
+						// Process epfCross (5 points) with inlined distance2
+						for ci := 0; ci < 5; ci++ {
+							crossY := epfCross[ci].Y
+							crossX := epfCross[ci].X
+
+							// Inline epfDistance2: simple single-point distance
+							dist := float32(0)
+							dY := mirrorCoord(y+crossY, height)
+							dX := mirrorCoord(x+crossX, width)
+							for c := int32(0); c < colours; c++ {
+								dist += absFloat32(inputBuffers[c][y][x]-inputBuffers[c][dY][dX]) * channelScales[c]
+							}
+
+							// Inline epfWeight
+							if isBorder {
+								dist *= borderSadMul
+							}
+							weight := 1.0 - dist*sigmaScaleS
+							if weight < 0 {
+								weight = 0
+							}
+							sumWeights += weight
+
+							for c := int32(0); c < colours; c++ {
+								sumChannels[c] += inputBuffers[c][dY][dX] * weight
+							}
+						}
+					} else {
+						// Process epfCross (5 points) with inlined distance1
+						for ci := 0; ci < 5; ci++ {
+							crossY := epfCross[ci].Y
+							crossX := epfCross[ci].X
+
+							// Inline epfDistance1
+							dist := float32(0)
+							for c := int32(0); c < colours; c++ {
+								buffC := inputBuffers[c]
+								scale := channelScales[c]
+								// Unrolled epfCross
+								pY0 := y
+								pX0 := x
+								dY0 := mirrorCoord(y+crossY, height)
+								dX0 := mirrorCoord(x+crossX, width)
+								dist += absFloat32(buffC[pY0][pX0]-buffC[dY0][dX0]) * scale
+
+								pY1 := y
+								pX1 := mirrorCoord(x-1, width)
+								dY1 := mirrorCoord(y+crossY, height)
+								dX1 := mirrorCoord(x+crossX-1, width)
+								dist += absFloat32(buffC[pY1][pX1]-buffC[dY1][dX1]) * scale
+
+								pY2 := y
+								pX2 := mirrorCoord(x+1, width)
+								dY2 := mirrorCoord(y+crossY, height)
+								dX2 := mirrorCoord(x+crossX+1, width)
+								dist += absFloat32(buffC[pY2][pX2]-buffC[dY2][dX2]) * scale
+
+								pY3 := mirrorCoord(y-1, height)
+								pX3 := x
+								dY3 := mirrorCoord(y+crossY-1, height)
+								dX3 := mirrorCoord(x+crossX, width)
+								dist += absFloat32(buffC[pY3][pX3]-buffC[dY3][dX3]) * scale
+
+								pY4 := mirrorCoord(y+1, height)
+								pX4 := x
+								dY4 := mirrorCoord(y+crossY+1, height)
+								dX4 := mirrorCoord(x+crossX, width)
+								dist += absFloat32(buffC[pY4][pX4]-buffC[dY4][dX4]) * scale
+							}
+
+							// Inline epfWeight
+							if isBorder {
+								dist *= borderSadMul
+							}
+							weight := 1.0 - dist*sigmaScaleS
+							if weight < 0 {
+								weight = 0
+							}
+							sumWeights += weight
+
+							mY := mirrorCoord(y+crossY, height)
+							mX := mirrorCoord(x+crossX, width)
+							for c := int32(0); c < colours; c++ {
+								sumChannels[c] += inputBuffers[c][mY][mX] * weight
+							}
 						}
 					}
-					for c := 0; c < len(outputBuffers); c++ {
-						outputBuffers[c][y][x] = sumChannels[c] / sumWeights
+
+					invSumWeights := 1.0 / sumWeights
+					for c := int32(0); c < colours; c++ {
+						outRows[c][x] = sumChannels[c] * invSumWeights
 					}
 				}
 			}
@@ -1137,46 +1299,13 @@ func (f *Frame) performEdgePreservingFilter() error {
 	return nil
 }
 
-func (f *Frame) epfWeight(sigmaScale float32, distance float32, inverseSigma float32, refY int32, refX int32) float32 {
-
-	modY := refY & 0b111
-	modX := refX & 0b111
-	if modY == 0 || modY == 7 || modX == 0 || modX == 7 {
-		distance *= f.Header.restorationFilter.epfBorderSadMul
+// mirrorCoord is an optimized version of MirrorCoordinate for EPF hot path.
+// For most pixels (not on edges), this is just a bounds check.
+func mirrorCoord(coord int32, size int32) int32 {
+	if coord >= 0 && coord < size {
+		return coord
 	}
-	v := 1.0 - distance*sigmaScale*inverseSigma
-	if v < 0 {
-		return 0
-	}
-	return v
-}
-
-func (f *Frame) epfDistance1(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, dCross util.Point, frameSize util.Dimension) float32 {
-	dist := float32(0)
-	for c := int32(0); c < colours; c++ {
-		buffC := buffer[c]
-		scale := f.Header.restorationFilter.epfChannelScale[c]
-		for _, cross := range epfCross {
-			pY := util.MirrorCoordinate(basePosY+cross.Y, int32(frameSize.Height))
-			pX := util.MirrorCoordinate(basePosX+cross.X, int32(frameSize.Width))
-			dY := util.MirrorCoordinate(basePosY+dCross.Y+cross.Y, int32(frameSize.Height))
-			dX := util.MirrorCoordinate(basePosX+dCross.X+cross.X, int32(frameSize.Width))
-			dist += absFloat32(buffC[pY][pX]-buffC[dY][dX]) * scale
-		}
-	}
-	return dist
-}
-
-func (f *Frame) epfDistance2(buffer [][][]float32, colours int32, basePosY int32, basePosX int32, cross util.Point, frameSize util.Dimension) float32 {
-	dist := float32(0)
-	for c := int32(0); c < colours; c++ {
-		buffC := buffer[c]
-
-		dY := util.MirrorCoordinate(basePosY+cross.Y, int32(frameSize.Height))
-		dX := util.MirrorCoordinate(basePosX+cross.X, int32(frameSize.Width))
-		dist += absFloat32(buffC[basePosY][basePosX]-buffC[dY][dX]) * f.Header.restorationFilter.epfChannelScale[c]
-	}
-	return dist
+	return util.MirrorCoordinate(coord, size)
 }
 
 func copyFloatBuffers(buffer []image.ImageBuffer, colours int32) [][][]float32 {
