@@ -2,12 +2,23 @@ package frame
 
 import (
 	"errors"
-	"math"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
+
+// absInt32 returns the absolute value of an int32.
+// This is significantly faster than int32(math.Abs(float64(x))) as it avoids:
+// 1. int32 -> float64 conversion
+// 2. float64 -> int32 conversion
+// 3. The overhead of math.Abs function call
+func absInt32(x int32) int32 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
 
 var (
 	oneL24OverKP1 = make([]int64, 64)
@@ -451,7 +462,7 @@ func (mc *ModularChannel) decode(reader jxlio.BitReader, stream entropy.EntropyS
 			mc.buffer[y][x] = trueValue
 			if useWP {
 				for e := 0; e < 4; e++ {
-					mc.err[e][y][x] = int32(math.Abs(float64(mc.subpred[e]-(trueValue<<3)))+3) >> 3
+					mc.err[e][y][x] = (absInt32(mc.subpred[e]-(trueValue<<3)) + 3) >> 3
 				}
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
 			}

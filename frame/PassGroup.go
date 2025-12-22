@@ -120,7 +120,12 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 	groupLocation.X <<= 8
 
 	coeffs := g.hfCoefficients.dequantHFCoeff
-	scratchBlock := util.MakeMatrix3D[float32](5, 256, 256)
+	scratchBlock := util.MakeMatrix3DPooled[float32](5, 256, 256)
+	defer util.ReturnMatrix3DToPool(scratchBlock)
+
+	// Pre-allocate lfs outside the loop to avoid repeated allocations
+	lfs := make([]float32, 2)
+
 	for i := 0; i < len(g.hfCoefficients.blocks); i++ {
 		posInLFG := g.hfCoefficients.blocks[i]
 		if posInLFG == nil {
@@ -145,7 +150,6 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				Y: ppg.Y + (groupLocation.Y >> header.jpegUpsamplingY[c]),
 			}
 
-			lfs := make([]float32, 2)
 			var coeff0 float32
 			var coeff1 float32
 			switch tt.transformMethod {

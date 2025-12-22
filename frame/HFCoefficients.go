@@ -120,9 +120,14 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint
 				continue
 			}
 			orderSize := int32(len(hfPass.order[tt.orderID][c]))
-			ucoeff := make([]int32, orderSize-numBlocks)
+			ucoeffLen := orderSize - numBlocks
 			histCtx := offset + 458*blockCtx + 37*hf.hfctx.numClusters
-			for k := int32(0); k < int32(len(ucoeff)); k++ {
+
+			// Track only previous coefficient value instead of allocating full slice
+			// This eliminates allocation of (orderSize-numBlocks) int32s per block/channel
+			var prevUcoeff int32
+
+			for k := int32(0); k < ucoeffLen; k++ {
 				var prev int32
 				if k == 0 {
 					if nonZero > orderSize/16 {
@@ -131,7 +136,7 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint
 						prev = 1
 					}
 				} else {
-					if ucoeff[k-1] != 0 {
+					if prevUcoeff != 0 {
 						prev = 1
 					} else {
 						prev = 0
@@ -142,7 +147,7 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint
 				if err != nil {
 					return nil, err
 				}
-				ucoeff[k] = uc
+				prevUcoeff = uc
 				order := hfPass.order[tt.orderID][c][k+numBlocks]
 				posY := pixelGroupY
 				posX := pixelGroupX
@@ -154,8 +159,8 @@ func NewHFCoefficientsWithReader(reader jxlio.BitReader, frame Framer, pass uint
 					posX += order.X
 				}
 
-				hf.quantizedCoeffs[c][posY][posX] = jxlio.UnpackSigned(uint32(ucoeff[k])) << shift
-				if ucoeff[k] != 0 {
+				hf.quantizedCoeffs[c][posY][posX] = jxlio.UnpackSigned(uint32(uc)) << shift
+				if uc != 0 {
 					nonZero--
 					if nonZero == 0 {
 						break
