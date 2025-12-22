@@ -346,6 +346,11 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 	xFactors := util.MakeMatrix2D[float32](len(xFactorHF), len(xFactorHF[0]))
 	bFactors := util.MakeMatrix2D[float32](len(bFactorHF), len(bFactorHF[0]))
 
+	// Cache the float32 conversion outside the loops to avoid per-pixel conversion
+	invColorFactor := 1.0 / float32(lfc.colorFactor)
+	baseCorrelationX := lfc.baseCorrelationX
+	baseCorrelationB := lfc.baseCorrelationB
+
 	for i := 0; i < len(hf.blocks); i++ {
 		pos := hf.blocks[i]
 		if pos == nil {
@@ -368,8 +373,8 @@ func (hf *HFCoefficients) chromaFromLuma() error {
 				var kX float32
 				var kB float32
 				if by && fx<<6 == x {
-					kX = lfc.baseCorrelationX + float32(hfX[fx])/float32(lfc.colorFactor)
-					kB = lfc.baseCorrelationB + float32(hfB[fx])/float32(lfc.colorFactor)
+					kX = baseCorrelationX + float32(hfX[fx])*invColorFactor
+					kB = baseCorrelationB + float32(hfB[fx])*invColorFactor
 					xF[fx] = kX
 					bF[fx] = kB
 				} else {

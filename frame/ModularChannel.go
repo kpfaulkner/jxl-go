@@ -179,14 +179,18 @@ func (mc *ModularChannel) prePredictWP(wpParams *WPParams, x int32, y int32) (in
 		mc.pred[y][x] = util.Clamp(mc.pred[y][x], w3, n3, ne3)
 	}
 
+	// Cache absolute values to avoid repeated util.Abs() calls
 	maxError := tW
-	if util.Abs(tN) > util.Abs(maxError) {
+	absMaxError := util.Abs(tW)
+	if absN := util.Abs(tN); absN > absMaxError {
 		maxError = tN
+		absMaxError = absN
 	}
-	if util.Abs(tNW) > util.Abs(maxError) {
+	if absNW := util.Abs(tNW); absNW > absMaxError {
 		maxError = tNW
+		absMaxError = absNW
 	}
-	if util.Abs(tNE) > util.Abs(maxError) {
+	if absNE := util.Abs(tNE); absNE > absMaxError {
 		maxError = tNE
 	}
 

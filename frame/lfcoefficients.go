@@ -153,27 +153,32 @@ func (c *LFCoefficients) getLFIndex(lfQuant [][][]int32, hfctx *HFBlockContext, 
 }
 
 func adaptiveSmooth(coeff [][][]float32, scaledDequant []float32) [][][]float32 {
-	weighted := make([][][]float32, 3)
-	gap := make([][]float32, len(coeff[0]))
-	dequantLFCoeff := make([][][]float32, 3)
+	height := len(coeff[0])
+	width := len(coeff[0][0])
+
+	// Pre-allocate all matrices upfront to avoid per-row allocations
+	weighted := util.MakeMatrix3D[float32](3, height, width)
+	gap := util.MakeMatrix2D[float32](height, width)
+	dequantLFCoeff := util.MakeMatrix3D[float32](3, height, width)
+
+	// Initialize gap to 0.5 for interior rows
+	for y := 1; y < height-1; y++ {
+		gy := gap[y]
+		for x := 0; x < width; x++ {
+			gy[x] = 0.5
+		}
+	}
+
 	for i := 0; i < 3; i++ {
 		co := coeff[i]
-		weighted[i] = make([][]float32, len(co))
 		sd := scaledDequant[i]
-		for y := 01; y < len(co)-1; y++ {
+		for y := 1; y < len(co)-1; y++ {
 			coy := co[y]
 			coym := co[y-1]
 			coyp := co[y+1]
-			if gap[y] == nil {
-				gap[y] = make([]float32, len(coy))
-				for x := 0; x < len(gap[y]); x++ {
-					gap[y][x] = 0.5
-				}
-			}
 			gy := gap[y]
-			weighted[i][y] = make([]float32, len(coy))
 			wy := weighted[i][y]
-			for x := 01; x < len(coy)-1; x++ {
+			for x := 1; x < len(coy)-1; x++ {
 				sample := coy[x]
 				adjacent := coy[x-1] + coy[x+1] + coym[x] + coyp[x]
 				diag := coym[x-1] + coym[x+1] + coyp[x-1] + coyp[x+1]
@@ -186,10 +191,8 @@ func adaptiveSmooth(coeff [][][]float32, scaledDequant []float32) [][][]float32 
 		}
 	}
 
-	for y := 0; y < len(gap); y++ {
-		if gap[y] == nil {
-			continue
-		}
+	// Process gap values for interior rows only
+	for y := 1; y < height-1; y++ {
 		gy := gap[y]
 		for x := 0; x < len(gy); x++ {
 			gy[x] = util.Max[float32](0.0, 3.0-4.0*gy[x])
@@ -198,27 +201,24 @@ func adaptiveSmooth(coeff [][][]float32, scaledDequant []float32) [][][]float32 
 
 	for i := 0; i < 3; i++ {
 		co := coeff[i]
-		dequantLFCoeff[i] = make([][]float32, len(co))
 		dqi := dequantLFCoeff[i]
 		wi := weighted[i]
 		for y := 0; y < len(co); y++ {
 			coy := co[y]
-			dqi[y] = make([]float32, len(coy))
 			dqy := dqi[y]
-			gy := gap[y]
-			wiy := wi[y]
 			if y == 0 || y+1 == len(co) {
 				copy(dqy, coy)
 				continue
 			}
-			for x := 0; x < len(coy); x++ {
-				if x == 0 || x+1 == len(coy) {
-					dqy[x] = coy[x]
-					continue
-				}
+			gy := gap[y]
+			wiy := wi[y]
+			// Copy edge pixels
+			dqy[0] = coy[0]
+			dqy[len(coy)-1] = coy[len(coy)-1]
+			// Process interior pixels
+			for x := 1; x < len(coy)-1; x++ {
 				dqy[x] = (coy[x]-wiy[x])*gy[x] + wiy[x]
 			}
-
 		}
 	}
 	return dequantLFCoeff
