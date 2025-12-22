@@ -120,18 +120,55 @@ func (oim *OpsinInverseMatrix) InvertXYB(buffer [][][]float32, intensityTarget f
 	if len(buffer) < 3 {
 		return errors.New("Can only XYB on 3 channels")
 	}
+
+	// Cache struct fields locally to avoid repeated lookups in hot loop
 	itScale := 255.0 / intensityTarget
-	for y := 0; y < len(buffer[0]); y++ {
-		for x := 0; x < len(buffer[0][y]); x++ {
-			gammaL := buffer[1][y][x] + buffer[0][y][x] - oim.CbrtOpsinBias[0]
-			gammaM := buffer[1][y][x] - buffer[0][y][x] - oim.CbrtOpsinBias[1]
-			gammaS := buffer[2][y][x] - oim.CbrtOpsinBias[2]
-			mixL := gammaL*gammaL*gammaL + oim.OpsinBias[0]
-			mixM := gammaM*gammaM*gammaM + oim.OpsinBias[1]
-			mixS := gammaS*gammaS*gammaS + oim.OpsinBias[2]
-			for c := 0; c < 3; c++ {
-				buffer[c][y][x] = (mixL*oim.Matrix[c][0] + mixM*oim.Matrix[c][1] + mixS*oim.Matrix[c][2]) * itScale
-			}
+	cbrtBias0 := oim.CbrtOpsinBias[0]
+	cbrtBias1 := oim.CbrtOpsinBias[1]
+	cbrtBias2 := oim.CbrtOpsinBias[2]
+	opsinBias0 := oim.OpsinBias[0]
+	opsinBias1 := oim.OpsinBias[1]
+	opsinBias2 := oim.OpsinBias[2]
+
+	// Cache matrix coefficients (unrolled for 3 channels)
+	m00 := oim.Matrix[0][0]
+	m01 := oim.Matrix[0][1]
+	m02 := oim.Matrix[0][2]
+	m10 := oim.Matrix[1][0]
+	m11 := oim.Matrix[1][1]
+	m12 := oim.Matrix[1][2]
+	m20 := oim.Matrix[2][0]
+	m21 := oim.Matrix[2][1]
+	m22 := oim.Matrix[2][2]
+
+	buf0 := buffer[0]
+	buf1 := buffer[1]
+	buf2 := buffer[2]
+
+	for y := 0; y < len(buf0); y++ {
+		// Cache row pointers to avoid repeated slice lookups in inner loop
+		row0 := buf0[y]
+		row1 := buf1[y]
+		row2 := buf2[y]
+		rowLen := len(row0)
+
+		for x := 0; x < rowLen; x++ {
+			b0 := row0[x]
+			b1 := row1[x]
+			b2 := row2[x]
+
+			gammaL := b1 + b0 - cbrtBias0
+			gammaM := b1 - b0 - cbrtBias1
+			gammaS := b2 - cbrtBias2
+
+			mixL := gammaL*gammaL*gammaL + opsinBias0
+			mixM := gammaM*gammaM*gammaM + opsinBias1
+			mixS := gammaS*gammaS*gammaS + opsinBias2
+
+			// Unrolled loop for 3 channels
+			row0[x] = (mixL*m00 + mixM*m01 + mixS*m02) * itScale
+			row1[x] = (mixL*m10 + mixM*m11 + mixS*m12) * itScale
+			row2[x] = (mixL*m20 + mixM*m21 + mixS*m22) * itScale
 		}
 	}
 	return nil

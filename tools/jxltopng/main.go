@@ -37,8 +37,8 @@ func main() {
 		return
 	}
 	fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
-	fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
-	fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
+	//fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
+	//fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
 
 	if ct, err := jxlImage.GetExtraChannelType(0); err == nil {
 		fmt.Printf("channel 3 type %d\n", ct)

@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/kpfaulkner/jxl-go/jxlio"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -48,7 +47,7 @@ func (br *BoxReader) ReadBoxHeader() ([]ContainerBoxHeader, error) {
 
 	// Believe this header is used when performing lossless decoding. Need to verify
 	if !bytes.Equal(buffer, JPEGXL_CONTAINER_HEADER[:]) {
-		log.Errorf("invalid magic number: %+v", buffer)
+		//log.Errorf("invalid magic number: %+v", buffer)
 		// setup fake box header (if we dont have a container...?)
 		bh := ContainerBoxHeader{
 			BoxType: JXLC,

@@ -44,11 +44,12 @@ func main() {
 	// hardcoded output dir for now
 	destinationDir := `c:\temp\jxlresults\`
 
+	totalTime := time.Now()
 	for _, file := range filePaths {
 		fileDetails := strings.Split(file, "|")
 		orig := fileDetails[0]
 		newFile := fileDetails[1]
-		fmt.Printf("file %s\n", orig)
+		//fmt.Printf("file %s\n", orig)
 		f, err := os.ReadFile(orig)
 		if err != nil {
 			log.Errorf("Error opening file: %v\n", err)
@@ -65,13 +66,10 @@ func main() {
 			continue
 		}
 		//p.Stop()
-		fmt.Printf("decoding took %d ms\n", time.Since(start).Milliseconds())
-		fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
-		fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
+		decodingDuration := time.Since(start)
 
-		if ct, err := jxlImage.GetExtraChannelType(0); err == nil {
-			fmt.Printf("channel 3 type %d\n", ct)
-		}
+		//fmt.Printf("Has alpha %v\n", jxlImage.HasAlpha())
+		//fmt.Printf("Num extra channels (inc alpha) %d\n", jxlImage.NumExtraChannels())
 
 		pngFileName := path.Join(destinationDir, newFile)
 
@@ -113,6 +111,7 @@ func main() {
 		//}
 
 		end := time.Now()
-		fmt.Printf("decoding total time %d ms\n", end.Sub(start).Milliseconds())
+		fmt.Printf("decoding %s took %d ms but including png total time %d ms\n", orig, decodingDuration.Milliseconds(), end.Sub(start).Milliseconds())
 	}
+	fmt.Printf("TOTAL time for all decoding %d ms\n", time.Since(totalTime).Milliseconds())
 }
