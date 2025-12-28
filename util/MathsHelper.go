@@ -272,9 +272,13 @@ func MatrixMatrixMultiply(left [][]float32, right [][]float32) ([][]float32, err
 	}
 
 	for i := 0; i < len(left); i++ {
-		for j := 0; j < len(right[0]); j++ {
-			for k := 0; k < len(right); k++ {
-				result[i][j] += left[i][k] * right[k][j]
+		resultI := result[i]
+		leftI := left[i]
+		for k := 0; k < len(right); k++ {
+			leftIK := leftI[k]
+			rightK := right[k]
+			for j := 0; j < len(rightK); j++ {
+				resultI[j] += leftIK * rightK[j]
 			}
 		}
 	}
