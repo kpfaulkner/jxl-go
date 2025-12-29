@@ -317,10 +317,6 @@ func (f *Frame) getLFGlobal() *LFGlobal {
 
 func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer, newLFGlobalWithReader NewLFGlobalWithReaderFunc) error {
 
-	fmt.Printf("XXXXXXXXX frame %#v\n", *f)
-	fmt.Printf("XXXXXXXXX globalmetadata %#v\n", *f.GlobalMetadata)
-	fmt.Printf("XXXXXXXXX options %#v\n", *f.options)
-	fmt.Printf("XXXXXXXXX Header %#v\n", *f.Header)
 	if f.decoded {
 		return nil
 	}
