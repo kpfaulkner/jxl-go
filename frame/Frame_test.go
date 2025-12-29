@@ -9,6 +9,7 @@ import (
 	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
+	"github.com/kpfaulkner/jxl-go/testcommon"
 	"github.com/kpfaulkner/jxl-go/util"
 )
 
@@ -612,18 +613,18 @@ func TestDisplayBuffers(t *testing.T) {
 func TestUpsampleFull(t *testing.T) {
 	f := &Frame{
 		GlobalMetadata: &bundle.ImageHeader{
-			BitDepth:          &bundle.BitDepthHeader{BitsPerSample: 8},
-			ExtraChannelInfo:  []bundle.ExtraChannelInfo{},
-			ColourEncoding:    &colour.ColourEncodingBundle{ColourEncoding: colour.CE_RGB},
-			Up2Weights:        bundle.DEFAULT_UP2,
-			Up4Weights:        bundle.DEFAULT_UP4,
-			Up8Weights:        bundle.DEFAULT_UP8,
+			BitDepth:         &bundle.BitDepthHeader{BitsPerSample: 8},
+			ExtraChannelInfo: []bundle.ExtraChannelInfo{},
+			ColourEncoding:   &colour.ColourEncodingBundle{ColourEncoding: colour.CE_RGB},
+			Up2Weights:       bundle.DEFAULT_UP2,
+			Up4Weights:       bundle.DEFAULT_UP4,
+			Up8Weights:       bundle.DEFAULT_UP8,
 		},
 		Header: &FrameHeader{
-			Upsampling:  2,
+			Upsampling:   2,
 			EcUpsampling: []uint32{},
-			Bounds:      &util.Rectangle{Origin: util.Point{X: 0, Y: 0}, Size: util.Dimension{Width: 4, Height: 4}},
-			groupDim:    8,
+			Bounds:       &util.Rectangle{Origin: util.Point{X: 0, Y: 0}, Size: util.Dimension{Width: 4, Height: 4}},
+			groupDim:     8,
 		},
 	}
 
@@ -1275,4 +1276,143 @@ func TestUpsampleWithExtraChannels(t *testing.T) {
 		t.Errorf("Extra channel after Upsample = %dx%d; want 4x4",
 			f.Buffer[1].Width, f.Buffer[1].Height)
 	}
+}
+
+func TestDecodeFrame(t *testing.T) {
+
+	frame := &Frame{
+		tocPermutation: nil,
+		//tocLengths:       []uint32{0x513d, 0x0, 0x0, 0x0, 0x0, 0x0, 0xdf34, 0xe433, 0xd43a, 0xda74, 0xec3f, 0xe0d9, 0xe9d8, 0xe7d7, 0xe80e, 0xe5a3, 0xe00d, 0xec7f, 0xadc5, 0xc9d8, 0xe879, 0xd567, 0xe11a, 0xf591, 0xd533, 0xe39c, 0xf26a, 0xeba7, 0xe10e, 0xe863, 0xe6cd, 0xad6e, 0xc76a, 0xcbef, 0xe202, 0xd202, 0xdd76, 0xefd8, 0x105bf, 0x109bd, 0xf359, 0xdf25, 0xdfc5, 0xe8b2, 0xb115, 0xc7db, 0xc67e, 0xd835, 0xde84, 0xfe5b, 0xe894, 0xd494, 0xf95c, 0xf79d, 0xdb79, 0xe675, 0xe7d1, 0xacaa, 0xe109, 0xcce3, 0xdcbb, 0xe996, 0xe4df, 0xeb92, 0x107b0, 0xfa0b, 0xfa4b, 0xe0d0, 0xd954, 0xdf3d, 0xaaf6, 0xc74b, 0xd90a, 0xe26d, 0xe92a, 0x12702, 0xebaa, 0x109da, 0x10857, 0xf1fd, 0xe995, 0xeb3e, 0xe6bb, 0xac69, 0xd207, 0xd59d, 0xd50f, 0xc90f, 0xfb02, 0x115af, 0x1100a, 0x1152d, 0xfa05, 0xe408, 0xe849, 0xddb5, 0x9d28, 0xc9f2, 0xd731, 0xdd8f, 0xdbea, 0xcf0c, 0xee08, 0xfdd9, 0xde1d, 0xd5b9, 0xd596, 0xdca4, 0xde90, 0xa57e, 0xcfcb, 0xe193, 0xdb39, 0xda07, 0xd7c5, 0xc722, 0xe195, 0xd6c5, 0xcf2c, 0xafb1, 0x85c0, 0xdb91, 0xa78a, 0x810a, 0x7d9d, 0x7719, 0x7d6b, 0x83f2, 0x7e83, 0x88ab, 0x8485, 0x77ee, 0x58f1, 0x48ad, 0x7bf5, 0x5cdd},
+		tocLengths: []uint32{1},
+		lfGroups:   nil,
+		Buffer:     nil,
+		passes:     nil,
+		bitreaders: nil,
+		GlobalMetadata: &bundle.ImageHeader{
+			BitDepth: &bundle.BitDepthHeader{
+				BitsPerSample:    0,
+				ExpBits:          0,
+				UsesFloatSamples: false,
+			},
+			ColourEncoding: &colour.ColourEncodingBundle{
+				ColourEncoding: colour.CE_RGB,
+			},
+		},
+		options: &options.JXLOptions{ParseOnly: false, RenderVarblocks: false, MaxGoroutines: 24},
+		reader:  testcommon.NewFakeBitReader(),
+		Header: &FrameHeader{
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+			EcUpsampling:    nil,
+			EcBlendingInfo:  nil,
+			name:            "",
+			Bounds: &util.Rectangle{
+				Origin: util.Point{},
+				Size: util.Dimension{
+					Width:  5,
+					Height: 5,
+				},
+			},
+			restorationFilter: &RestorationFilter{},
+			extensions:        nil,
+			passes: &PassesInfo{
+				numPasses: 0,
+			},
+			BlendingInfo:    nil,
+			Flags:           0,
+			FrameType:       0,
+			Width:           0,
+			Height:          0,
+			Upsampling:      0,
+			LfLevel:         0,
+			groupDim:        0,
+			Encoding:        MODULAR,
+			groupSizeShift:  0,
+			lfGroupDim:      0,
+			logGroupDim:     0,
+			logLFGroupDIM:   0,
+			xqmScale:        0,
+			bqmScale:        0,
+			Duration:        0,
+			timecode:        0,
+			SaveAsReference: 0,
+			SaveBeforeCT:    false,
+			DoYCbCr:         false,
+			haveCrop:        false,
+			IsLast:          false,
+		},
+		globalTree: nil,
+		hfGlobal:   nil,
+		LfGlobal: &LFGlobal{
+			frame:           nil,
+			Patches:         nil,
+			splines:         nil,
+			noiseParameters: nil,
+			lfDequant:       nil,
+			hfBlockCtx:      nil,
+			lfChanCorr:      nil,
+			globalScale:     0,
+			quantLF:         0,
+			scaledDequant:   nil,
+			globalModular: &ModularStream{
+				channels: []*ModularChannel{},
+			},
+		},
+		groupRowStride:   0xd,
+		lfGroupRowStride: 0x2,
+		numGroups:        0x82,
+		numLFGroups:      0x4,
+		permutatedTOC:    false,
+		decoded:          false,
+	}
+
+	reader := testcommon.NewFakeBitReader()
+	reader.ReadBoolData = []bool{true, false}
+	frame.reader = reader
+
+	err := frame.DecodeFrame(nil, NewFakeLFGlobalWithReaderFunc)
+
+	if err != nil {
+		t.Errorf("Error decoding frame: %v", err)
+	}
+}
+
+//func TestDecodeFrameWithRealFile(t *testing.T) {
+//	f, err := os.ReadFile(`../testdata/unittest.jxl`)
+//	if err != nil {
+//		log.Errorf("Error opening file: %v\n", err)
+//		return
+//	}
+//
+//	r := bytes.NewReader(f)
+//	jxl := core.NewJXLDecoder(r, nil)
+//
+//	jxl.Decode()
+//
+//	var jxlImage *core.JXLImage
+//	if jxlImage, err = jxl.Decode(); err != nil {
+//		fmt.Printf("Error decoding: %v\n", err)
+//		t.Errorf("Error decoding: %v\n", err)
+//	}
+//
+//	fmt.Printf("XXXXX %+v\n", jxlImage)
+//
+//}
+
+func NewFakeLFGlobalWithReaderFunc(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error) {
+	return &LFGlobal{
+		frame:           nil,
+		Patches:         nil,
+		splines:         nil,
+		noiseParameters: nil,
+		lfDequant:       nil,
+		hfBlockCtx:      nil,
+		lfChanCorr:      nil,
+		globalScale:     0,
+		quantLF:         0,
+		scaledDequant:   nil,
+		globalModular: &ModularStream{
+			channels: []*ModularChannel{},
+		},
+	}, nil
 }

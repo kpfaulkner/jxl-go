@@ -48,7 +48,7 @@ func TestReadSignatureAndBoxes(t *testing.T) {
 
 			br := GenerateTestBitReader(t, "../testdata/unittest.jxl")
 			decoder := NewJXLCodestreamDecoder(br, nil)
-			err := decoder.readSignatureAndBoxes()
+			err := decoder.ReadSignatureAndBoxes()
 			if err != nil && tc.expectErr {
 				// got what we wanted..
 				return

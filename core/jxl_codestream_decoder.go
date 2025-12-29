@@ -53,7 +53,7 @@ func (jxl *JXLCodestreamDecoder) atEnd() bool {
 func (jxl *JXLCodestreamDecoder) GetImageHeader() (*bundle.ImageHeader, error) {
 
 	// read header to get signature
-	err := jxl.readSignatureAndBoxes()
+	err := jxl.ReadSignatureAndBoxes()
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (jxl *JXLCodestreamDecoder) GetImageHeader() (*bundle.ImageHeader, error) {
 func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 
 	// read header to get signature
-	err := jxl.readSignatureAndBoxes()
+	err := jxl.ReadSignatureAndBoxes()
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,8 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				}
 				continue
 			}
-			err = imgFrame.DecodeFrame(jxl.lfBuffer[header.LfLevel])
+
+			err = imgFrame.DecodeFrame(jxl.lfBuffer[header.LfLevel], frame.NewLFGlobalWithReader)
 			if err != nil {
 				return nil, err
 			}
@@ -311,7 +312,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 }
 
 // Read signature
-func (jxl *JXLCodestreamDecoder) readSignatureAndBoxes() error {
+func (jxl *JXLCodestreamDecoder) ReadSignatureAndBoxes() error {
 
 	br := NewBoxReader(jxl.bitReader)
 	boxHeaders, err := br.ReadBoxHeader()

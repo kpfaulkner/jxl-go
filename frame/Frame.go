@@ -33,6 +33,8 @@ var (
 		{X: 0, Y: -2}, {X: 0, Y: 2}, {X: 2, Y: 0}, {X: -2, Y: 0}}
 )
 
+type NewLFGlobalWithReaderFunc func(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error)
+
 type ReadPermutationFunc func(reader jxlio.BitReader, stream entropy.EntropyStreamer, size uint32, skip uint32) ([]uint32, error)
 type Inp struct {
 	iPass  int
@@ -313,31 +315,27 @@ func (f *Frame) getLFGlobal() *LFGlobal {
 	return f.LfGlobal
 }
 
-func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
+func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer, newLFGlobalWithReader NewLFGlobalWithReaderFunc) error {
 
+	fmt.Printf("XXXXXXXXX frame %#v\n", *f)
+	fmt.Printf("XXXXXXXXX globalmetadata %#v\n", *f.GlobalMetadata)
+	fmt.Printf("XXXXXXXXX options %#v\n", *f.options)
+	fmt.Printf("XXXXXXXXX Header %#v\n", *f.Header)
 	if f.decoded {
 		return nil
 	}
 	f.decoded = true
 
-	f.bitreaders = make([]jxlio.BitReader, len(f.tocLengths))
-	if len(f.tocLengths) != 1 {
-		for i := 0; i < len(f.tocLengths); i++ {
-			buffer, err := f.readBuffer(i)
-			if err != nil {
-				return err
-			}
-			f.bitreaders[i] = jxlio.NewBitStreamReader(bytes.NewReader(buffer))
-		}
-	} else {
-		f.bitreaders[0] = f.reader
+	err := f.setupBitReaders()
+	if err != nil {
+		return err
 	}
 
 	lfGlobalBitReader, err := f.getBitreader(0)
 	if err != nil {
 		return err
 	}
-	f.LfGlobal, err = NewLFGlobalWithReader(lfGlobalBitReader, f, NewHFBlockContextWithReader)
+	f.LfGlobal, err = newLFGlobalWithReader(lfGlobalBitReader, f, NewHFBlockContextWithReader)
 	if err != nil {
 		return err
 	}
@@ -473,6 +471,22 @@ func (f *Frame) DecodeFrame(lfBuffer []image.ImageBuffer) error {
 		if err = f.performEdgePreservingFilter(); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (f *Frame) setupBitReaders() error {
+	f.bitreaders = make([]jxlio.BitReader, len(f.tocLengths))
+	if len(f.tocLengths) != 1 {
+		for i := 0; i < len(f.tocLengths); i++ {
+			buffer, err := f.readBuffer(i)
+			if err != nil {
+				return err
+			}
+			f.bitreaders[i] = jxlio.NewBitStreamReader(bytes.NewReader(buffer))
+		}
+	} else {
+		f.bitreaders[0] = f.reader
 	}
 	return nil
 }
