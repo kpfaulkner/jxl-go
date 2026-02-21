@@ -17,6 +17,7 @@ type FakeFramer struct {
 	header                 *FrameHeader
 	passes                 []Pass
 	groupSize              *util.Dimension
+	groupSizeError         error
 	groupPosInLFGroupPoint *util.Point
 	imageHeader            *bundle.ImageHeader
 }
@@ -65,6 +66,9 @@ func (f *FakeFramer) getPasses() []Pass {
 }
 
 func (f *FakeFramer) getGroupSize(groupID int32) (util.Dimension, error) {
+	if f.groupSizeError != nil {
+		return util.Dimension{}, f.groupSizeError
+	}
 	return *f.groupSize, nil
 }
 
