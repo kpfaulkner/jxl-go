@@ -52,7 +52,7 @@ func NewLFGroupWithReader(reader jxlio.BitReader, parent Framer, index int32, re
 	}
 
 	if parent.getFrameHeader().Encoding == VARDCT {
-		metadata, err := hfMetadataFunc(reader, lfg, parent)
+		metadata, err := hfMetadataFunc(reader, lfg, parent, NewModularStreamWithStreamIndex)
 		if err != nil {
 			return nil, err
 		}

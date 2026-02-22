@@ -110,7 +110,7 @@ func NewFakeHFBlockContextFunc(reader jxlio.BitReader, readClusterMap func(reade
 	return nil, nil
 }
 
-func NewFakeHFMetadataFunc(reader jxlio.BitReader, parent *LFGroup, frame Framer) (*HFMetadata, error) {
+func NewFakeHFMetadataFunc(reader jxlio.BitReader, parent *LFGroup, frame Framer, modularStreamFunc NewModularStreamWithStreamIndexFunc) (*HFMetadata, error) {
 
 	return &HFMetadata{}, nil
 }
