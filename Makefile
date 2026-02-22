@@ -1,7 +1,7 @@
 
 .PHONY: coverage
 coverage:
-	go test -v -coverprofile cover.out ./...
+	go test -v -coverprofile cover.out .\bundle\ .\colour\ .\core\ .\entropy\ .\frame\ .\image\ .\jxlio\ .\options\ .\util\
 	go tool cover -html cover.out -o cover.html
 
 .PHONY: test
