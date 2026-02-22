@@ -13,7 +13,12 @@ type Pass struct {
 	maxShift         uint32
 }
 
-func NewPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32, prevMinShift uint32) (Pass, error) {
+type NewHFPassWithReaderFunc func(reader jxlio.BitReader, frame Framer, passIndex uint32,
+	readClusterMapFunc entropy.ReadClusterMapFunc,
+	newEntropyStreamWithReader entropy.EntropyStreamWithReaderAndNumDistsFunc,
+	readPermutation ReadPermutationFunc) (*HFPass, error)
+
+func NewPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32, prevMinShift uint32, hfPassFunc NewHFPassWithReaderFunc) (Pass, error) {
 	p := Pass{}
 
 	if passIndex > 0 {
@@ -50,7 +55,7 @@ func NewPassWithReader(reader jxlio.BitReader, frame Framer, passIndex uint32, p
 	}
 	var err error
 	if frame.getFrameHeader().Encoding == VARDCT {
-		p.hfPass, err = NewHFPassWithReader(reader, frame, passIndex, entropy.ReadClusterMap, entropy.NewEntropyStreamWithReaderAndNumDists, readPermutation)
+		p.hfPass, err = hfPassFunc(reader, frame, passIndex, entropy.ReadClusterMap, entropy.NewEntropyStreamWithReaderAndNumDists, readPermutation)
 		if err != nil {
 			return Pass{}, err
 		}

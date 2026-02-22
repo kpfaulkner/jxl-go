@@ -631,7 +631,7 @@ func (f *Frame) decodePasses(reader jxlio.BitReader) error {
 			prevMinShift = f.passes[pass-1].minShift
 		}
 
-		f.passes[pass], err = NewPassWithReader(reader, f, uint32(pass), prevMinShift)
+		f.passes[pass], err = NewPassWithReader(reader, f, uint32(pass), prevMinShift, NewHFPassWithReader)
 		if err != nil {
 			return err
 		}
