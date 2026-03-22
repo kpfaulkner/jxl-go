@@ -454,18 +454,21 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 		case MODE_DCT:
 			hfg.weights[index][c] = hfg.getDCTQuantWeights(tt.matrixHeight, tt.matrixWidth, hfg.params[index].dctParam[c])
 		case MODE_DCT4:
-			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
+			hfg.weights[index][c] = util.MakeMatrix2DPooled[float32](8, 8)
 			w = hfg.getDCTQuantWeights(4, 4, hfg.params[index].dctParam[c])
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
 					hfg.weights[index][c][y][x] = w[y/2][x/2]
 				}
 			}
+			// w is temp, return it
+			util.ReturnMatrix2DToPool(w)
+
 			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
 			hfg.weights[index][c][0][1] /= hfg.params[index].param[c][0]
 			hfg.weights[index][c][1][1] /= hfg.params[index].param[c][1]
 		case MODE_DCT2:
-			w = util.MakeMatrix2D[float32](8, 8)
+			w = util.MakeMatrix2DPooled[float32](8, 8)
 			w[0][0] = 1
 			w[0][1] = hfg.params[index].param[c][0]
 			w[1][0] = hfg.params[index].param[c][0]
@@ -486,7 +489,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			}
 			hfg.weights[index][c] = w
 		case MODE_HORNUSS:
-			w = util.MakeMatrix2D[float32](8, 8)
+			w = util.MakeMatrix2DPooled[float32](8, 8)
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
 					w[y][x] = hfg.params[index].param[c][0]
@@ -498,13 +501,14 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			w[0][0] = 1.0
 			hfg.weights[index][c] = w
 		case MODE_DCT4_8:
-			hfg.weights[index][c] = util.MakeMatrix2D[float32](8, 8)
+			hfg.weights[index][c] = util.MakeMatrix2DPooled[float32](8, 8)
 			w = hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
 			for y := 0; y < 8; y++ {
 				for x := 0; x < 8; x++ {
 					hfg.weights[index][c][y][x] = w[y/2][x]
 				}
 			}
+			util.ReturnMatrix2DToPool(w)
 			hfg.weights[index][c][1][0] /= hfg.params[index].param[c][0]
 		case MODE_AFV:
 			afv, err := hfg.getAFVTransformWeights(index, c)
@@ -513,7 +517,7 @@ func (hfg *HFGlobal) generateWeights(index int) error {
 			}
 			hfg.weights[index][c] = afv
 		case MODE_RAW:
-			hfg.weights[index][c] = util.MakeMatrix2D[float32](tt.matrixHeight, tt.matrixWidth)
+			hfg.weights[index][c] = util.MakeMatrix2DPooled[float32](int(tt.matrixHeight), int(tt.matrixWidth))
 			for y := int32(0); y < tt.matrixHeight; y++ {
 				for x := int32(0); x < tt.matrixWidth; x++ {
 					hfg.weights[index][c][y][x] = hfg.params[index].param[c][y*tt.matrixWidth+x] * hfg.params[index].denominator
@@ -546,6 +550,19 @@ func quantMult(v float32) float32 {
 	return 1 / (1 - v)
 }
 
+// Release returns the weight matrices to the pool
+func (hfg *HFGlobal) Release() {
+	if hfg.weights != nil {
+		for index := range hfg.weights {
+			for c := range hfg.weights[index] {
+				util.ReturnMatrix2DToPool(hfg.weights[index][c])
+			}
+		}
+		// hfg.weights itself is not pooled (4D), so we rely on GC.
+		hfg.weights = nil
+	}
+}
+
 func (hfg *HFGlobal) getDCTQuantWeights(height int32, width int32, params []float64) [][]float32 {
 
 	bands := make([]float32, len(params))
@@ -554,7 +571,7 @@ func (hfg *HFGlobal) getDCTQuantWeights(height int32, width int32, params []floa
 		bands[i] = bands[i-1] * quantMult(float32(params[i]))
 	}
 
-	weights := util.MakeMatrix2D[float32](height, width)
+	weights := util.MakeMatrix2DPooled[float32](int(height), int(width))
 	scale := float32(len(bands)-1) / (math.Sqrt2 + 1e-6)
 	for y := int32(0); y < height; y++ {
 		dy := float32(y) * scale / float32(height-1)
@@ -590,7 +607,9 @@ func interpolate(scaledPos float32, bands []float32) float32 {
 func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, error) {
 
 	weights4x8 := hfg.getDCTQuantWeights(4, 8, hfg.params[index].dctParam[c])
+	defer util.ReturnMatrix2DToPool(weights4x8)
 	weights4x4 := hfg.getDCTQuantWeights(4, 4, hfg.params[index].params4x4[c])
+	defer util.ReturnMatrix2DToPool(weights4x4)
 
 	low := 0.8517778890324296
 	high := 12.97166202570235
@@ -606,7 +625,7 @@ func (hfg *HFGlobal) getAFVTransformWeights(index int, c int) ([][]float32, erro
 			return nil, errors.New("Negative band value")
 		}
 	}
-	weight := util.MakeMatrix2D[float32](8, 8)
+	weight := util.MakeMatrix2DPooled[float32](8, 8)
 	weight[0][0] = 1
 	weight[1][0] = hfg.params[index].param[c][0]
 	weight[0][1] = hfg.params[index].param[c][1]

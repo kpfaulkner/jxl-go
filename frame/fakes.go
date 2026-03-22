@@ -81,6 +81,10 @@ func (f *FakeFramer) getGlobalMetadata() *bundle.ImageHeader {
 }
 
 func NewFakeFramer(encoding uint32) Framer {
+	return NewFakeFramerWithFlags(encoding, 0)
+}
+
+func NewFakeFramerWithFlags(encoding uint32, flags uint64) Framer {
 	ff := &FakeFramer{
 		header: &FrameHeader{
 			jpegUpsamplingX: []int32{0, 0, 0},
@@ -91,6 +95,7 @@ func NewFakeFramer(encoding uint32) Framer {
 			},
 			passes:   NewPassesInfo(),
 			Encoding: encoding,
+			Flags:    flags,
 		},
 		lfGlobal: NewLFGlobal(),
 		hfGlobal: &HFGlobal{
@@ -120,7 +125,8 @@ func NewFakeLFCoeffientsFunc(reader jxlio.BitReader, parent *LFGroup, frame Fram
 }
 
 type FakeEntropyStreamer struct {
-	FakeSymbols []int32
+	FakeSymbols    []int32
+	FakeTrySymbols []int32
 }
 
 func (f FakeEntropyStreamer) GetDists() []entropy.SymbolDistribution {
@@ -143,8 +149,14 @@ func (f *FakeEntropyStreamer) ReadSymbol(reader jxlio.BitReader, context int) (i
 	return symbol, nil
 }
 
-func (f FakeEntropyStreamer) TryReadSymbol(reader jxlio.BitReader, context int) int32 {
-	return 0
+func (f *FakeEntropyStreamer) TryReadSymbol(reader jxlio.BitReader, context int) int32 {
+	if len(f.FakeTrySymbols) == 0 {
+		return 0
+	}
+
+	symbol := f.FakeTrySymbols[0]
+	f.FakeTrySymbols = f.FakeTrySymbols[1:]
+	return symbol
 }
 
 func (f FakeEntropyStreamer) ReadSymbolWithMultiplier(reader jxlio.BitReader, context int, distanceMultiplier int32) (int32, error) {
@@ -161,13 +173,59 @@ func (f FakeEntropyStreamer) ValidateFinalState() bool {
 }
 
 func NewFakeEntropyStreamer() entropy.EntropyStreamer {
-	return &FakeEntropyStreamer{}
+	return &FakeEntropyStreamer{
+		FakeSymbols: []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	}
 }
 
 func NewFakeEntropyStreamerFunc(reader jxlio.BitReader, numDists int, readClusterMapFunc entropy.ReadClusterMapFunc) (entropy.EntropyStreamer, error) {
-	return &FakeEntropyStreamer{}, nil
+	return NewFakeEntropyStreamer(), nil
 }
 
 func NewFakeEntropyWithReaderFunc(reader jxlio.BitReader, numDists int, disallowLZ77 bool, readClusterMapFunc func(reader jxlio.BitReader, clusterMap []int, maxClusters int) (int, error)) (entropy.EntropyStreamer, error) {
-	return &FakeEntropyStreamer{}, nil
+	return NewFakeEntropyStreamer(), nil
 }
+
+func NewFakeLFGlobalWithReaderFunc(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error) {
+	return NewFakeLFGlobalWithChannelsFunc(nil)(reader, parent, hfBlockContextFunc)
+}
+
+func NewFakeLFGlobalWithChannelsFunc(channels []*ModularChannel) NewLFGlobalWithReaderFunc {
+	return func(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error) {
+		if channels == nil {
+			channels = []*ModularChannel{}
+		}
+		return &LFGlobal{
+			frame:           nil,
+			Patches:         nil,
+			splines:         nil,
+			noiseParameters: nil,
+			lfDequant:       []float32{1, 1, 1},
+			hfBlockCtx:      nil,
+			lfChanCorr:      nil,
+			globalScale:     1,
+			quantLF:         0,
+			scaledDequant:   nil,
+			globalModular: &ModularStream{
+				channels: channels,
+			},
+		}, nil
+	}
+}
+
+func NewFakePass() Pass {
+	return Pass{
+		replacedChannels: []*ModularChannel{},
+	}
+}
+
+func NewFakePassGroup() PassGroup {
+	return PassGroup{
+		modularStream: &ModularStream{
+			channels: []*ModularChannel{},
+		},
+	}
+}
+
+
+
