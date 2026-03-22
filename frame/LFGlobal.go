@@ -50,23 +50,23 @@ func NewLFGlobalWithReader(reader jxlio.BitReader, parent Framer, hfBlockContext
 	if lf.frame.getFrameHeader().Flags&PATCHES != 0 {
 
 		return nil, errors.New("Patches not implemented yet")
-
-		stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 10, entropy.ReadClusterMap)
-		if err != nil {
-			return nil, err
-		}
-		numPatches, err := stream.ReadSymbol(reader, 0)
-		if err != nil {
-			return nil, err
-		}
-		lf.Patches = make([]Patch, numPatches)
-		for i := 0; i < int(numPatches); i++ {
-			lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.getGlobalMetadata().ExtraChannelInfo), len(parent.getGlobalMetadata().AlphaIndices))
+		/*
+			stream, err := entropy.NewEntropyStreamWithReaderAndNumDists(reader, 10, entropy.ReadClusterMap)
 			if err != nil {
 				return nil, err
 			}
-		}
-
+			numPatches, err := stream.ReadSymbol(reader, 0)
+			if err != nil {
+				return nil, err
+			}
+			lf.Patches = make([]Patch, numPatches)
+			for i := 0; i < int(numPatches); i++ {
+				lf.Patches[i], err = NewPatchWithStreamAndReader(stream, reader, len(parent.getGlobalMetadata().ExtraChannelInfo), len(parent.getGlobalMetadata().AlphaIndices))
+				if err != nil {
+					return nil, err
+				}
+			}
+		*/
 	} else {
 		lf.Patches = []Patch{}
 	}

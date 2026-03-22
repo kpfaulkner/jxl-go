@@ -209,7 +209,7 @@ func (w *PNGWriter) writeICCP(image *JXLImage, output io.Writer) error {
 	return nil
 }
 
-func (w *PNGWriter) writeSRGB(image *JXLImage, output io.Writer) error {
+func (w *PNGWriter) writeSRGB(_ *JXLImage, output io.Writer) error {
 
 	if w.hdr {
 		return nil

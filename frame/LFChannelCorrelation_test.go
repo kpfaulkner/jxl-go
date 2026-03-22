@@ -7,6 +7,23 @@ import (
 	"github.com/kpfaulkner/jxl-go/testcommon"
 )
 
+func TestNewLFChannelCorrelation(t *testing.T) {
+	lf, err := NewLFChannelCorrelation()
+	if err != nil {
+		t.Errorf("got error when none was expected : %v", err)
+	}
+	expected := LFChannelCorrelation{
+		colorFactor:      84,
+		baseCorrelationX: 0.0,
+		baseCorrelationB: 1.0,
+		xFactorLF:        128,
+		bFactorLF:        128,
+	}
+	if !reflect.DeepEqual(*lf, expected) {
+		t.Errorf("expected LFChannelCorrelation %+v, got %+v", expected, *lf)
+	}
+}
+
 func TestNewLFChannelCorrelationWithReaderAndDefault(t *testing.T) {
 
 	for _, tc := range []struct {
@@ -21,6 +38,42 @@ func TestNewLFChannelCorrelationWithReaderAndDefault(t *testing.T) {
 	}{
 		{
 			name:      "no data",
+			expectErr: true,
+		},
+		{
+			name:      "error on colorFactor",
+			boolData:  []bool{false},
+			u32Data:   []uint32{}, // missing u32
+			expectErr: true,
+		},
+		{
+			name:      "error on baseCorrelationX",
+			boolData:  []bool{false},
+			u32Data:   []uint32{1},
+			f16Data:   []float32{}, // missing f16
+			expectErr: true,
+		},
+		{
+			name:      "error on baseCorrelationB",
+			boolData:  []bool{false},
+			u32Data:   []uint32{1},
+			f16Data:   []float32{1.0}, // only one f16
+			expectErr: true,
+		},
+		{
+			name:      "error on xFactorLF",
+			boolData:  []bool{false},
+			u32Data:   []uint32{1},
+			f16Data:   []float32{1.0, 1.0},
+			bitsData:  []uint64{}, // missing bits
+			expectErr: true,
+		},
+		{
+			name:      "error on bFactorLF",
+			boolData:  []bool{false},
+			u32Data:   []uint32{1},
+			f16Data:   []float32{1.0, 1.0},
+			bitsData:  []uint64{1}, // only one bits
 			expectErr: true,
 		},
 		{

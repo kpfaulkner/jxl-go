@@ -1,14 +1,17 @@
 package util
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 )
 
+type poolKey3D struct {
+	d, h, w int
+}
+
 // Matrix3DPool provides pooling for 3D matrices to reduce allocations
 type Matrix3DPool[T any] struct {
-	pools map[string]*sync.Pool
+	pools map[poolKey3D]*sync.Pool
 	mu    sync.RWMutex
 
 	// Metrics
@@ -17,24 +20,12 @@ type Matrix3DPool[T any] struct {
 }
 
 var (
-	float32Pool3D = &Matrix3DPool[float32]{pools: make(map[string]*sync.Pool)}
-	int32Pool3D   = &Matrix3DPool[int32]{pools: make(map[string]*sync.Pool)}
+	float32Pool3D = &Matrix3DPool[float32]{pools: make(map[poolKey3D]*sync.Pool)}
+	int32Pool3D   = &Matrix3DPool[int32]{pools: make(map[poolKey3D]*sync.Pool)}
 
-	float32Pool2D = &Matrix2DPool[float32]{pools: make(map[string]*sync.Pool)}
-	int32Pool2D   = &Matrix2DPool[int32]{pools: make(map[string]*sync.Pool)}
+	float32Pool2D = &Matrix2DPool[float32]{pools: make(map[poolKey2D]*sync.Pool)}
+	int32Pool2D   = &Matrix2DPool[int32]{pools: make(map[poolKey2D]*sync.Pool)}
 )
-
-// getPoolKey generates a key for the pool map
-func getPoolKey(dims ...int) string {
-	switch len(dims) {
-	case 2:
-		return fmt.Sprintf("%d_%d", dims[0], dims[1])
-	case 3:
-		return fmt.Sprintf("%d_%d_%d", dims[0], dims[1], dims[2])
-	default:
-		return ""
-	}
-}
 
 // Get retrieves a matrix from the pool or creates a new one
 func (p *Matrix3DPool[T]) Get(depth, height, width int) [][][]T {
@@ -42,19 +33,14 @@ func (p *Matrix3DPool[T]) Get(depth, height, width int) [][][]T {
 		return MakeMatrix3D[T](depth, height, width)
 	}
 
-	key := getPoolKey(depth, height, width)
+	key := poolKey3D{d: depth, h: height, w: width}
 
 	// Fast path: read lock
 	p.mu.RLock()
 	pool, exists := p.pools[key]
 	p.mu.RUnlock()
 
-	if exists {
-		if matrix := pool.Get(); matrix != nil {
-			p.hits.Add(1)
-			return matrix.([][][]T)
-		}
-	} else {
+	if !exists {
 		// Slow path: create new pool
 		p.mu.Lock()
 		// Double-check after acquiring write lock
@@ -62,12 +48,18 @@ func (p *Matrix3DPool[T]) Get(depth, height, width int) [][][]T {
 		if !exists {
 			pool = &sync.Pool{
 				New: func() interface{} {
-					return MakeMatrix3D[T](depth, height, width)
+					m := MakeMatrix3D[T](depth, height, width)
+					return &m
 				},
 			}
 			p.pools[key] = pool
 		}
 		p.mu.Unlock()
+	}
+
+	if matrix := pool.Get(); matrix != nil {
+		p.hits.Add(1)
+		return *(matrix.(*[][][]T))
 	}
 
 	p.misses.Add(1)
@@ -81,17 +73,13 @@ func (p *Matrix3DPool[T]) Put(matrix [][][]T) {
 	}
 
 	depth := len(matrix)
-	if depth == 0 {
-		return
-	}
-
 	height := len(matrix[0])
 	if height == 0 {
 		return
 	}
 
 	width := len(matrix[0][0])
-	key := getPoolKey(depth, height, width)
+	key := poolKey3D{d: depth, h: height, w: width}
 
 	p.mu.RLock()
 	pool, exists := p.pools[key]
@@ -107,7 +95,7 @@ func (p *Matrix3DPool[T]) Put(matrix [][][]T) {
 				}
 			}
 		}
-		pool.Put(matrix)
+		pool.Put(&matrix)
 	}
 }
 
@@ -116,9 +104,13 @@ func (p *Matrix3DPool[T]) GetMetrics() (hits, misses int64) {
 	return p.hits.Load(), p.misses.Load()
 }
 
+type poolKey2D struct {
+	h, w int
+}
+
 // Matrix2DPool provides pooling for 2D matrices
 type Matrix2DPool[T any] struct {
-	pools  map[string]*sync.Pool
+	pools  map[poolKey2D]*sync.Pool
 	mu     sync.RWMutex
 	hits   atomic.Int64
 	misses atomic.Int64
@@ -130,29 +122,30 @@ func (p *Matrix2DPool[T]) Get(height, width int) [][]T {
 		return MakeMatrix2D[T](height, width)
 	}
 
-	key := getPoolKey(height, width)
+	key := poolKey2D{h: height, w: width}
 
 	p.mu.RLock()
 	pool, exists := p.pools[key]
 	p.mu.RUnlock()
 
-	if exists {
-		if matrix := pool.Get(); matrix != nil {
-			p.hits.Add(1)
-			return matrix.([][]T)
-		}
-	} else {
+	if !exists {
 		p.mu.Lock()
 		pool, exists = p.pools[key]
 		if !exists {
 			pool = &sync.Pool{
 				New: func() interface{} {
-					return MakeMatrix2D[T](height, width)
+					m := MakeMatrix2D[T](height, width)
+					return &m
 				},
 			}
 			p.pools[key] = pool
 		}
 		p.mu.Unlock()
+	}
+
+	if matrix := pool.Get(); matrix != nil {
+		p.hits.Add(1)
+		return *(matrix.(*[][]T))
 	}
 
 	p.misses.Add(1)
@@ -166,12 +159,8 @@ func (p *Matrix2DPool[T]) Put(matrix [][]T) {
 	}
 
 	height := len(matrix)
-	if height == 0 {
-		return
-	}
-
 	width := len(matrix[0])
-	key := getPoolKey(height, width)
+	key := poolKey2D{h: height, w: width}
 
 	p.mu.RLock()
 	pool, exists := p.pools[key]
@@ -184,7 +173,7 @@ func (p *Matrix2DPool[T]) Put(matrix [][]T) {
 				matrix[i][j] = zero
 			}
 		}
-		pool.Put(matrix)
+		pool.Put(&matrix)
 	}
 }
 

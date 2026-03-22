@@ -1,6 +1,6 @@
 module github.com/kpfaulkner/jxl-go
 
-go 1.26.0
+go 1.25.5
 
 require (
 	github.com/pkg/profile v1.7.0
