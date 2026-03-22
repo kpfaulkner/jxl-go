@@ -402,7 +402,8 @@ func (ms *ModularStream) applyTransforms() error {
 	ms.transformed = true
 	var err error
 	for i := len(ms.transforms) - 1; i >= 0; i-- {
-		if ms.transforms[i].tr == SQUEEZE {
+		switch ms.transforms[i].tr {
+		case SQUEEZE:
 			spa := ms.squeezeMap[i]
 			for j := len(spa) - 1; j >= 0; j-- {
 				sp := spa[j]
@@ -439,7 +440,7 @@ func (ms *ModularStream) applyTransforms() error {
 					ms.channels = append(ms.channels[:offset], ms.channels[offset+1:]...)
 				}
 			}
-		} else if ms.transforms[i].tr == RCT {
+		case RCT:
 
 			// HERE... need to implement
 			permutation := ms.transforms[i].rctType / 7
@@ -514,7 +515,7 @@ func (ms *ModularStream) applyTransforms() error {
 			for j := 0; j < 3; j++ {
 				ms.channels[start+permutationLUT[permutation][j]] = v[j]
 			}
-		} else if ms.transforms[i].tr == PALETTE {
+		case PALETTE:
 			first := ms.transforms[i].beginC + 1
 			endC := ms.transforms[i].beginC + ms.transforms[i].numC - 1
 			last := endC + 1
@@ -608,7 +609,7 @@ func inverseHorizontalSqueeze(channel *ModularChannel, orig *ModularChannel, res
 			if x > 0 {
 				left = channel.buffer[y][2*x-1]
 			} else {
-				nextAvg = avg
+				left = avg
 			}
 			diff := residu + tendancy(left, avg, nextAvg)
 			first := avg + diff/2
@@ -650,7 +651,7 @@ func inverseVerticalSqueeze(channel *ModularChannel, orig *ModularChannel, res *
 			if y > 0 {
 				top = channel.buffer[2*y-1][x]
 			} else {
-				nextAvg = avg
+				top = avg
 			}
 			diff := residu + tendancy(top, avg, nextAvg)
 			first := avg + diff/2
