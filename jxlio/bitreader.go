@@ -18,7 +18,7 @@ type BitReader interface {
 	ReadBytesToBuffer(buffer []uint8, numBytes uint32) error
 	ReadBits(bits uint32) (uint64, error)
 	ReadByteArrayWithOffsetAndLength(buffer []byte, offset int64, length uint32) error
-	ReadByte() (uint8, error)
+	ReadByte() (byte, error)
 	ReadEnum() (int32, error)
 	ReadF16() (float32, error)
 	ReadICCVarint() (int32, error)
@@ -207,7 +207,7 @@ func (br *BitStreamReader) ReadByteArrayWithOffsetAndLength(buffer []byte, offse
 	return nil
 }
 
-func (br *BitStreamReader) ReadByte() (uint8, error) {
+func (br *BitStreamReader) ReadByte() (byte, error) {
 	v, err := br.ReadBits(8)
 	if err != nil {
 		return 0, err

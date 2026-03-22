@@ -69,7 +69,7 @@ func (fbr *BitReaderRecorder) ReadByteArrayWithOffsetAndLength(buffer []byte, of
 	return nil
 }
 
-func (fbr *BitReaderRecorder) ReadByte() (uint8, error) {
+func (fbr *BitReaderRecorder) ReadByte() (byte, error) {
 	res, err := fbr.realBitReader.ReadByte()
 	if err != nil {
 		return 0, err
