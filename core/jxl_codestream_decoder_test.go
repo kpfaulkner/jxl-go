@@ -240,7 +240,7 @@ func TestBlendFrame(t *testing.T) {
 
 	for _, tc := range []struct {
 		name        string
-		dataGenFunc func(*testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, error, frame2.Frame)
+		dataGenFunc func(*testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, frame2.Frame, error)
 	}{
 		{
 			name:        "success replace",
@@ -253,7 +253,7 @@ func TestBlendFrame(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 
-			jxl, canvas, err, frame := tc.dataGenFunc(t)
+			jxl, canvas, frame, err := tc.dataGenFunc(t)
 			assert.NoError(t, err)
 
 			err = jxl.blendFrame([]image.ImageBuffer{*canvas}, &frame)
@@ -264,7 +264,7 @@ func TestBlendFrame(t *testing.T) {
 	}
 }
 
-func generateBlendReplaceTestData(t *testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, error, frame2.Frame) {
+func generateBlendReplaceTestData(t *testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, frame2.Frame, error) {
 
 	// Need to simplify the code so mocking out structs with fake data
 	// is easier.
@@ -309,10 +309,10 @@ func generateBlendReplaceTestData(t *testing.T) (*JXLCodestreamDecoder, *image.I
 			},
 		},
 	}
-	return jxl, canvas, err, frame
+	return jxl, canvas, frame, err
 }
 
-func generateBlendAddTestData(t *testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, error, frame2.Frame) {
+func generateBlendAddTestData(t *testing.T) (*JXLCodestreamDecoder, *image.ImageBuffer, frame2.Frame, error) {
 
 	// Need to simplify the code so mocking out structs with fake data
 	// is easier.
@@ -358,7 +358,7 @@ func generateBlendAddTestData(t *testing.T) (*JXLCodestreamDecoder, *image.Image
 			},
 		},
 	}
-	return jxl, canvas, err, frame
+	return jxl, canvas, frame, err
 }
 
 func TestPerformBlending(t *testing.T) {
@@ -569,14 +569,14 @@ func TestPerformBlending(t *testing.T) {
 			frameStartX:  0,
 			frameOffsetX: 0,
 			hasAlpha:     true,
-			refBuffer: []image.ImageBuffer{image.ImageBuffer{
+			refBuffer: []image.ImageBuffer{{
 				Width:       10,
 				Height:      10,
 				BufferType:  image.TYPE_FLOAT,
 				FloatBuffer: makeFullMatrix[float32](10, 10, 12),
 			}},
 			imageColours: 0,
-			frameBuffers: []image.ImageBuffer{image.ImageBuffer{
+			frameBuffers: []image.ImageBuffer{{
 				Width:       10,
 				Height:      10,
 				BufferType:  image.TYPE_INT,
@@ -630,14 +630,14 @@ func TestPerformBlending(t *testing.T) {
 			frameStartX:  0,
 			frameOffsetX: 0,
 			hasAlpha:     true,
-			refBuffer: []image.ImageBuffer{image.ImageBuffer{
+			refBuffer: []image.ImageBuffer{{
 				Width:       10,
 				Height:      10,
 				BufferType:  image.TYPE_FLOAT,
 				FloatBuffer: makeFullMatrix[float32](10, 10, 12),
 			}},
 			imageColours: 0,
-			frameBuffers: []image.ImageBuffer{image.ImageBuffer{
+			frameBuffers: []image.ImageBuffer{{
 				Width:       10,
 				Height:      10,
 				BufferType:  image.TYPE_INT,
@@ -1208,7 +1208,7 @@ func TestComputePatches(t *testing.T) {
 			jxl := NewJXLCodestreamDecoder(nil, nil)
 			jxl.imageHeader = tc.imageHeader
 			jxl.reference = make([][]image.ImageBuffer, 1)
-			jxl.reference[0] = []image.ImageBuffer{image.ImageBuffer{
+			jxl.reference[0] = []image.ImageBuffer{{
 				Width:       10,
 				Height:      10,
 				BufferType:  image.TYPE_INT,

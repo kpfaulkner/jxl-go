@@ -189,6 +189,7 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 				jxl.lfBuffer[header.LfLevel-1] = imgFrame.Buffer
 			}
 			if header.FrameType == frame.LF_FRAME {
+				imgFrame.Release()
 				continue
 			}
 			save := (header.SaveAsReference != 0 || header.Duration == 0) && !header.IsLast && header.FrameType != frame.LF_FRAME
@@ -255,15 +256,13 @@ func (jxl *JXLCodestreamDecoder) decode() (*JXLImage, error) {
 					}
 				}
 
-				// FIXME(kpfaulkner) need to figure out new copies of canvas... why?
-				// nolint
 				if found {
-					canvas2 := make([]image2.ImageBuffer, len(jxl.canvas))
+					canvas2 := make([]image2.ImageBuffer, 0, len(jxl.canvas))
 					for _, ib := range jxl.canvas {
 						ib2 := image2.NewImageBufferFromImageBuffer(&ib, true)
 						canvas2 = append(canvas2, *ib2)
 					}
-					//jxl.canvas = canvas2
+					jxl.canvas = canvas2
 				}
 				err = jxl.blendFrame(jxl.canvas, imgFrame)
 				if err != nil {
@@ -325,7 +324,7 @@ func (jxl *JXLCodestreamDecoder) ReadSignatureAndBoxes() error {
 	return nil
 }
 
-func (jxl *JXLCodestreamDecoder) computePatches(frame *frame.Frame) error {
+func (jxl *JXLCodestreamDecoder) computePatches(_ *frame.Frame) error {
 
 	// do not support patches yet.
 	return nil
