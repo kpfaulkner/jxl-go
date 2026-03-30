@@ -310,4 +310,3 @@ func TestNewRestorationFilterWithReader_Error(t *testing.T) {
 	_, err = NewRestorationFilterWithReader(reader, VARDCT)
 	assert.Error(t, err)
 }
-

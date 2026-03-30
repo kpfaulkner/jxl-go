@@ -1,15 +1,15 @@
 package frame
 
 import (
-	"testing"
 	"github.com/kpfaulkner/jxl-go/util"
+	"testing"
 )
 
 func BenchmarkModularChannelDecode(b *testing.B) {
 	// Setup a representative ModularChannel
 	width, height := 256, 256
 	mc := NewModularChannelWithAllParams(int32(height), int32(width), 0, 0, true)
-	
+
 	// We need a tree and other dependencies, but for a simple allocation benchmark
 	// we can just call allocate() which uses MakeMatrix2D
 	b.ResetTimer()

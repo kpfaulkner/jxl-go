@@ -418,7 +418,7 @@ func TestPlaceBlock_FullGridMultipleBlockTypes(t *testing.T) {
 	// 4x4 grid: fill with a 2x2 at (0,0), two 1x2 wide at rows 0-1 col 2-3,
 	// then verify remaining space fills correctly
 	m := makeHFMetadataForPlaceBlock(4, 4)
-	big := *DCT16   // 2x2
+	big := *DCT16    // 2x2
 	wide := *DCT8_16 // w=2, h=1
 	small := *DCT8   // 1x1
 
@@ -447,8 +447,8 @@ func TestPlaceBlock_FullGridMultipleBlockTypes(t *testing.T) {
 
 // fakeModularStreamHFMeta implements ModularStreamer for HFMetadata tests.
 type fakeModularStreamHFMeta struct {
-	decodedBuffer    [][][]int32
-	decodeErr        error
+	decodedBuffer [][][]int32
+	decodeErr     error
 }
 
 func (f *fakeModularStreamHFMeta) decodeChannels(reader jxlio.BitReader, partial bool) error {
@@ -500,10 +500,10 @@ func TestNewHFMetadataWithReader_SingleDCT8Block(t *testing.T) {
 
 	blockInfo := makeBlockInfoBuffer([]int32{0}, []int32{4}) // DCT8, mul = 1+4 = 5
 	decodedBuffer := [][][]int32{
-		{{0}},          // channel 0 (xFromY)
-		{{0}},          // channel 1 (bFromY)
-		blockInfo,      // channel 2 (blockInfo)
-		{{0}},          // channel 3 (sharpness)
+		{{0}},     // channel 0 (xFromY)
+		{{0}},     // channel 1 (bFromY)
+		blockInfo, // channel 2 (blockInfo)
+		{{0}},     // channel 3 (sharpness)
 	}
 	msFunc := makeFakeModularStreamFunc(decodedBuffer, nil)
 
@@ -524,8 +524,8 @@ func TestNewHFMetadataWithReader_MultipleDCT8Blocks(t *testing.T) {
 	framer := NewFakeFramer(VARDCT)
 
 	blockInfo := makeBlockInfoBuffer(
-		[]int32{0, 0, 0, 0},    // all DCT8
-		[]int32{0, 1, 2, 3},    // multipliers: 1, 2, 3, 4
+		[]int32{0, 0, 0, 0}, // all DCT8
+		[]int32{0, 1, 2, 3}, // multipliers: 1, 2, 3, 4
 	)
 	decodedBuffer := [][][]int32{
 		{{0, 0}},
@@ -677,7 +677,7 @@ func TestNewHFMetadataWithReader_MixedBlockTypes(t *testing.T) {
 	reader := &testcommon.FakeBitReader{ReadBitsData: []uint64{12}} // nbBlocks = 13
 	framer := NewFakeFramer(VARDCT)
 
-	types := []int32{4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}       // DCT16 then 12 DCT8
+	types := []int32{4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} // DCT16 then 12 DCT8
 	muls := []int32{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	blockInfo := makeBlockInfoBuffer(types, muls)
 	decodedBuffer := [][][]int32{
@@ -770,7 +770,7 @@ func TestNewHFMetadataWithReader_NbBlocksCalculation(t *testing.T) {
 	reader := &testcommon.FakeBitReader{ReadBitsData: []uint64{7}} // nbBlocks = 8
 	framer := NewFakeFramer(VARDCT)
 
-	types := make([]int32, 8)       // all DCT8 (type 0)
+	types := make([]int32, 8) // all DCT8 (type 0)
 	muls := make([]int32, 8)
 	blockInfo := makeBlockInfoBuffer(types, muls)
 	decodedBuffer := [][][]int32{

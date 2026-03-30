@@ -559,5 +559,5 @@ func TestModularChannel_EdgePredictions(t *testing.T) {
 	}
 
 	assert.Equal(t, int32(3), mc.northEastEast(1, 1)) // y=1, x=1. NEE is y=0, x=3. buffer[0][3]=3.
-	assert.Equal(t, int32(8), mc.westWest(2, 2))     // y=2, x=2. WW is y=2, x=0. buffer[2][0]=8.
+	assert.Equal(t, int32(8), mc.westWest(2, 2))      // y=2, x=2. WW is y=2, x=0. buffer[2][0]=8.
 }

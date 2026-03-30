@@ -14,9 +14,9 @@ import (
 
 // FakeModularStreamer implements ModularStreamer for testing.
 type FakeModularStreamer struct {
-	decodedBuffer  [][][]int32
-	decodeErr      error
-	decodeCalled   bool
+	decodedBuffer [][][]int32
+	decodeErr     error
+	decodeCalled  bool
 }
 
 func (f *FakeModularStreamer) decodeChannels(reader jxlio.BitReader, partial bool) error {
@@ -194,7 +194,7 @@ func TestPopulatedLFIndex(t *testing.T) {
 
 	lfQuant := util.MakeMatrix3D[int32](3, 2, 2)
 	// Set different values at different positions
-	lfQuant[0][0][0] = 0  // below all
+	lfQuant[0][0][0] = 0 // below all
 	lfQuant[1][0][0] = 0
 	lfQuant[2][0][0] = 0
 
@@ -960,7 +960,7 @@ func TestAdaptiveSmooth_PreciseWeightedAverage(t *testing.T) {
 	// Compute expected weighted average at (1,1) for channel 0
 	sample := float32(5.0)
 	adjacent := float32(4.0 + 6.0 + 2.0 + 8.0) // left, right, above, below
-	diag := float32(1.0 + 3.0 + 7.0 + 9.0)      // corners
+	diag := float32(1.0 + 3.0 + 7.0 + 9.0)     // corners
 	expectedWeighted := float32(0.05226273532324128*float64(sample) +
 		0.20345139757231578*float64(adjacent) +
 		0.0334829185968739*float64(diag))

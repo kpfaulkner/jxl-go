@@ -223,11 +223,11 @@ func TestNewFrameHeaderWithReader_ModularEncoding(t *testing.T) {
 
 	assert.Equal(t, uint32(MODULAR), fh.Encoding)
 	assert.Equal(t, uint32(2), fh.groupSizeShift)
-	assert.Equal(t, uint32(512), fh.groupDim)       // 128 << 2
-	assert.Equal(t, uint32(4096), fh.lfGroupDim)     // 512 << 3
-	assert.Equal(t, uint32(9), fh.logGroupDim)       // CeilLog2(512)
-	assert.Equal(t, uint32(12), fh.logLFGroupDIM)    // CeilLog2(4096)
-	assert.Equal(t, uint32(2), fh.xqmScale)          // not xyb, so default 2
+	assert.Equal(t, uint32(512), fh.groupDim)     // 128 << 2
+	assert.Equal(t, uint32(4096), fh.lfGroupDim)  // 512 << 3
+	assert.Equal(t, uint32(9), fh.logGroupDim)    // CeilLog2(512)
+	assert.Equal(t, uint32(12), fh.logLFGroupDIM) // CeilLog2(4096)
+	assert.Equal(t, uint32(2), fh.xqmScale)       // not xyb, so default 2
 	assert.Equal(t, uint32(2), fh.bqmScale)
 }
 
@@ -520,9 +520,9 @@ func TestNewFrameHeaderWithReader_GroupDimDefaults(t *testing.T) {
 					true,  // RestorationFilter allDefault = true
 				},
 				ReadBitsData: []uint64{
-					0,                      // FrameType = REGULAR_FRAME
-					1,                      // Encoding = MODULAR
-					0,                      // upsampling
+					0,                         // FrameType = REGULAR_FRAME
+					1,                         // Encoding = MODULAR
+					0,                         // upsampling
 					uint64(tc.groupSizeShift), // groupSizeShift
 				},
 				ReadU32Data: []uint32{
@@ -549,8 +549,8 @@ func TestNewFrameHeaderWithReader_GroupDimDefaults(t *testing.T) {
 
 func TestNewFrameHeaderWithReader_UpsamplingValues(t *testing.T) {
 	tests := []struct {
-		name             string
-		upsamplingBits   uint64
+		name               string
+		upsamplingBits     uint64
 		expectedUpsampling uint32
 	}{
 		{"1x", 0, 1},
@@ -570,11 +570,11 @@ func TestNewFrameHeaderWithReader_UpsamplingValues(t *testing.T) {
 					true,  // RestorationFilter allDefault = true
 				},
 				ReadBitsData: []uint64{
-					0,                    // FrameType = REGULAR_FRAME
-					0,                    // Encoding = VARDCT
-					tc.upsamplingBits,    // upsampling
-					3,                    // xqmScale
-					2,                    // bqmScale
+					0,                 // FrameType = REGULAR_FRAME
+					0,                 // Encoding = VARDCT
+					tc.upsamplingBits, // upsampling
+					3,                 // xqmScale
+					2,                 // bqmScale
 				},
 				ReadU32Data: []uint32{
 					1, // numPasses = 1
@@ -597,10 +597,10 @@ func TestNewFrameHeaderWithReader_UpsamplingValues(t *testing.T) {
 
 func TestNewFrameHeaderWithReader_JpegUpsamplingModes(t *testing.T) {
 	tests := []struct {
-		name       string
-		modes      []uint64
-		expectedY  []int32
-		expectedX  []int32
+		name      string
+		modes     []uint64
+		expectedY []int32
+		expectedX []int32
 	}{
 		{
 			"all mode 0 (no subsampling)",
@@ -686,10 +686,10 @@ func TestDisplayDebug_ValidHeader(t *testing.T) {
 			Origin: util.Point{X: 0, Y: 0},
 			Size:   util.Dimension{Width: 100, Height: 200},
 		},
-		BlendingInfo: &BlendingInfo{Mode: BLEND_REPLACE},
-		passes:       NewPassesInfo(),
+		BlendingInfo:      &BlendingInfo{Mode: BLEND_REPLACE},
+		passes:            NewPassesInfo(),
 		restorationFilter: NewRestorationFilter(),
-		extensions:   bundle.NewExtensions(),
+		extensions:        bundle.NewExtensions(),
 	}
 
 	// Should not panic
@@ -745,7 +745,7 @@ func TestNewFrameHeaderWithReader_ErrorPaths(t *testing.T) {
 	t.Run("Error on DoYCbCr ReadBool", func(t *testing.T) {
 		parentNoXyb := makeParent(100, 200, false, 0)
 		reader := &testcommon.FakeBitReader{
-			ReadBoolData: []bool{false}, // allDefault = false
+			ReadBoolData: []bool{false},  // allDefault = false
 			ReadBitsData: []uint64{0, 0}, // frameType=0, encoding=0
 			ReadU64Data:  []uint64{0},    // flags = 0
 			// Error on DoYCbCr ReadBool
@@ -759,8 +759,8 @@ func TestNewFrameHeaderWithReader_ErrorPaths(t *testing.T) {
 		parentNoXyb := makeParent(100, 200, false, 0)
 		reader := &testcommon.FakeBitReader{
 			ReadBoolData: []bool{false, true}, // allDefault=false, DoYCbCr=true
-			ReadBitsData: []uint64{0, 0, 0},    // frameType=0, encoding=0, flags=0
-			ReadU64Data:  []uint64{0},          // flags = 0
+			ReadBitsData: []uint64{0, 0, 0},   // frameType=0, encoding=0, flags=0
+			ReadU64Data:  []uint64{0},         // flags = 0
 			// Error on first jpeg mode ReadBits
 		}
 		fh, err := NewFrameHeaderWithReader(reader, parentNoXyb)

@@ -197,13 +197,12 @@ func TestApplyTransforms_RCT_AllTypes(t *testing.T) {
 	}
 }
 
-
 func TestApplyTransforms_Palette(t *testing.T) {
 	// Setup Palette transform
 	// PALETTE transform in applyTransforms expects:
 	// ms.channels[0] to be the palette (meta channel)
 	// ms.channels[1...] to be the indexed channels
-	
+
 	palette := NewModularChannelWithAllParams(3, 2, -1, -1, false) // 3 components, 2 colors
 	palette.allocate()
 	palette.buffer[0][0] = 10 // Component 0, Color 0
@@ -235,7 +234,7 @@ func TestApplyTransforms_Palette(t *testing.T) {
 
 	err := ms.applyTransforms()
 	assert.Nil(t, err)
-	
+
 	// Palette transform replaces indexed channel with numC channels
 	// and removes the palette channel from the beginning.
 	assert.Equal(t, 3, len(ms.channels))
@@ -249,7 +248,7 @@ func TestApplyTransforms_SqueezeHorizontal(t *testing.T) {
 	orig := NewModularChannelWithAllParams(1, 1, 0, 1, false)
 	orig.allocate()
 	orig.buffer[0][0] = 10
-	
+
 	residu := NewModularChannelWithAllParams(1, 1, 0, 1, false)
 	residu.allocate()
 	residu.buffer[0][0] = 2
@@ -269,8 +268,8 @@ func TestApplyTransforms_SqueezeHorizontal(t *testing.T) {
 
 	err := ms.applyTransforms()
 	assert.Nil(t, err)
-	
-	// Inverse horizontal squeeze: 
+
+	// Inverse horizontal squeeze:
 	// diff = residu + tendancy(...) = 2 + 0 = 2
 	// first = avg + diff/2 = 10 + 1 = 11
 	// second = first - diff = 11 - 2 = 9
@@ -285,7 +284,7 @@ func TestApplyTransforms_SqueezeVertical(t *testing.T) {
 	orig := NewModularChannelWithAllParams(1, 1, 1, 0, false)
 	orig.allocate()
 	orig.buffer[0][0] = 20
-	
+
 	residu := NewModularChannelWithAllParams(1, 1, 1, 0, false)
 	residu.allocate()
 	residu.buffer[0][0] = 4
@@ -305,8 +304,8 @@ func TestApplyTransforms_SqueezeVertical(t *testing.T) {
 
 	err := ms.applyTransforms()
 	assert.Nil(t, err)
-	
-	// Inverse vertical squeeze: 
+
+	// Inverse vertical squeeze:
 	// diff = residu + tendancy(...) = 4 + 0 = 4
 	// first = avg + diff/2 = 20 + 2 = 22
 	// second = first - diff = 22 - 4 = 18
@@ -321,14 +320,14 @@ func TestInverseHorizontalSqueeze_Tendancy(t *testing.T) {
 	orig.allocate()
 	orig.buffer[0][0] = 10
 	orig.buffer[0][1] = 20
-	
+
 	residu := NewModularChannelWithAllParams(1, 2, 0, 1, false)
 	residu.allocate()
 	residu.buffer[0][0] = 2
 	residu.buffer[0][1] = 4
 
 	outputInfo := NewModularChannelWithAllParams(1, 4, 0, 0, false)
-	
+
 	out, err := inverseHorizontalSqueeze(outputInfo, orig, residu)
 	assert.Nil(t, err)
 	assert.NotNil(t, out)
@@ -340,14 +339,14 @@ func TestInverseVerticalSqueeze_Tendancy(t *testing.T) {
 	orig.allocate()
 	orig.buffer[0][0] = 10
 	orig.buffer[1][0] = 20
-	
+
 	residu := NewModularChannelWithAllParams(2, 1, 1, 0, false)
 	residu.allocate()
 	residu.buffer[0][0] = 2
 	residu.buffer[1][0] = 4
 
 	outputInfo := NewModularChannelWithAllParams(4, 1, 0, 0, false)
-	
+
 	out, err := inverseVerticalSqueeze(outputInfo, orig, residu)
 	assert.Nil(t, err)
 	assert.NotNil(t, out)

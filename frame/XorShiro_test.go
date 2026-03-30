@@ -1,8 +1,8 @@
 package frame
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestNewXorShiroWith4Seeds(t *testing.T) {

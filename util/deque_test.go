@@ -128,11 +128,11 @@ func TestDequeMixedOperations(t *testing.T) {
 	dq := NewDeque[int]()
 
 	// Add from both ends
-	dq.AddFirst(2)  // [2]
-	dq.AddFirst(1)  // [1, 2]
-	dq.AddLast(3)   // [1, 2, 3]
-	dq.AddLast(4)   // [1, 2, 3, 4]
-	dq.AddFirst(0)  // [0, 1, 2, 3, 4]
+	dq.AddFirst(2) // [2]
+	dq.AddFirst(1) // [1, 2]
+	dq.AddLast(3)  // [1, 2, 3]
+	dq.AddLast(4)  // [1, 2, 3, 4]
+	dq.AddFirst(0) // [0, 1, 2, 3, 4]
 
 	// Remove and verify
 	val := dq.RemoveFirst()

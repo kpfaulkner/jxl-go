@@ -226,6 +226,3 @@ func NewFakePassGroup() PassGroup {
 		},
 	}
 }
-
-
-

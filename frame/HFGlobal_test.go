@@ -22,9 +22,9 @@ func TestQuantMult(t *testing.T) {
 		{"positive 1 returns 2", 1.0, 2.0},
 		{"positive 2 returns 3", 2.0, 3.0},
 		{"positive 0.5 returns 1.5", 0.5, 1.5},
-		{"negative -1 returns 0.5", -1.0, 0.5},           // 1/(1+1) = 0.5
-		{"negative -0.5 returns 2/3", -0.5, 1.0 / 1.5},   // 1/(1+0.5)
-		{"negative -3 returns 0.25", -3.0, 0.25},          // 1/(1+3) = 0.25
+		{"negative -1 returns 0.5", -1.0, 0.5},         // 1/(1+1) = 0.5
+		{"negative -0.5 returns 2/3", -0.5, 1.0 / 1.5}, // 1/(1+0.5)
+		{"negative -3 returns 0.25", -3.0, 0.25},       // 1/(1+3) = 0.25
 		{"small positive", 0.001, 1.001},
 		{"boundary at zero positive side", 0.0, 1.0},
 	}
@@ -508,8 +508,8 @@ func TestSetupDCTParam_ReadBitsError(t *testing.T) {
 
 func TestNewHFGlobalWithReader_DefaultParams(t *testing.T) {
 	reader := &testcommon.FakeBitReader{
-		ReadBoolData: []bool{true},   // quantAllDefault=true
-		ReadBitsData: []uint64{0},    // numPresets (CeilLog1p(0)=0 bits → ReadBits(0))
+		ReadBoolData: []bool{true}, // quantAllDefault=true
+		ReadBitsData: []uint64{0},  // numPresets (CeilLog1p(0)=0 bits → ReadBits(0))
 	}
 	frame := &Frame{numGroups: 1}
 
