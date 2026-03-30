@@ -92,7 +92,7 @@ func generateVLCTableSignature(es EntropyStreamer) []byte {
 
 func TestReadHybridInteger(t *testing.T) {
 	es := &EntropyStream{}
-	
+
 	for _, tc := range []struct {
 		name     string
 		config   *HybridIntegerConfig
@@ -122,7 +122,7 @@ func TestReadHybridInteger(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			bitReader := testcommon.NewFakeBitReader()
 			bitReader.ReadBitsData = tc.bitsData
-			
+
 			res, err := es.ReadHybridInteger(bitReader, tc.config, tc.token)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, res)
@@ -136,11 +136,11 @@ func TestReadClusterMapSimple(t *testing.T) {
 	// clusterMap entries
 	readBoolData := []bool{true}
 	readBitsData := []uint64{2, 0, 1, 2, 3} // nbits=2, then 4 clusters
-	
+
 	bitReader := testcommon.NewFakeBitReader()
 	bitReader.ReadBoolData = readBoolData
 	bitReader.ReadBitsData = readBitsData
-	
+
 	clusterMap := make([]int, 4)
 	numClusters, err := ReadClusterMap(bitReader, clusterMap, 10)
 	assert.NoError(t, err)
