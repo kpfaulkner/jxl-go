@@ -2,6 +2,9 @@ package frame
 
 import (
 	"errors"
+	"fmt"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/jxlio"
@@ -471,6 +474,9 @@ func (mc *ModularChannel) decode(reader jxlio.BitReader, stream entropy.EntropyS
 				mc.err[4][y][x] = mc.pred[y][x] - (trueValue << 3)
 			}
 		}
+	}
+	if log.GetLevel() >= log.DebugLevel {
+		displayModularChannel(fmt.Sprintf("modular-channel-%d", channelIndex), mc.buffer)
 	}
 	return nil
 }

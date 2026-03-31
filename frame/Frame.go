@@ -837,8 +837,7 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	return nil
 }
 
-// nolint
-func displayBuffers(_ string, frameBuffer [][][]float32) {
+func displayBuffers(label string, frameBuffer [][][]float32) float64 {
 	total := 0.0
 	for c := 0; c < len(frameBuffer); c++ {
 		for y := 0; y < len(frameBuffer[c]); y++ {
@@ -847,10 +846,11 @@ func displayBuffers(_ string, frameBuffer [][][]float32) {
 			}
 		}
 	}
+	log.Debugf("displayBuffers: %s total: %f", label, total)
+	return total
 }
 
-// nolint
-func displayBuffer(_ string, frameBuffer [][]float32) {
+func displayBuffer(label string, frameBuffer [][]float32) float64 {
 	total := 0.0
 
 	for y := 0; y < len(frameBuffer); y++ {
@@ -862,6 +862,20 @@ func displayBuffer(_ string, frameBuffer [][]float32) {
 
 		}
 	}
+	log.Debugf("displayBuffer: %s total: %f", label, total)
+	return total
+}
+
+func displayModularChannel(label string, frameBuffer [][]int32) float64 {
+	total := 0.0
+
+	for y := 0; y < len(frameBuffer); y++ {
+		for x := 0; x < len(frameBuffer[y]); x++ {
+			total += float64(frameBuffer[y][x])
+		}
+	}
+	log.Debugf("displayModularChannel: %s total: %f", label, total)
+	return total
 }
 
 func (f *Frame) invertSubsampling() error {

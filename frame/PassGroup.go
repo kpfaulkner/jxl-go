@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/util"
 )
@@ -212,17 +214,27 @@ func (g *PassGroup) invertVarDCT(frameBuffer [][][]float32, prev *PassGroup) err
 				}
 
 			case METHOD_AFV:
-				//displayBuffer("before", frameBuffer[c])
+				if log.GetLevel() >= log.DebugLevel {
+					displayBuffer("before", frameBuffer[c])
+				}
 				// FIXME(kpfaulkner) there is some bug in here compared to JXLatte, but
 				// have yet to figure it out.
 				if err := g.invertAFV(coeffs[c], frameBuffer[c], tt, ppg, ppf, scratchBlock); err != nil {
 					return err
 				}
-				//displayBuffer("after", frameBuffer[c])
+				if log.GetLevel() >= log.DebugLevel {
+					displayBuffer("after", frameBuffer[c])
+				}
 			case METHOD_DCT2:
+				if log.GetLevel() >= log.DebugLevel {
+					displayBuffer("DCT2-before", frameBuffer[c])
+				}
 				g.auxDCT2(coeffs[c], scratchBlock[0], ppg, util.ZERO, 2)
 				g.auxDCT2(scratchBlock[0], scratchBlock[1], util.ZERO, util.ZERO, 4)
 				g.auxDCT2(scratchBlock[1], frameBuffer[c], util.ZERO, ppf, 8)
+				if log.GetLevel() >= log.DebugLevel {
+					displayBuffer("DCT2-after", frameBuffer[c])
+				}
 			case METHOD_HORNUSS:
 				g.auxDCT2(coeffs[c], scratchBlock[1], ppg, util.ZERO, 2)
 				for y := int32(0); y < 2; y++ {

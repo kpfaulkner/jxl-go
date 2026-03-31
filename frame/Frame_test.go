@@ -3,7 +3,10 @@ package frame
 import (
 	"bytes"
 	"math"
+	"strings"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/colour"
@@ -648,18 +651,56 @@ func TestPerformGabConvolution(t *testing.T) {
 	}
 }
 
+// LogHook is a simple hook for logrus to capture logs during tests
+type LogHook struct {
+	logs []string
+}
+
+func (h *LogHook) Levels() []log.Level {
+	return log.AllLevels
+}
+
+func (h *LogHook) Fire(entry *log.Entry) error {
+	msg, _ := entry.String()
+	h.logs = append(h.logs, msg)
+	return nil
+}
+
+func (h *LogHook) HasLog(pattern string) bool {
+	for _, l := range h.logs {
+		if strings.Contains(l, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
 // TestDisplayBuffers tests the display buffer functions (for coverage)
 func TestDisplayBuffers(t *testing.T) {
+	// Set up logrus hook to capture logs
+	hook := &LogHook{}
+	log.AddHook(hook)
+	log.SetLevel(log.DebugLevel)
+	defer func() {
+		log.SetLevel(log.InfoLevel)
+	}()
+
 	frameBuffer := [][][]float32{
 		{{1.0, 2.0}, {3.0, 4.0}},
 		{{5.0, 6.0}, {7.0, 8.0}},
 	}
 
 	// Just ensure it doesn't panic
-	displayBuffers("test", frameBuffer)
+	sum1 := displayBuffers("test-buffers", frameBuffer)
+	assert.Equal(t, 36.0, sum1)
 
 	singleBuffer := [][]float32{{1.0, 2.0}, {3.0, 4.0}}
-	displayBuffer("test", singleBuffer)
+	sum2 := displayBuffer("test-buffer", singleBuffer)
+	assert.Equal(t, 10.0, sum2)
+
+	// Verify logs
+	assert.True(t, hook.HasLog("displayBuffers: test-buffers total: 36.000000"))
+	assert.True(t, hook.HasLog("displayBuffer: test-buffer total: 10.000000"))
 }
 
 // TestUpsampleFull tests the full Upsample method
