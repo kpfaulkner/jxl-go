@@ -15,7 +15,12 @@ import (
 func main() {
 	infile := flag.String("i", "", "input jxl file")
 	outfile := flag.String("o", "", "output png file")
+	debug := flag.Bool("d", false, "enable debug logging")
 	flag.Parse()
+
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	if *infile == "" || *outfile == "" {
 		fmt.Printf("both input and output files must be specified\n")
