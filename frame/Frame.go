@@ -838,6 +838,9 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 }
 
 func displayBuffers(label string, frameBuffer [][][]float32) float64 {
+	if log.GetLevel() < log.DebugLevel {
+		return 0
+	}
 	total := 0.0
 	for c := 0; c < len(frameBuffer); c++ {
 		for y := 0; y < len(frameBuffer[c]); y++ {
@@ -851,6 +854,9 @@ func displayBuffers(label string, frameBuffer [][][]float32) float64 {
 }
 
 func displayBuffer(label string, frameBuffer [][]float32) float64 {
+	if log.GetLevel() < log.DebugLevel {
+		return 0
+	}
 	total := 0.0
 
 	for y := 0; y < len(frameBuffer); y++ {
@@ -867,6 +873,9 @@ func displayBuffer(label string, frameBuffer [][]float32) float64 {
 }
 
 func displayModularChannel(label string, frameBuffer [][]int32) float64 {
+	if log.GetLevel() < log.DebugLevel {
+		return 0
+	}
 	total := 0.0
 
 	for y := 0; y < len(frameBuffer); y++ {
