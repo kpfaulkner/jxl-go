@@ -177,7 +177,13 @@ func (f *Frame) ReadTOC() error {
 }
 
 func (f *Frame) readBuffer(index int) ([]uint8, error) {
+
+	if index < 0 || index >= len(f.tocLengths) {
+		return nil, errors.New("invalid TOC index")
+	}
+
 	length := f.tocLengths[index]
+
 	buffer := make([]uint8, length+4)
 	err := f.reader.ReadBytesToBuffer(buffer, length)
 	if err != nil {
@@ -500,6 +506,10 @@ func (f *Frame) GetColourChannelCount() int {
 
 func (f *Frame) GetPaddedFrameSize() (util.Dimension, error) {
 
+	if f.Header == nil || f.Header.Bounds == nil {
+		return util.Dimension{}, errors.New("frame header or bounds is nil")
+	}
+
 	factorY := 1 << util.Max(f.Header.jpegUpsamplingY...)
 	factorX := 1 << util.Max(f.Header.jpegUpsamplingX...)
 	var width uint32
@@ -565,38 +575,67 @@ func (f *Frame) decodeLFGroups(lfBuffer []image.ImageBuffer) error {
 		templateWidths[i] = r.size.Width
 	}
 
+	errChan := make(chan error, f.numLFGroups)
+	var wg sync.WaitGroup
+	// Ensure at least 1 goroutine
+	maxGoroutines := 1
+	if f.options != nil {
+		maxGoroutines = f.options.MaxGoroutines
+	}
+	if maxGoroutines < 1 {
+		maxGoroutines = 1
+	}
+	sem := make(chan struct{}, maxGoroutines)
+
 	for lfGroupID := uint32(0); lfGroupID < f.numLFGroups; lfGroupID++ {
-		reader, err := f.getBitreader(1 + int(lfGroupID))
-		if err != nil {
-			return err
-		}
+		wg.Add(1)
+		sem <- struct{}{}
 
-		lfGroupPos := f.getLFGroupLocation(int32(lfGroupID))
+		go func(id uint32) {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-		// Pre-allocate with correct capacity, use index assignment instead of append
-		replaced := make([]ModularChannel, numReplacements)
-		for i, r := range lfReplacementChannels {
-			// Copy the template channel directly instead of calling NewModularChannelFromChannel
-			replaced[i] = ModularChannel{
-				size:    r.size,
-				origin:  r.origin,
-				hshift:  r.hshift,
-				vshift:  r.vshift,
-				decoded: r.decoded,
-				// buffer is nil - will be allocated by NewLFGroupWithReader if needed
+			reader, err := f.getBitreader(1 + int(id))
+			if err != nil {
+				errChan <- err
+				return
 			}
 
-			// Update origin and size for this specific LF group
-			replaced[i].origin.Y = lfGroupPos.Y * int32(templateHeights[i])
-			replaced[i].origin.X = lfGroupPos.X * int32(templateWidths[i])
-			replaced[i].size.Height = util.Min(templateHeights[i], lfHeights[i]-uint32(replaced[i].origin.Y))
-			replaced[i].size.Width = util.Min(templateWidths[i], lfWidths[i]-uint32(replaced[i].origin.X))
-		}
+			lfGroupPos := f.getLFGroupLocation(int32(id))
 
-		f.lfGroups[lfGroupID], err = NewLFGroupWithReader(reader, f, int32(lfGroupID), replaced, lfBuffer, NewLFCoefficientsWithReader, NewHFMetadataWithReader)
-		if err != nil {
-			return err
-		}
+			// Pre-allocate with correct capacity, use index assignment instead of append
+			replaced := make([]ModularChannel, numReplacements)
+			for i, r := range lfReplacementChannels {
+				// Copy the template channel directly instead of calling NewModularChannelFromChannel
+				replaced[i] = ModularChannel{
+					size:    r.size,
+					origin:  r.origin,
+					hshift:  r.hshift,
+					vshift:  r.vshift,
+					decoded: r.decoded,
+					// buffer is nil - will be allocated by NewLFGroupWithReader if needed
+				}
+
+				// Update origin and size for this specific LF group
+				replaced[i].origin.Y = lfGroupPos.Y * int32(templateHeights[i])
+				replaced[i].origin.X = lfGroupPos.X * int32(templateWidths[i])
+				replaced[i].size.Height = util.Min(templateHeights[i], lfHeights[i]-uint32(replaced[i].origin.Y))
+				replaced[i].size.Width = util.Min(templateWidths[i], lfWidths[i]-uint32(replaced[i].origin.X))
+			}
+
+			lfg, err := NewLFGroupWithReader(reader, f, int32(id), replaced, lfBuffer, NewLFCoefficientsWithReader, NewHFMetadataWithReader)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			f.lfGroups[id] = lfg
+		}(lfGroupID)
+	}
+
+	wg.Wait()
+	close(errChan)
+	if len(errChan) > 0 {
+		return <-errChan
 	}
 
 	// Allocate all replacement channels once BEFORE copying data from LF groups
@@ -671,8 +710,8 @@ func (f *Frame) doProcessing(iPass int, iGroup int, passGroups [][]PassGroup) er
 		rowStride := util.CeilDiv(info.size.Width, groupWidth)
 		info.origin.Y = int32((uint32(iGroup) / rowStride) * groupHeight)
 		info.origin.X = int32((uint32(iGroup) % rowStride) * groupWidth)
-		info.size.Height = util.Min[uint32](info.size.Height-uint32(info.origin.Y), uint32(groupHeight))
-		info.size.Width = util.Min[uint32](info.size.Width-uint32(info.origin.X), uint32(groupWidth))
+		info.size.Height = util.Min(info.size.Height-uint32(info.origin.Y), uint32(groupHeight))
+		info.size.Width = util.Min(info.size.Width-uint32(info.origin.X), uint32(groupWidth))
 		replaced[i] = info
 	}
 
@@ -705,7 +744,14 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	close(inputChan)
 
 	wg := sync.WaitGroup{}
-	for i := 0; i < f.options.MaxGoroutines; i++ {
+	maxGoroutines := 1
+	if f.options != nil {
+		maxGoroutines = f.options.MaxGoroutines
+	}
+	if maxGoroutines < 1 {
+		maxGoroutines = 1
+	}
+	for i := 0; i < maxGoroutines; i++ {
 		wg.Add(1)
 		go func() {
 			f.startWorker(inputChan, passGroups)
@@ -750,17 +796,33 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 		}
 
 		for pass := 0; pass < numPasses; pass++ {
+			var wg sync.WaitGroup
+			errChan := make(chan error, numGroups)
+			sem := make(chan struct{}, maxGoroutines)
+
 			for group := 0; group < numGroups; group++ {
-				passGroup := &passGroups[pass][group]
-				var prev *PassGroup
-				if pass > 0 {
-					prev = &passGroups[pass-1][group]
-				} else {
-					prev = nil
-				}
-				if err := passGroup.invertVarDCT(buffers, prev); err != nil {
-					return err
-				}
+				wg.Add(1)
+				go func(p, g int) {
+					defer wg.Done()
+					sem <- struct{}{}
+					defer func() { <-sem }()
+
+					passGroup := &passGroups[p][g]
+					var prev *PassGroup
+					if p > 0 {
+						prev = &passGroups[p-1][g]
+					} else {
+						prev = nil
+					}
+					if err := passGroup.invertVarDCT(buffers, prev); err != nil {
+						errChan <- err
+					}
+				}(pass, group)
+			}
+			wg.Wait()
+			close(errChan)
+			if len(errChan) > 0 {
+				return <-errChan
 			}
 		}
 
@@ -775,8 +837,10 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 	return nil
 }
 
-// nolint
-func displayBuffers(text string, frameBuffer [][][]float32) {
+func displayBuffers(label string, frameBuffer [][][]float32) float64 {
+	if log.GetLevel() < log.DebugLevel {
+		return 0
+	}
 	total := 0.0
 	for c := 0; c < len(frameBuffer); c++ {
 		for y := 0; y < len(frameBuffer[c]); y++ {
@@ -785,10 +849,14 @@ func displayBuffers(text string, frameBuffer [][][]float32) {
 			}
 		}
 	}
+	log.Debugf("displayBuffers: %s total: %f", label, total)
+	return total
 }
 
-// nolint
-func displayBuffer(text string, frameBuffer [][]float32) {
+func displayBuffer(label string, frameBuffer [][]float32) float64 {
+	if log.GetLevel() < log.DebugLevel {
+		return 0
+	}
 	total := 0.0
 
 	for y := 0; y < len(frameBuffer); y++ {
@@ -800,6 +868,23 @@ func displayBuffer(text string, frameBuffer [][]float32) {
 
 		}
 	}
+	log.Debugf("displayBuffer: %s total: %f", label, total)
+	return total
+}
+
+func displayModularChannel(label string, frameBuffer [][]int32) float64 {
+	if log.GetLevel() < log.DebugLevel {
+		return 0
+	}
+	total := 0.0
+
+	for y := 0; y < len(frameBuffer); y++ {
+		for x := 0; x < len(frameBuffer[y]); x++ {
+			total += float64(frameBuffer[y][x])
+		}
+	}
+	log.Debugf("displayModularChannel: %s total: %f", label, total)
+	return total
 }
 
 func (f *Frame) invertSubsampling() error {
@@ -1066,11 +1151,12 @@ func (f *Frame) performEdgePreservingFilter() error {
 		// Note: Don't return outputBuffers to pool - they get swapped into f.Buffer
 
 		var sigmaScale float32
-		if i == 0 {
+		switch i {
+		case 0:
 			sigmaScale = stepMultiplier * f.Header.restorationFilter.epfPass0SigmaScale
-		} else if i == 2 {
+		case 2:
 			sigmaScale = stepMultiplier * f.Header.restorationFilter.epfPass2SigmaScale
-		} else {
+		default:
 			sigmaScale = stepMultiplier
 		}
 
@@ -1406,42 +1492,70 @@ func (f *Frame) performUpsampling(ib image.ImageBuffer, c int) (*image.ImageBuff
 	}
 	upWeights := up[l]
 	newBuffer := util.MakeMatrix2D[float32](len(buffer)*int(k), 0)
-	for y := 0; y < len(buffer); y++ {
-		for ky := 0; ky < int(k); ky++ {
-			newBuffer[y*int(k)+ky] = make([]float32, len(buffer[y])*int(k))
-			for x := 0; x < len(buffer[y]); x++ {
-				for kx := 0; kx < int(k); kx++ {
-					weights := upWeights[ky][kx]
-					total := float32(0.0)
-					min := float32(math.MaxFloat32)
-					max := float32(math.SmallestNonzeroFloat32)
-					for iy := 0; iy < 5; iy++ {
-						for ix := 0; ix < 5; ix++ {
-							newY := util.MirrorCoordinate(int32(y)+int32(iy)-2, int32(len(buffer)))
-							newX := util.MirrorCoordinate(int32(x)+int32(ix)-2, int32(len(buffer[newY])))
-							sample := buffer[newY][newX]
-							if sample < min {
-								min = sample
+
+	maxGoroutines := 1
+	if f.options != nil {
+		maxGoroutines = f.options.MaxGoroutines
+	}
+	if maxGoroutines < 1 {
+		maxGoroutines = 1
+	}
+	rows := len(buffer)
+	rowsPerWorker := (rows + maxGoroutines - 1) / maxGoroutines
+	var wg sync.WaitGroup
+
+	for i := 0; i < maxGoroutines; i++ {
+		start := i * rowsPerWorker
+		end := start + rowsPerWorker
+		if start >= rows {
+			break
+		}
+		if end > rows {
+			end = rows
+		}
+
+		wg.Add(1)
+		go func(startY, endY int) {
+			defer wg.Done()
+			for y := startY; y < endY; y++ {
+				for ky := 0; ky < int(k); ky++ {
+					newBuffer[y*int(k)+ky] = make([]float32, len(buffer[y])*int(k))
+					for x := 0; x < len(buffer[y]); x++ {
+						for kx := 0; kx < int(k); kx++ {
+							weights := upWeights[ky][kx]
+							total := float32(0.0)
+							min := float32(math.MaxFloat32)
+							max := float32(math.SmallestNonzeroFloat32)
+							for iy := 0; iy < 5; iy++ {
+								for ix := 0; ix < 5; ix++ {
+									newY := util.MirrorCoordinate(int32(y)+int32(iy)-2, int32(len(buffer)))
+									newX := util.MirrorCoordinate(int32(x)+int32(ix)-2, int32(len(buffer[newY])))
+									sample := buffer[newY][newX]
+									if sample < min {
+										min = sample
+									}
+									if sample > max {
+										max = sample
+									}
+									total += weights[iy][ix] * sample
+								}
 							}
-							if sample > max {
-								max = sample
+							var val float32
+							if total < min {
+								val = min
+							} else if total > max {
+								val = max
+							} else {
+								val = total
 							}
-							total += weights[iy][ix] * sample
+							newBuffer[y*int(k)+ky][x*int(k)+kx] = val
 						}
 					}
-					var val float32
-					if total < min {
-						val = min
-					} else if total > max {
-						val = max
-					} else {
-						val = total
-					}
-					newBuffer[y*int(k)+ky][x*int(k)+kx] = val
 				}
 			}
-		}
+		}(start, end)
 	}
+	wg.Wait()
 
 	return image.NewImageBufferFromFloats(newBuffer), nil
 
@@ -1521,6 +1635,12 @@ func (f *Frame) getColourChannelCount() int32 {
 		return 3
 	}
 	return int32(f.GlobalMetadata.GetColourChannelCount())
+}
+
+func (f *Frame) Release() {
+	if f.hfGlobal != nil {
+		f.hfGlobal.Release()
+	}
 }
 
 // generate a total (signature?) for each row of each channel in the buffer.

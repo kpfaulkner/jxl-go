@@ -356,12 +356,12 @@ func TestGetPredictedNonZeros_LargeValuesRounding(t *testing.T) {
 		expected int32
 	}{
 		// (above + left + 1) >> 1
-		{"even sum rounds down", 10, 10, (10 + 10 + 1) >> 1},  // 10
-		{"odd sum rounds up", 10, 11, (10 + 11 + 1) >> 1},     // 11
-		{"large even", 100, 200, (100 + 200 + 1) >> 1},        // 150
-		{"large odd", 99, 200, (99 + 200 + 1) >> 1},           // 150
-		{"zero and nonzero", 0, 100, (0 + 100 + 1) >> 1},      // 50
-		{"both zero", 0, 0, (0 + 0 + 1) >> 1},                 // 0
+		{"even sum rounds down", 10, 10, (10 + 10 + 1) >> 1},   // 10
+		{"odd sum rounds up", 10, 11, (10 + 11 + 1) >> 1},      // 11
+		{"large even", 100, 200, (100 + 200 + 1) >> 1},         // 150
+		{"large odd", 99, 200, (99 + 200 + 1) >> 1},            // 150
+		{"zero and nonzero", 0, 100, (0 + 100 + 1) >> 1},       // 50
+		{"both zero", 0, 0, (0 + 0 + 1) >> 1},                  // 0
 		{"max int32 safe", 1000, 1000, (1000 + 1000 + 1) >> 1}, // 1000
 	}
 
@@ -1392,13 +1392,13 @@ func TestDequantizeHFCoefficients_MultiplePositions(t *testing.T) {
 		coeff int32
 	}
 	positions := []posCoeff{
-		{0, 1, 3},    // large positive
-		{0, 7, -5},   // large negative
-		{1, 0, 2},    // boundary (just outside [-1,1])
-		{3, 4, 10},   // interior large
-		{7, 7, -1},   // small negative
-		{4, 2, 0},    // zero
-		{6, 6, 1},    // small positive
+		{0, 1, 3},  // large positive
+		{0, 7, -5}, // large negative
+		{1, 0, 2},  // boundary (just outside [-1,1])
+		{3, 4, 10}, // interior large
+		{7, 7, -1}, // small negative
+		{4, 2, 0},  // zero
+		{6, 6, 1},  // small positive
 	}
 
 	for _, p := range positions {

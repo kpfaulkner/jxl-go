@@ -262,11 +262,11 @@ func TestClamp(t *testing.T) {
 		v, a, b, c int32
 		expected   int32
 	}{
-		{5, 0, 10, 5, 5},   // v=5 in [0,10], stays 5
-		{0, 0, 10, 5, 0},   // v=0 in [0,10], stays 0
-		{10, 0, 10, 5, 10}, // v=10 in [0,10], stays 10
-		{-5, 0, 10, 5, 0},  // v=-5 clamped to lower=0
-		{15, 0, 10, 5, 10}, // v=15 clamped to upper=10
+		{5, 0, 10, 5, 5},    // v=5 in [0,10], stays 5
+		{0, 0, 10, 5, 0},    // v=0 in [0,10], stays 0
+		{10, 0, 10, 5, 10},  // v=10 in [0,10], stays 10
+		{-5, 0, 10, 5, 0},   // v=-5 clamped to lower=0
+		{15, 0, 10, 5, 10},  // v=15 clamped to upper=10
 		{5, 10, 20, 15, 10}, // clamp 5 to [10,20] = 10
 		{5, 10, 20, 5, 5},   // lower=10>=5 true->lower=5, clamp 5 to [5,20]=5
 	}
@@ -420,8 +420,8 @@ func TestMatrixMatrixMultiply(t *testing.T) {
 	}
 
 	expected := [][]float32{
-		{19, 22},  // 1*5+2*7, 1*6+2*8
-		{43, 50},  // 3*5+4*7, 3*6+4*8
+		{19, 22}, // 1*5+2*7, 1*6+2*8
+		{43, 50}, // 3*5+4*7, 3*6+4*8
 	}
 
 	for i := 0; i < 2; i++ {
@@ -743,8 +743,8 @@ func TestMirrorCoordinate(t *testing.T) {
 		{0, 10, 0},
 		{5, 10, 5},
 		{9, 10, 9},
-		{10, 10, 9},  // beyond size, mirrors back
-		{-1, 10, 0},  // negative, mirrors
+		{10, 10, 9}, // beyond size, mirrors back
+		{-1, 10, 0}, // negative, mirrors
 		{-2, 10, 1},
 		{11, 10, 8},
 	}

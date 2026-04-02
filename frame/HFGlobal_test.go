@@ -22,9 +22,9 @@ func TestQuantMult(t *testing.T) {
 		{"positive 1 returns 2", 1.0, 2.0},
 		{"positive 2 returns 3", 2.0, 3.0},
 		{"positive 0.5 returns 1.5", 0.5, 1.5},
-		{"negative -1 returns 0.5", -1.0, 0.5},           // 1/(1+1) = 0.5
-		{"negative -0.5 returns 2/3", -0.5, 1.0 / 1.5},   // 1/(1+0.5)
-		{"negative -3 returns 0.25", -3.0, 0.25},          // 1/(1+3) = 0.25
+		{"negative -1 returns 0.5", -1.0, 0.5},         // 1/(1+1) = 0.5
+		{"negative -0.5 returns 2/3", -0.5, 1.0 / 1.5}, // 1/(1+0.5)
+		{"negative -3 returns 0.25", -3.0, 0.25},       // 1/(1+3) = 0.25
 		{"small positive", 0.001, 1.001},
 		{"boundary at zero positive side", 0.0, 1.0},
 	}
@@ -508,8 +508,8 @@ func TestSetupDCTParam_ReadBitsError(t *testing.T) {
 
 func TestNewHFGlobalWithReader_DefaultParams(t *testing.T) {
 	reader := &testcommon.FakeBitReader{
-		ReadBoolData: []bool{true},   // quantAllDefault=true
-		ReadBitsData: []uint64{0},    // numPresets (CeilLog1p(0)=0 bits → ReadBits(0))
+		ReadBoolData: []bool{true}, // quantAllDefault=true
+		ReadBitsData: []uint64{0},  // numPresets (CeilLog1p(0)=0 bits → ReadBits(0))
 	}
 	frame := &Frame{numGroups: 1}
 
@@ -668,4 +668,21 @@ func TestSetupDefaultParams_HornussHasParam(t *testing.T) {
 	assert.Equal(t, 3, len(defaultParams[1].param))
 	assert.Equal(t, 3, len(defaultParams[1].param[0]))
 	assert.InDelta(t, 280.0, float64(defaultParams[1].param[0][0]), 1e-3)
+}
+
+func TestHFGlobal_DebugFunctions(t *testing.T) {
+	hfg := &HFGlobal{
+		weights: make([][][][]float32, 17),
+	}
+	for i := 0; i < 17; i++ {
+		hfg.weights[i] = make([][][]float32, 1)
+		hfg.weights[i][0] = make([][]float32, 1)
+		hfg.weights[i][0][0] = make([]float32, 1)
+		hfg.weights[i][0][0][0] = 1.0
+	}
+
+	// Just ensure they run without panic
+	hfg.totalWeights()
+	hfg.displayWeights()
+	hfg.displaySpecificWeights(0, 0, 0)
 }

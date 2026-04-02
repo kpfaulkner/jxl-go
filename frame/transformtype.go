@@ -102,8 +102,8 @@ func NewTransformType(name string, transType int32, parameterIndex int32, orderI
 		dctSelectWidth:  dctSelectWidth,
 		dctSelectHeight: dctSelectHeight,
 		orderID:         orderID,
-		matrixWidth:     util.Max[int32](pixelHeight, pixelWidth),
-		matrixHeight:    util.Min[int32](pixelHeight, pixelWidth),
+		matrixWidth:     util.Max(pixelHeight, pixelWidth),
+		matrixHeight:    util.Min(pixelHeight, pixelWidth),
 
 		transformMethod: transformMethod,
 		llfScale:        util.MakeMatrix2D[float32](dctSelectHeight, dctSelectWidth),

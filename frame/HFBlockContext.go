@@ -32,6 +32,7 @@ func NewHFBlockContextWithReader(reader jxlio.BitReader, readClusterMap func(rea
 		hf.qfThresholds = []int32{}
 		hf.lfThresholds = util.MakeMatrix2D[int32](3, 0)
 		hf.numLFContexts = 1
+		return hf, nil
 	}
 
 	nbLFThresh := make([]int32, 3)

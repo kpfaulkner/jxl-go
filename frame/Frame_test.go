@@ -2,15 +2,22 @@ package frame
 
 import (
 	"bytes"
+	"math"
+	"strings"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/kpfaulkner/jxl-go/bundle"
 	"github.com/kpfaulkner/jxl-go/colour"
+	"github.com/kpfaulkner/jxl-go/entropy"
 	"github.com/kpfaulkner/jxl-go/image"
 	"github.com/kpfaulkner/jxl-go/jxlio"
 	"github.com/kpfaulkner/jxl-go/options"
 	"github.com/kpfaulkner/jxl-go/testcommon"
 	"github.com/kpfaulkner/jxl-go/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCtxFunc(t *testing.T) {
@@ -197,7 +204,9 @@ func TestGetNumLFGroups(t *testing.T) {
 
 func TestUpsamplePerformUpsampling(t *testing.T) {
 	// Basic invocation to ensure no panic; extensive correctness is covered elsewhere
-	f := &Frame{}
+	f := &Frame{
+		options: &options.JXLOptions{MaxGoroutines: 1},
+	}
 	f.Header = &FrameHeader{Upsampling: 2}
 	// initialize BitDepth and upsample weights to avoid nil deref
 	f.GlobalMetadata = &bundle.ImageHeader{BitDepth: &bundle.BitDepthHeader{BitsPerSample: 8}}
@@ -307,6 +316,53 @@ func TestSkipFrameData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SkipFrameData returned error: %v", err)
 	}
+}
+
+// TestReadTOC tests the ReadTOC method
+func TestReadTOC(t *testing.T) {
+	// Case 1: numGroups == 1 && numPasses == 1
+	data1 := []byte{0x00, 0x14, 0x00} // permutatedTOC = false, TOC length = 5 (choice 0, bits 10: 0x14 >> 2 = 5)
+	reader1 := jxlio.NewBitStreamReader(bytes.NewReader(data1))
+	f1 := &Frame{
+		reader:    reader1,
+		numGroups: 1,
+		Header: &FrameHeader{
+			passes: &PassesInfo{numPasses: 1},
+		},
+	}
+	err := f1.ReadTOC()
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(1), uint32(len(f1.tocLengths)))
+	assert.Equal(t, uint32(5), f1.tocLengths[0])
+
+	// Case 2: numGroups > 1, permutatedTOC = false
+	data2 := make([]byte, 10) // plenty of data
+	reader2 := jxlio.NewBitStreamReader(bytes.NewReader(data2))
+	f2 := &Frame{
+		reader:      reader2,
+		numGroups:   1,
+		numLFGroups: 0,
+		Header: &FrameHeader{
+			passes: &PassesInfo{numPasses: 2}, // tocEntries = 1 + 0 + 1 + 1*2 = 4
+		},
+	}
+	err = f2.ReadTOC()
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(f2.tocLengths))
+}
+
+func TestReadTOC_Permutated(t *testing.T) {
+	reader := testcommon.NewFakeBitReader()
+	reader.ReadBoolData = []bool{true} // permutatedTOC = true
+	f := &Frame{
+		reader:    reader,
+		numGroups: 1,
+		Header: &FrameHeader{
+			passes: &PassesInfo{numPasses: 1},
+		},
+	}
+	err := f.ReadTOC()
+	assert.Error(t, err) // Should error because we don't provide enough data for tocStream
 }
 
 // TestGetBitreader tests the getBitreader method
@@ -595,18 +651,56 @@ func TestPerformGabConvolution(t *testing.T) {
 	}
 }
 
+// LogHook is a simple hook for logrus to capture logs during tests
+type LogHook struct {
+	logs []string
+}
+
+func (h *LogHook) Levels() []log.Level {
+	return log.AllLevels
+}
+
+func (h *LogHook) Fire(entry *log.Entry) error {
+	msg, _ := entry.String()
+	h.logs = append(h.logs, msg)
+	return nil
+}
+
+func (h *LogHook) HasLog(pattern string) bool {
+	for _, l := range h.logs {
+		if strings.Contains(l, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
 // TestDisplayBuffers tests the display buffer functions (for coverage)
 func TestDisplayBuffers(t *testing.T) {
+	// Set up logrus hook to capture logs
+	hook := &LogHook{}
+	log.AddHook(hook)
+	log.SetLevel(log.DebugLevel)
+	defer func() {
+		log.SetLevel(log.InfoLevel)
+	}()
+
 	frameBuffer := [][][]float32{
 		{{1.0, 2.0}, {3.0, 4.0}},
 		{{5.0, 6.0}, {7.0, 8.0}},
 	}
 
 	// Just ensure it doesn't panic
-	displayBuffers("test", frameBuffer)
+	sum1 := displayBuffers("test-buffers", frameBuffer)
+	assert.Equal(t, 36.0, sum1)
 
 	singleBuffer := [][]float32{{1.0, 2.0}, {3.0, 4.0}}
-	displayBuffer("test", singleBuffer)
+	sum2 := displayBuffer("test-buffer", singleBuffer)
+	assert.Equal(t, 10.0, sum2)
+
+	// Verify logs
+	assert.True(t, hook.HasLog("displayBuffers: test-buffers total: 36.000000"))
+	assert.True(t, hook.HasLog("displayBuffer: test-buffer total: 10.000000"))
 }
 
 // TestUpsampleFull tests the full Upsample method
@@ -755,8 +849,9 @@ func TestAbsFloat32EdgeCases(t *testing.T) {
 	}
 
 	// Test negative zero
-	if got := absFloat32(-0.0); got != 0.0 {
-		t.Errorf("absFloat32(-0.0) = %f; want 0.0", got)
+	negZero := math.Float32frombits(0x80000000)
+	if got := absFloat32(negZero); got != 0.0 {
+		t.Errorf("absFloat32(negZero) = %f; want 0.0", got)
 	}
 
 	// Test very small numbers
@@ -821,7 +916,7 @@ func TestPerformUpsamplingNoUpsampling(t *testing.T) {
 	// With k=1, the function returns a pointer to the input buffer
 	// Just verify result is valid and has same dimensions
 	if result == nil {
-		t.Error("performUpsampling result should not be nil")
+		t.Fatalf("performUpsampling result should not be nil")
 	}
 	if result.Width != ib.Width || result.Height != ib.Height {
 		t.Errorf("performUpsampling with k=1 should preserve size: got %dx%d, want %dx%d",
@@ -1282,12 +1377,11 @@ func TestDecodeFrame(t *testing.T) {
 
 	frame := &Frame{
 		tocPermutation: nil,
-		//tocLengths:       []uint32{0x513d, 0x0, 0x0, 0x0, 0x0, 0x0, 0xdf34, 0xe433, 0xd43a, 0xda74, 0xec3f, 0xe0d9, 0xe9d8, 0xe7d7, 0xe80e, 0xe5a3, 0xe00d, 0xec7f, 0xadc5, 0xc9d8, 0xe879, 0xd567, 0xe11a, 0xf591, 0xd533, 0xe39c, 0xf26a, 0xeba7, 0xe10e, 0xe863, 0xe6cd, 0xad6e, 0xc76a, 0xcbef, 0xe202, 0xd202, 0xdd76, 0xefd8, 0x105bf, 0x109bd, 0xf359, 0xdf25, 0xdfc5, 0xe8b2, 0xb115, 0xc7db, 0xc67e, 0xd835, 0xde84, 0xfe5b, 0xe894, 0xd494, 0xf95c, 0xf79d, 0xdb79, 0xe675, 0xe7d1, 0xacaa, 0xe109, 0xcce3, 0xdcbb, 0xe996, 0xe4df, 0xeb92, 0x107b0, 0xfa0b, 0xfa4b, 0xe0d0, 0xd954, 0xdf3d, 0xaaf6, 0xc74b, 0xd90a, 0xe26d, 0xe92a, 0x12702, 0xebaa, 0x109da, 0x10857, 0xf1fd, 0xe995, 0xeb3e, 0xe6bb, 0xac69, 0xd207, 0xd59d, 0xd50f, 0xc90f, 0xfb02, 0x115af, 0x1100a, 0x1152d, 0xfa05, 0xe408, 0xe849, 0xddb5, 0x9d28, 0xc9f2, 0xd731, 0xdd8f, 0xdbea, 0xcf0c, 0xee08, 0xfdd9, 0xde1d, 0xd5b9, 0xd596, 0xdca4, 0xde90, 0xa57e, 0xcfcb, 0xe193, 0xdb39, 0xda07, 0xd7c5, 0xc722, 0xe195, 0xd6c5, 0xcf2c, 0xafb1, 0x85c0, 0xdb91, 0xa78a, 0x810a, 0x7d9d, 0x7719, 0x7d6b, 0x83f2, 0x7e83, 0x88ab, 0x8485, 0x77ee, 0x58f1, 0x48ad, 0x7bf5, 0x5cdd},
-		tocLengths: []uint32{1},
-		lfGroups:   nil,
-		Buffer:     nil,
-		passes:     nil,
-		bitreaders: nil,
+		tocLengths:     []uint32{1},
+		lfGroups:       nil,
+		Buffer:         nil,
+		passes:         nil,
+		bitreaders:     nil,
 		GlobalMetadata: &bundle.ImageHeader{
 			BitDepth: &bundle.BitDepthHeader{
 				BitsPerSample:    0,
@@ -1377,42 +1471,461 @@ func TestDecodeFrame(t *testing.T) {
 	}
 }
 
-//func TestDecodeFrameWithRealFile(t *testing.T) {
-//	f, err := os.ReadFile(`../testdata/unittest.jxl`)
-//	if err != nil {
-//		log.Errorf("Error opening file: %v\n", err)
-//		return
-//	}
-//
-//	r := bytes.NewReader(f)
-//	jxl := core.NewJXLDecoder(r, nil)
-//
-//	jxl.Decode()
-//
-//	var jxlImage *core.JXLImage
-//	if jxlImage, err = jxl.Decode(); err != nil {
-//		fmt.Printf("Error decoding: %v\n", err)
-//		t.Errorf("Error decoding: %v\n", err)
-//	}
-//
-//	fmt.Printf("XXXXX %+v\n", jxlImage)
-//
-//}
+// Functions from extra_test.go below
 
-func NewFakeLFGlobalWithReaderFunc(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error) {
-	return &LFGlobal{
-		frame:           nil,
-		Patches:         nil,
-		splines:         nil,
-		noiseParameters: nil,
-		lfDequant:       nil,
-		hfBlockCtx:      nil,
-		lfChanCorr:      nil,
-		globalScale:     0,
-		quantLF:         0,
-		scaledDequant:   nil,
-		globalModular: &ModularStream{
-			channels: []*ModularChannel{},
+func TestPerformEdgePreservingFilter_Merged(t *testing.T) {
+	f := &Frame{
+		Header: &FrameHeader{
+			Encoding: MODULAR,
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 16, Height: 16},
+			},
+			restorationFilter: &RestorationFilter{
+				epfIterations:      1,
+				epfSigmaForModular: 1.0,
+				epfPass0SigmaScale: 1.0,
+				epfPass2SigmaScale: 1.0,
+				epfQuantMul:        1.0,
+				epfChannelScale:    []float32{1.0, 1.0, 1.0},
+				epfSharpLut:        []float32{0, 0, 0, 0, 0, 0, 0, 0},
+			},
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+			Upsampling:      1,
 		},
-	}, nil
+		GlobalMetadata: &bundle.ImageHeader{
+			BitDepth:       &bundle.BitDepthHeader{BitsPerSample: 8},
+			ColourEncoding: &colour.ColourEncodingBundle{ColourEncoding: colour.CE_RGB},
+		},
+		options: &options.JXLOptions{MaxGoroutines: 1},
+	}
+
+	// Create 3 float buffers
+	f.Buffer = make([]image.ImageBuffer, 3)
+	for c := 0; c < 3; c++ {
+		ib, err := image.NewImageBuffer(image.TYPE_FLOAT, 16, 16)
+		require.NoError(t, err)
+		for y := 0; y < 16; y++ {
+			for x := 0; x < 16; x++ {
+				ib.FloatBuffer[y][x] = float32(y*16 + x)
+			}
+		}
+		f.Buffer[c] = *ib
+	}
+
+	err := f.performEdgePreservingFilter()
+	require.NoError(t, err)
+	assert.Len(t, f.Buffer, 3)
+}
+
+func TestPerformEdgePreservingFilter_Vardct_Merged(t *testing.T) {
+	f := &Frame{
+		Header: &FrameHeader{
+			Encoding: VARDCT,
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 16, Height: 16},
+			},
+			restorationFilter: &RestorationFilter{
+				epfIterations:      1,
+				epfSigmaForModular: 1.0,
+				epfPass0SigmaScale: 1.0,
+				epfPass2SigmaScale: 1.0,
+				epfQuantMul:        1.0,
+				epfChannelScale:    []float32{1.0, 1.0, 1.0},
+				epfSharpLut:        []float32{0, 0, 0, 0, 0, 0, 0, 0},
+			},
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+			Upsampling:      1,
+		},
+		GlobalMetadata: &bundle.ImageHeader{
+			BitDepth: &bundle.BitDepthHeader{BitsPerSample: 8},
+		},
+		LfGlobal: &LFGlobal{
+			lfDequant:   []float32{1.0, 1.0, 1.0},
+			globalScale: 1,
+		},
+		lfGroups:         make([]*LFGroup, 1),
+		lfGroupRowStride: 1,
+		options:          &options.JXLOptions{MaxGoroutines: 1},
+	}
+	f.lfGroups[0] = &LFGroup{
+		hfMetadata: &HFMetadata{
+			hfMultiplier:   util.MakeMatrix2D[int32](256, 256),
+			hfStreamBuffer: make([][][]int32, 4),
+		},
+	}
+	for i := 0; i < 4; i++ {
+		f.lfGroups[0].hfMetadata.hfStreamBuffer[i] = util.MakeMatrix2D[int32](256, 256)
+	}
+	// Set hfMultiplier[0][0] to 1 to avoid div by zero
+	f.lfGroups[0].hfMetadata.hfMultiplier[0][0] = 1
+
+	f.Buffer = make([]image.ImageBuffer, 3)
+	for c := 0; c < 3; c++ {
+		ib, err := image.NewImageBuffer(image.TYPE_FLOAT, 16, 16)
+		require.NoError(t, err)
+		f.Buffer[c] = *ib
+	}
+
+	err := f.performEdgePreservingFilter()
+	require.NoError(t, err)
+}
+
+func TestReadFrameHeader_Merged(t *testing.T) {
+	parent := makeParent(100, 200, true, 0)
+	reader := &testcommon.FakeBitReader{
+		ReadBoolData: []bool{true}, // allDefault = true
+	}
+
+	f := &Frame{
+		GlobalMetadata: parent,
+		reader:         reader,
+	}
+
+	header, err := f.ReadFrameHeader()
+	require.NoError(t, err)
+	assert.Equal(t, uint32(REGULAR_FRAME), header.FrameType)
+	assert.Equal(t, uint32(256), f.Header.groupDim)
+	assert.Equal(t, uint32(1), f.numGroups)
+	assert.Equal(t, uint32(1), f.numLFGroups)
+}
+
+func TestReadFrameHeader_ErrorPadding_Merged(t *testing.T) {
+	// Currently FakeBitReader.ZeroPadToByte returns nil.
+}
+
+func TestReadFrameHeader_ErrorNewFrameHeader_Merged(t *testing.T) {
+	f := &Frame{
+		GlobalMetadata: makeParent(100, 200, true, 0),
+		reader: &testcommon.FakeBitReader{
+			ReadBoolData: []bool{}, // Error on first ReadBool
+		},
+	}
+	_, err := f.ReadFrameHeader()
+	assert.Error(t, err)
+}
+
+func TestReadTOC_ErrorPermutatedBool_Merged(t *testing.T) {
+	f := &Frame{
+		numGroups: 1,
+		Header: &FrameHeader{
+			passes: &PassesInfo{numPasses: 1},
+		},
+		reader: &testcommon.FakeBitReader{
+			ReadBoolData: []bool{}, // Error on permutatedTOC ReadBool
+		},
+	}
+	err := f.ReadTOC()
+	assert.Error(t, err)
+}
+
+func TestReadBuffer_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10},
+		reader:     &testcommon.FakeBitReader{},
+	}
+	buf, err := f.readBuffer(0)
+	require.NoError(t, err)
+	assert.Len(t, buf, 14) // length + 4
+}
+
+func TestReadBuffer_Error_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10},
+		reader:     &testcommon.FakeBitReader{},
+	}
+	// Index out of range
+	_, err := f.readBuffer(1)
+	assert.Error(t, err)
+}
+
+func TestSetupBitReaders_Multiple_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10, 20},
+		reader:     &testcommon.FakeBitReader{},
+	}
+	err := f.setupBitReaders()
+	require.NoError(t, err)
+	assert.Len(t, f.bitreaders, 2)
+}
+
+func TestDecodeFrame_AlreadyDecoded_Merged(t *testing.T) {
+	f := &Frame{decoded: true}
+	err := f.DecodeFrame(nil, nil)
+	require.NoError(t, err)
+}
+
+func TestDecodeFrame_SetupBitReadersError_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10, 20},
+		reader: &testcommon.FakeBitReader{
+			ReadBytesError: assert.AnError,
+		},
+	}
+	err := f.DecodeFrame(nil, nil)
+	assert.Error(t, err)
+}
+
+func TestDecodeFrame_NewLFGlobalError_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10},
+		reader:     &testcommon.FakeBitReader{},
+	}
+	err := f.DecodeFrame(nil, func(reader jxlio.BitReader, parent Framer, hfBlockContextFunc NewHFBlockContextFunc) (*LFGlobal, error) {
+		return nil, assert.AnError
+	})
+	assert.Error(t, err)
+}
+
+func TestDecodeFrame_PaddedSizeError_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10},
+		reader:     &testcommon.FakeBitReader{},
+		Header: &FrameHeader{
+			Encoding: VARDCT,
+		},
+	}
+	// GetPaddedFrameSize fails if Bounds is nil
+	err := f.DecodeFrame(nil, NewFakeLFGlobalWithReaderFunc)
+	assert.Error(t, err)
+}
+
+func TestDecodeFrame_VARDCT_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10, 20, 30}, // enough for LFGlobal, HFGlobal, and at least one pass
+		reader:     &testcommon.FakeBitReader{},
+		Header: &FrameHeader{
+			Encoding: VARDCT,
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 8, Height: 8},
+			},
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+			Upsampling:      1,
+			passes: &PassesInfo{
+				numPasses: 1,
+			},
+			restorationFilter: &RestorationFilter{},
+		},
+		GlobalMetadata: &bundle.ImageHeader{
+			BitDepth: &bundle.BitDepthHeader{BitsPerSample: 8},
+		},
+		options:          &options.JXLOptions{MaxGoroutines: 1},
+		numLFGroups:      1,
+		lfGroupRowStride: 1,
+		groupRowStride:   1,
+	}
+
+	err := f.DecodeFrame(nil, NewFakeLFGlobalWithReaderFunc)
+	_ = err
+}
+
+func TestIsVisible_AllCases_Merged(t *testing.T) {
+	f := &Frame{Header: &FrameHeader{FrameType: REGULAR_FRAME}}
+	assert.True(t, f.IsVisible())
+
+	f.Header.FrameType = SKIP_PROGRESSIVE
+	f.Header.Duration = 1
+	assert.True(t, f.IsVisible())
+
+	f.Header.Duration = 0
+	f.Header.IsLast = true
+	assert.True(t, f.IsVisible())
+
+	f.Header.IsLast = false
+	assert.False(t, f.IsVisible())
+
+	f.Header.FrameType = LF_FRAME
+	assert.False(t, f.IsVisible())
+}
+
+func TestGetBitreader_Error_Merged(t *testing.T) {
+	f := &Frame{
+		tocLengths: []uint32{10, 20},
+		bitreaders: []jxlio.BitReader{&testcommon.FakeBitReader{}},
+	}
+	assert.Panics(t, func() {
+		f.getBitreader(1)
+	})
+}
+
+func TestDecodeFrame_Complex_Merged(t *testing.T) {
+	channels := []*ModularChannel{
+		NewModularChannelWithAllParams(64, 64, 3, 3, false),
+	}
+
+	f := &Frame{
+		tocLengths: []uint32{10, 10, 20, 30, 40}, // LFGlobal, LFGroup0, LFGroup1, HFGlobal, Pass0Group0
+		reader:     &testcommon.FakeBitReader{},
+		Header: &FrameHeader{
+			Encoding: MODULAR,
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 4096, Height: 256},
+			},
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+			Upsampling:      1,
+			passes: &PassesInfo{
+				numPasses: 1,
+			},
+			restorationFilter: &RestorationFilter{},
+			lfGroupDim:        2048,
+			groupDim:          256,
+		},
+		GlobalMetadata: &bundle.ImageHeader{
+			BitDepth:       &bundle.BitDepthHeader{BitsPerSample: 8},
+			ColourEncoding: &colour.ColourEncodingBundle{ColourEncoding: colour.CE_RGB},
+		},
+		options:          &options.JXLOptions{MaxGoroutines: 1},
+		numLFGroups:      2,
+		numGroups:        16,
+		lfGroupRowStride: 2,
+		groupRowStride:   16,
+	}
+
+	err := f.DecodeFrame(nil, NewFakeLFGlobalWithChannelsFunc(channels))
+	_ = err
+}
+
+func TestDecodePassGroupsConcurrent_Merged(t *testing.T) {
+	hfctx := &HFBlockContext{numClusters: 1}
+	lfg := &LFGroup{
+		hfMetadata: &HFMetadata{
+			hfMultiplier:   util.MakeMatrix2D[int32](1, 1),
+			hfStreamBuffer: make([][][]int32, 4),
+		},
+	}
+	for i := 0; i < 4; i++ {
+		lfg.hfMetadata.hfStreamBuffer[i] = util.MakeMatrix2D[int32](1, 1)
+	}
+
+	f := &Frame{
+		numGroups:   1,
+		numLFGroups: 1,
+		tocLengths:  []uint32{10, 10, 10, 10}, // LFGlobal, LFGroup0, HFGlobal, Pass0Group0
+		bitreaders: []jxlio.BitReader{
+			&testcommon.FakeBitReader{ReadBitsData: []uint64{0}}, // hfPreset
+			&testcommon.FakeBitReader{ReadBitsData: []uint64{0}},
+			&testcommon.FakeBitReader{ReadBitsData: []uint64{0}},
+			&testcommon.FakeBitReader{ReadBitsData: []uint64{0}},
+		},
+		passes: []Pass{{
+			replacedChannels: []*ModularChannel{},
+			hfPass: &HFPass{
+				contextStream: &entropy.EntropyStream{},
+			},
+		}},
+
+		Header: &FrameHeader{
+			Encoding: MODULAR,
+			groupDim: 256,
+
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 256, Height: 256},
+			},
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+			passes: &PassesInfo{
+				shift: []uint32{0},
+			},
+		},
+		options: &options.JXLOptions{MaxGoroutines: 1},
+		LfGlobal: &LFGlobal{
+			globalModular: &ModularStream{
+				channels: []*ModularChannel{},
+			},
+			hfBlockCtx: hfctx,
+		},
+		hfGlobal:         &HFGlobal{numHFPresets: 1},
+		lfGroups:         []*LFGroup{lfg},
+		groupRowStride:   1,
+		lfGroupRowStride: 1,
+	}
+
+	err := f.decodePassGroupsConcurrent()
+	_ = err
+}
+
+func TestFrame_GetLFGroupSize_Error_Merged(t *testing.T) {
+	f := &Frame{
+		lfGroupRowStride: 1,
+		Header:           &FrameHeader{},
+	}
+	_, err := f.getLFGroupSize(0)
+	assert.Error(t, err)
+}
+
+func TestFrame_GetLFGroupSize_Merged(t *testing.T) {
+	f := &Frame{
+		Header: &FrameHeader{
+			lfGroupDim: 2048,
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 3000, Height: 3000},
+			},
+		},
+		lfGroupRowStride: 2,
+	}
+
+	sz, err := f.getLFGroupSize(0)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2048), sz.Width)
+	assert.Equal(t, uint32(2048), sz.Height)
+
+	sz, err = f.getLFGroupSize(3)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(952), sz.Width)
+	assert.Equal(t, uint32(952), sz.Height)
+}
+
+func TestFrame_GetGroupSize_Merged(t *testing.T) {
+	f := &Frame{
+		Header: &FrameHeader{
+			Encoding: VARDCT,
+			groupDim: 256,
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 300, Height: 300},
+			},
+			jpegUpsamplingX: []int32{0, 0, 0},
+			jpegUpsamplingY: []int32{0, 0, 0},
+		},
+		groupRowStride: 2,
+	}
+
+	sz, err := f.getGroupSize(0)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(256), sz.Width)
+	assert.Equal(t, uint32(256), sz.Height)
+
+	sz, err = f.getGroupSize(3)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(48), sz.Width)
+	assert.Equal(t, uint32(48), sz.Height)
+}
+
+func TestFrame_GetLFGroupForGroup_Merged(t *testing.T) {
+	lfg := &LFGroup{}
+	f := &Frame{
+		lfGroupRowStride: 1,
+		groupRowStride:   8,
+		lfGroups:         []*LFGroup{lfg},
+	}
+	assert.Equal(t, lfg, f.getLFGroupForGroup(0))
+}
+
+func TestInitializeNoise_WithParams_Merged(t *testing.T) {
+	f := &Frame{
+		LfGlobal: &LFGlobal{
+			noiseParameters: []NoiseParameters{{}},
+		},
+		options: &options.JXLOptions{MaxGoroutines: 1},
+		Header: &FrameHeader{
+			Bounds: &util.Rectangle{
+				Size: util.Dimension{Width: 16, Height: 16},
+			},
+		},
+	}
+	err := f.InitializeNoise(1234)
+	assert.Error(t, err)
+	assert.Equal(t, "noise not implemented", err.Error())
 }

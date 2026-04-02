@@ -36,7 +36,7 @@ func NewLFCoefficientsWithReader(reader jxlio.BitReader, parent *LFGroup, frame 
 		sizeY := parent.size.Height >> header.jpegUpsamplingY[i]
 		sizeX := parent.size.Width >> header.jpegUpsamplingX[i]
 		info[cMap[i]] = *NewModularChannelWithAllParams(int32(sizeY), int32(sizeX), header.jpegUpsamplingY[i], header.jpegUpsamplingX[i], false)
-		dequantLFCoeff[i] = util.MakeMatrix2D[float32, uint32](sizeY, sizeX)
+		dequantLFCoeff[i] = util.MakeMatrix2D[float32](sizeY, sizeX)
 	}
 
 	if (header.Flags & USE_LF_FRAME) != 0 {
@@ -195,7 +195,7 @@ func adaptiveSmooth(coeff [][][]float32, scaledDequant []float32) [][][]float32 
 	for y := 1; y < height-1; y++ {
 		gy := gap[y]
 		for x := 0; x < len(gy); x++ {
-			gy[x] = util.Max[float32](0.0, 3.0-4.0*gy[x])
+			gy[x] = util.Max(0.0, 3.0-4.0*gy[x])
 		}
 	}
 

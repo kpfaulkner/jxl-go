@@ -82,7 +82,7 @@ func TestDifferentSizes(t *testing.T) {
 func TestZeroSize(t *testing.T) {
 	// Should not panic
 	matrix := MakeMatrix3DPooled[float32](0, 0, 0)
-	if matrix != nil && len(matrix) != 0 {
+	if len(matrix) != 0 {
 		t.Errorf("Expected empty matrix for zero size")
 	}
 	ReturnMatrix3DToPool(matrix) // Should not panic

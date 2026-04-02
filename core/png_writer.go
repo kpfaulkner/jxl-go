@@ -209,33 +209,41 @@ func (w *PNGWriter) writeICCP(image *JXLImage, output io.Writer) error {
 	return nil
 }
 
-func (w *PNGWriter) writeSRGB(image *JXLImage, output io.Writer) error {
+func (w *PNGWriter) writeSRGB(jxlImage *JXLImage, output io.Writer) error {
 
 	if w.hdr {
 		return nil
 	}
+
+	// default to relative if for some reason we don't have the colour encoding bundle.
+	intent := byte(1)
+	if jxlImage.imageHeader.ColourEncoding != nil {
+		intent = byte(jxlImage.imageHeader.ColourEncoding.RenderingIntent)
+	}
+
 	var buf bytes.Buffer
-	//output.Write([]byte{0x69, 0x43, 0x43, 0x50})
-	if _, err := buf.Write([]byte{0x00, 0x00, 0x00, 0x01}); err != nil {
-		return err
-	}
-
-	// using jxlatte just to compare files
-	if _, err := buf.Write([]byte{0x73, 0x52, 0x47, 0x42}); err != nil {
-		return err
-	}
-	if err := buf.WriteByte(0x01); err != nil {
-		return err
-	}
-	if _, err := buf.Write([]byte{0xD9, 0xC9, 0x2C, 0x7F}); err != nil {
-		return err
-	}
-
+	buf.Write([]byte("sRGB"))
+	buf.WriteByte(intent)
 	rawBytes := buf.Bytes()
-	//buf2 := make([]byte, 4)
-	//binary.BigEndian.PutUint32(buf2, uint32(len(rawBytes))-4)
-	//output.Write(buf2)
+
+	// Calculate dynamic CRC
+	checksum := crc32.ChecksumIEEE(rawBytes)
+
+	buf2 := make([]byte, 4)
+	// Write Length (always 1 for sRGB)
+	binary.BigEndian.PutUint32(buf2, 1)
+	if _, err := output.Write(buf2); err != nil {
+		return err
+	}
+
+	// Write Chunk Type + Data
 	if _, err := output.Write(rawBytes); err != nil {
+		return err
+	}
+
+	// Write CRC
+	binary.BigEndian.PutUint32(buf2, checksum)
+	if _, err := output.Write(buf2); err != nil {
 		return err
 	}
 

@@ -124,25 +124,24 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 			case 3:
 				fh.jpegUpsamplingY[i] = 1
 				fh.jpegUpsamplingX[i] = 0
-			default:
-				break
 			}
 		}
 	}
 
 	fh.EcUpsampling = make([]uint32, len(parent.ExtraChannelInfo))
 	if !allDefault && (fh.Flags&USE_LF_FRAME) == 0 {
-		if upsampling, err := reader.ReadBits(2); err != nil {
+		upsampling, err := reader.ReadBits(2)
+		if err != nil {
 			return nil, err
-		} else {
-			fh.Upsampling = 1 << upsampling
 		}
+		fh.Upsampling = 1 << upsampling
+
 		for i := 0; i < len(fh.EcUpsampling); i++ {
-			if ecUpsampling, err := reader.ReadBits(2); err != nil {
+			ecUpsampling, err := reader.ReadBits(2)
+			if err != nil {
 				return nil, err
-			} else {
-				fh.EcUpsampling[i] = 1 << ecUpsampling
 			}
+			fh.EcUpsampling[i] = 1 << ecUpsampling
 		}
 	} else {
 		fh.Upsampling = 1
@@ -237,6 +236,13 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 	}
 
 	if fh.haveCrop {
+		if fh.Bounds == nil {
+			fh.Bounds = &util.Rectangle{
+				Origin: util.Point{X: 0, Y: 0},
+				Size:   util.Dimension{},
+			}
+		}
+
 		if width, err := reader.ReadU32(0, 8, 256, 11, 2304, 14, 18688, 30); err != nil {
 			return nil, err
 		} else {
@@ -297,11 +303,13 @@ func NewFrameHeaderWithReader(reader jxlio.BitReader, parent *bundle.ImageHeader
 	if normalFrame && parent.AnimationHeader != nil {
 		// dont care about animation
 		panic("animation")
-		dur, err := reader.ReadU32(0, 0, 1, 0, 0, 8, 0, 32)
-		if err != nil {
-			return nil, err
-		}
-		fh.Duration = dur
+		/*
+			dur, err := reader.ReadU32(0, 0, 1, 0, 0, 8, 0, 32)
+			if err != nil {
+				return nil, err
+			}
+			fh.Duration = dur
+		*/
 	} else {
 		fh.Duration = 0
 	}

@@ -49,7 +49,7 @@ func NewXorShiroWith2Seeds(seed0 int64, seed1 int64) *XorShiro {
 	xs.state0 = make([]uint64, 8)
 	xs.state1 = make([]uint64, 8)
 	xs.batch = make([]uint64, 8)
-	xs.batchPos = 0
+	xs.batchPos = len(xs.batch)
 
 	xs.state0[0] = splitMix64(uint64(seed0) + 0x9e3779b97f4a7c15)
 	xs.state1[0] = splitMix64(uint64(seed1) + 0x9e3779b97f4a7c15)
