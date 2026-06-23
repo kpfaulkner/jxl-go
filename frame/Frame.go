@@ -785,9 +785,13 @@ func (f *Frame) decodePassGroupsConcurrent() error {
 
 	if f.Header.Encoding == VARDCT {
 
-		// get floating point version of frame buffer
-		buffers := util.MakeMatrix3DPooled[float32](3, 0, 0)
-		defer util.ReturnMatrix3DToPool(buffers)
+		// get floating point version of frame buffer.
+		// buffers is only a view: each buffers[c] aliases the live f.Buffer
+		// image data below, so it must NOT be returned to the pool. Doing so
+		// makes Matrix3DPool.Put zero the live image (and recycle slices still
+		// referenced by f.Buffer) whenever a matching {3,H,W} pool key already
+		// exists, which corrupts every decode after the first in a process.
+		buffers := make([][][]float32, 3)
 		for c := 0; c < 3; c++ {
 			if err := f.Buffer[c].CastToFloatIfMax(^(^0 << f.GlobalMetadata.BitDepth.BitsPerSample)); err != nil {
 				return err

@@ -3,6 +3,8 @@ package util
 import (
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // SignedPow tests
@@ -785,7 +787,8 @@ func BenchmarkMatrixMatrixMultiply3x3(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		MatrixMatrixMultiply(left, right)
+		_, err := MatrixMatrixMultiply(left, right)
+		assert.NoError(b, err)
 	}
 }
 
@@ -801,7 +804,8 @@ func BenchmarkMatrixMatrixMultiply8x8(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		MatrixMatrixMultiply(left, right)
+		_, err := MatrixMatrixMultiply(left, right)
+		assert.NoError(b, err)
 	}
 }
 
@@ -823,7 +827,8 @@ func BenchmarkInverseDCT8x8(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		InverseDCT2D(src, dest, ZERO, ZERO, Dimension{Width: 8, Height: 8}, scratch0, scratch1, false)
+		err := InverseDCT2D(src, dest, ZERO, ZERO, Dimension{Width: 8, Height: 8}, scratch0, scratch1, false)
+		assert.NoError(b, err)
 	}
 }
 

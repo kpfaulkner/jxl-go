@@ -27,6 +27,82 @@ func TestMatrix3DPool(t *testing.T) {
 	ReturnMatrix3DToPool(matrix2)
 }
 
+// TestReturnMatrix3DToPoolZeroesAliasedData reproduces the hazard that motivated
+// frame.decodePassGroupsConcurrent to stop pooling its `buffers` view.
+//
+// Put clears the matrix in place before recycling it, so any row still aliased
+// elsewhere (e.g. a live image's FloatBuffer) is zeroed by the return. The old
+// code built `buffers` from a pool, aliased each `buffers[c]` onto the live
+// f.Buffer image rows, then returned the whole thing to the pool -- silently
+// wiping the decoded image. This test pins that in-place zeroing behaviour so the
+// hazard cannot be reintroduced unnoticed.
+func TestReturnMatrix3DToPoolZeroesAliasedData(t *testing.T) {
+	matrix := MakeMatrix3DPooled[float32](3, 8, 8)
+
+	// Simulate a live image whose rows are aliased by the pooled matrix, exactly
+	// as `buffers[c] = f.Buffer[c].FloatBuffer` used to do.
+	liveImage := make([][][]float32, 3)
+	for c := range matrix {
+		liveImage[c] = matrix[c]
+		for y := range matrix[c] {
+			for x := range matrix[c][y] {
+				matrix[c][y][x] = float32(c*100 + y*10 + x + 1)
+			}
+		}
+	}
+
+	ReturnMatrix3DToPool(matrix)
+
+	// Because liveImage shares the same backing rows, returning the matrix has
+	// corrupted the "live" data.
+	for c := range liveImage {
+		for y := range liveImage[c] {
+			for x := range liveImage[c][y] {
+				if liveImage[c][y][x] != 0 {
+					t.Fatalf("expected aliased live data zeroed by pool return at [%d][%d][%d], got %f",
+						c, y, x, liveImage[c][y][x])
+				}
+			}
+		}
+	}
+}
+
+// TestViewBuffersNotReturnedPreservesData mirrors the fixed approach in
+// frame.decodePassGroupsConcurrent: build `buffers` as a plain view that aliases
+// live image rows and never return it to the pool. The live data must survive.
+func TestViewBuffersNotReturnedPreservesData(t *testing.T) {
+	// Live image rows owned by something else (analogous to f.Buffer[c].FloatBuffer).
+	liveImage := make([][][]float32, 3)
+	for c := range liveImage {
+		liveImage[c] = MakeMatrix2D[float32](8, 8)
+		for y := range liveImage[c] {
+			for x := range liveImage[c][y] {
+				liveImage[c][y][x] = float32(c*100 + y*10 + x + 1)
+			}
+		}
+	}
+
+	// The fixed pattern: a plain slice header holding views, never pooled.
+	buffers := make([][][]float32, 3)
+	for c := 0; c < 3; c++ {
+		buffers[c] = liveImage[c]
+	}
+
+	// No ReturnMatrix3DToPool(buffers) here -- that is the whole point of the fix.
+
+	for c := range liveImage {
+		for y := range liveImage[c] {
+			for x := range liveImage[c][y] {
+				want := float32(c*100 + y*10 + x + 1)
+				if liveImage[c][y][x] != want {
+					t.Fatalf("live data corrupted at [%d][%d][%d]: got %f want %f",
+						c, y, x, liveImage[c][y][x], want)
+				}
+			}
+		}
+	}
+}
+
 func TestMatrix2DPool(t *testing.T) {
 	matrix := MakeMatrix2DPooled[int32](100, 100)
 	if len(matrix) != 100 || len(matrix[0]) != 100 {
